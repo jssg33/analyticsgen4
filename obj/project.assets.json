@@ -5323,11 +5323,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\users\\stritzj\\GitHub\\statsback542\\SQLSERVERV4\\statsback798.csproj",
+      "projectUniqueName": "C:\\Users\\stritzj\\Github\\analyticsgen4\\statsback798.csproj",
       "projectName": "statsback798",
-      "projectPath": "C:\\users\\stritzj\\GitHub\\statsback542\\SQLSERVERV4\\statsback798.csproj",
+      "projectPath": "C:\\Users\\stritzj\\Github\\analyticsgen4\\statsback798.csproj",
       "packagesPath": "C:\\Users\\stritzj\\.nuget\\packages\\",
-      "outputPath": "C:\\users\\stritzj\\GitHub\\statsback542\\SQLSERVERV4\\obj\\",
+      "outputPath": "C:\\Users\\stritzj\\Github\\analyticsgen4\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\stritzj\\AppData\\Roaming\\NuGet\\NuGet.Config"
