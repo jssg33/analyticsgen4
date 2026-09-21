@@ -1,0 +1,36 @@
+CREATE TABLE Portfolios (
+Id INTEGER PRIMARY KEY AUTOINCREMENT,
+UserId TEXT NOT NULL,
+PortfolioTargetInvestment REAL NOT NULL DEFAULT 0,
+Stocks TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE INDEX IX_Portfolios_UserId
+ON Portfolios (UserId);
+
+
+SQLITE DOESNT SUPPORT METADATA EMBEDDING IT HAS TO BE A RELATIONAL SUBTABLE.
+1. Portfolio Table
+sql
+CREATE TABLE Portfolio (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserId TEXT NOT NULL,
+    PortfolioTargetInvestment REAL NOT NULL
+);
+2. PortfolioStock Table
+sql
+CREATE TABLE PortfolioStock (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    PortfolioId INTEGER NOT NULL, -- FK to Portfolio
+
+    Ticker TEXT,
+    CompanyName TEXT,
+
+    Shares REAL NOT NULL,
+    PreviousDayPrice REAL NOT NULL,
+    PreviousDayDate TEXT NOT NULL, -- stored as ISO8601 string
+    StockTargetInvestment REAL NOT NULL,
+
+    FOREIGN KEY (PortfolioId) REFERENCES Portfolio(Id)
+);

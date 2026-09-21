@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="login.css" />
+<link rel="stylesheet" href="dropmenu.css" />
+<script src="./js/bikes.js"></script>
+    <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>  
+  <title>ReviewPayment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    .highlight {
+      background-color: #e0f3ff !important;
+    }
+    .selected {
+      border: 2px solid #198754;
+    }
+    .park-logo {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+  
+#userGreeting
+{
+  display: flex;
+  justify-content: center;     /* horizontal centering */
+  align-items: center;         /* vertical centering */
+  color: white;
+  text-align: center;
+}
+#banner
+{
+background-color: lightgrey;
+height: 60px;
+vertical-align: middle;
+width: 100%;
+display: flex;
+justify-content: center;     /* horizontal centering */
+align-items: center;         /* vertical centering */
+}
+    .payment-card {
+      max-width: 700px;
+      margin: 2rem auto;
+    }
+    .label {
+      font-weight: bold;
+    }  
+#cancelBtn
+{
+width: 400px;
+}
+
+</style>
+</head>
+  
+
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();gettransaction();">
+    <!-- Navigation Bar -->
+    <div class="navbar">
+      <div class="nav-left">
+            <div class="dropdown">
+                  <button class="jsmenu"><img src="./images/jsmenu5.png"></button> 
+                  <div class="dropdown-content">
+                  <a href="index.html">Site Home</a>
+                  <a href="cartreview.html">MyCart</a>
+                  <a href="parks5.html">Review Park Options</a>
+                  <a href="parksreview5.html">Park Reviews</a>
+                  <a href="mybookings5.html">MyReservations</a>
+                  <a href="manager.html">Manager Utilities</a>
+            </div>
+    </div> 
+      <div class="logo">&nbsp&nbsp&nbsp<H5>CockyAnalyticsv25</H5></div>
+      </div>
+      <div class="nav-right">
+        <img src="./images/blackcircle.png" id="profilephototarget" alt="User" style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+        <span id="H3UserBanner"></span>
+        <a href="login.html" id="loginBtn" class="btn secondary-btn" onclick="loginUser(event)">Login</a>
+        <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+                <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+    </div>
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+   <div class="container">
+    <h3 class="text-center mt-4">Payment Details</h3>
+    <div class="card payment-card">
+      <div class="card-body" id="paymentDetails">
+        <div id="transactioninfo">Loading payment information...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+   function gettransaction() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentId = urlParams.get("id");
+
+      if (!paymentId) {
+        $("#transactioninfo").html("<p class='text-danger'>No payment ID provided in the URL.</p>");
+        return;
+      }
+
+      $.ajax({
+        url: `https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Payments/transactions/${paymentId}`,
+        method: "GET",
+        success: function (payments) {
+          if (!Array.isArray(payments) || payments.length === 0) {
+            $("#transactioninfo").html("<p class='text-warning'>No payment record found for this ID.</p>");
+            return;
+          }
+
+          const payment = payments[0];
+
+          $("#transactioninfo").html(`
+            <p><span class="label">Payment ID:</span> ${payment.paymentId}</p>
+            <p><span class="label">Booking ID:</span> ${payment.bookingId}</p>
+            <p><span class="label">Transaction ID:</span> ${payment.transactionId}</p>
+            <p><span class="label">Amount Paid:</span> $${parseFloat(payment.amountPaid).toFixed(2)}</p>
+            <p><span class="label">Payment Method:</span> ${payment.paymentMethod}</p>
+            <p><span class="label">Card Type:</span> ${payment.cardType}</p>
+            <p><span class="label">Card Last 4:</span> ${payment.cardLast4}</p>
+            <p><span class="label">Card Expiry:</span> ${payment.cardExpDate}</p>
+            <p><span class="label">Payment Date:</span> ${new Date(payment.paymentDate).toLocaleString()}</p>
+            <p><span class="label">User ID:</span> ${payment.useridasstring ?? "—"}</p>
+            <p><span class="label">Transaction Type:</span> ${payment.transtype ?? "—"}</p>
+          `);
+        },
+        error: function () {
+          $("#transactioninfo").html("<p class='text-danger'>Failed to load payment details. Please try again later.</p>");
+        }
+      });
+    }
+</script>
+
+  </script>
+
+  <footer class="footer text-center mt-5">
+    &copy; Cocky Investments 2025. <br> All rights reserved.<br>
+    <a href="sitemap.html" class="sitelink">SiteMap</a>
+  </footer>
+</body>
+</html>

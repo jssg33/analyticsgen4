@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="./css/login.css" rel="stylesheet" />
+    <link href="./css/register.css" rel="stylesheet" />
+    <link href="./css/dropmenu.css" rel="stylesheet" />
+    <script src="./js/542.js"></script>
+    <meta charset="UTF-8">
+    <title>CockyInvestments - Register</title>
+    <style>
+    </style>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+    <!-- NAV BAR -->
+    <div class="navbar">
+      <div class="nav-left">
+        <div class="dropdown">
+          <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+          <div class="dropdown-content">
+            <a href="index.html">Site Home</a>
+            <a href="cartreview.html">MyCart</a>
+            <a href="myaccount.html">MyAccount</a>
+            <a href="manager.html">Manager Utilities</a>
+            <a href="interiorindex.html">LegacyPortal</a>
+            <a href="twocolumn.html">StockViews</a>
+            <a href="sectorview5.html">SectorViews</a>
+            <a href="epoch.html">EpochView</a>
+            <a href="portfolio.html">PortfolioView</a>
+            <a href="shiny.html">ShinyViewsFull</a>
+            <a href="login.html">Login</a>
+            <a href="register.html">Register</a>
+          </div>
+        </div>
+        <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+      </div>
+    
+      <div class="nav-right">
+        <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+             style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+        <span id="H3UserBanner"></span>
+        <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+        <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+        </div>
+    </div>
+    
+    <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+<section>
+    <BR><BR><BR><BR>
+  
+<div class="register-container" align="center">
+
+    <div class="ticker-logo">CKY</div>
+    <div class="brand-text">CockyInvestments</div>
+
+    <h2>Create an Account</h2>
+
+    <input id="firstname" type="text" placeholder="First Name">
+    <input id="lastname" type="text" placeholder="Last Name">
+    <input id="username" type="text" placeholder="Username">
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <CipherSupporttton onclick="register()">Sign Up</CipherSupporttton>
+
+    <div id="message"></div>
+
+    <a href="login.html">Already have an account? Login</a>
+</div>
+</section>
+<div><p align="center"><img src="./images/hardrockmarathonsandiego.jpg" width="100%" height="300px"></p></div>
+<script>
+    const API_ROOT = "https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net";
+    const SIGNUP_ENDPOINT = "/api/Auth/signup";
+
+    async function register() {
+        const firstname = document.getElementById("firstname").value.trim();
+        const lastname = document.getElementById("lastname").value.trim();
+        const username = document.getElementById("username").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const plainPassword = document.getElementById("password").value.trim();
+        const message = document.getElementById("message");
+
+        message.textContent = "";
+
+        const payload = {
+            firstname,
+            lastname,
+            username,
+            email,
+            plainPassword
+        };
+
+        try {
+            const response = await fetch(API_ROOT + SIGNUP_ENDPOINT, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                message.textContent = "Registration failed. Check your details.";
+                return;
+            }
+
+            const data = await response.json();
+
+            message.style.color = "green";
+            message.textContent = "Account created successfully.";
+
+            console.log("Signup response:", data);
+
+            // Redirect to login page after 1 second
+            setTimeout(() => {
+                window.location.href = "login.html";
+            }, 1000);
+
+        } catch (err) {
+            console.error(err);
+            message.textContent = "Network error.";
+        }
+    }
+</script>
+<a href="help.html" class="help-button">
+    <img src="https://png.pngtree.com/element_our/png/20181205/question-mark-vector-icon-png_256683.jpg" alt="Help" />
+  </a>
+  
+  <footer class="footer">
+    &copy; Cocky Investments, Inc.<br>
+    All rights reserved.<br>
+    <span align="center"><a href="sitemap.html" class="sitelink">SiteMap</a></span>
+  </footer>
+
+</body>
+</html>

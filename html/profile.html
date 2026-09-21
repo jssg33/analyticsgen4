@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CockyAnalyticsV25 - User ProfileV18</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <script src="./js/542.js"></script>
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <style>
+    html, body { height:100%; margin:0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #F2F2F2;
+      display: flex; flex-direction: column;
+    }
+    .navbar {
+      background-color: black;
+      padding: 10px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .navbar .nav-left a {
+      background-color: black;
+      color: #fff;
+      text-decoration: none;
+      font-weight: bold;
+      margin-right: 15px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color .3s;
+    }
+    .navbar .nav-left a:hover { background-color: #2e4a90; }
+    .navbar .nav-right { display: flex; align-items: center; }
+    .navbar .nav-right img {
+      width: 35px; height: 35px; border-radius: 50%;
+      margin-right: 10px; object-fit: cover; cursor: pointer;
+    }
+    .navbar .nav-right span {
+      color: #fff; font-weight: bold; margin-right: 20px;
+    }
+    .navbar .nav-right button {
+      background-color: #f44336; color: #fff;
+      border: none; padding: 6px 12px; border-radius: 4px;
+      cursor: pointer;
+    }
+    .navbar .nav-right button:hover { background-color: #d32f2f; }
+    .profile-card {
+      max-width: 800px; margin: 2rem auto; background: #fff;
+      border-radius: .5rem; overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,.1); display: flex;
+    }
+    .profile-card .left {
+      background: black; padding: 2rem; text-align: center; flex: 1;
+    }
+    .profile-card .left img {
+      width: 120px; height: 120px; object-fit: cover;
+      border-radius: 50%; border: 4px solid #fff;
+    }
+    .profile-card .right {
+      padding: 2rem; flex: 2;
+    }
+    .profile-card .right h3 { margin-top: 0; color: #1F3D7A; }
+    .profile-card .right p { margin-bottom: .5rem; }
+    .profile-card .right p strong { display: inline-block; width: 120px; }
+    .modal-lg-custom { max-width: 800px; width:100%; }
+    .modal-body input.form-control {
+      border-radius: .5rem; padding: .5rem .75rem;
+    }
+    .modal-body { padding: 1.5rem 2rem; }
+    .footer {
+      background-color: black; color: #fff;
+      text-align: center; padding: 10px 0;
+      font-size: 14px; font-weight: bold; margin-top: auto;
+    }
+  #userGreeting
+{
+text-align: center;
+vertical-align: middle;
+color: yellow;
+}
+#banner
+{
+background-color: lightgrey;
+height: 60px;
+vertical-align: middle;
+width: 100%;
+}
+
+#cancelBtn
+{
+width: 400px;
+}
+
+#splash
+{
+font-size: 12pt;
+}
+  
+#userdetails
+{
+  max-width: 100%;
+  max-height: 150px; /* You can adjust this height as needed */
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa; /* Optional: light Bootstrap-like background */
+  font-family: monospace; /* Optional: for JSON-style readability */
+  font-size: 8px;
+  margin-left: 30px;
+  align: left;
+}
+  </style>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+
+
+  <div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="profile-card">
+        <div class="left">
+          <img id="profile-pic" src="./images/defaultcircle.png" alt="Profile" />
+        </div>
+        <div class="right">
+          <h3 id="profile-fullname">Ms. Anna Smith</h3>
+          <p><strong>Title:</strong> <span id="profile-title">CEO</span></p>
+          <p><strong>University:</strong> <span id="profile-university">Harvard</span></p>
+          <p>
+            <strong>Address:</strong>
+            <span id="profile-address1">100 N. Tryon Street</span>,
+            <span id="profile-address2">Suite 33000</span>
+          </p>
+          <p><strong>City:</strong>&nbsp<span id="profile-city">Charlotte</span></p>
+          <p><strong>State:</strong> <span id="profile-stateregion">NC</span></p>
+          <p><strong>Zip Code:</strong> <span id="profile-postalzip">28202</span></p>
+          <p><strong>Phone Number:</strong> <span id="profile-phone">904.321.2234</span></p>
+          <p><strong>Email:</strong> <span id="profile-email">Annasmith@547bikes.info</span></p>
+
+          <div class="mt-3 d-flex align-items-center gap-2">
+            <button id="btnEditProfile" class="btn btn-primary btn-sm me-2" onclick="openEditProfileModal()">Update Profile</button>
+            <button id="btnEditPic" class="btn btn-warning btn-sm me-2" onclick="openUpdatePictureModal()">Update Picture</button>
+            <button id="userEnhancedBtn" class="btn btn-info btn-sm me-2" onclick="openUserEnhancedModal()">Update Enhanced</button>
+            <button id="userPasswordBtn" class="btn btn-secondary btn-sm me-2" onclick="openPasswordModal()">Change Password</button>
+             <button id="userPasswordBtn" class="btn btn-danger btn-sm me-2" onclick="loadCartMaster()">Review Account</button>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+<div id="userdetailpanel">
+  <span align="left"><H5 style="margin-left: 100px;">User Details</H5></span>
+  <hr>
+  <div align="center"><p id="userdetails"></p></div>
+  <hr>
+  <Button onclick="LoadProfileDetails()" style="margin-left: 100px; width: 150px;">Refresh</Button>
+</div>
+<hr>
+  <!-- Edit Profile Modal -->
+  <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg-custom">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="profileForm">
+          <div class="modal-body">
+            <input type="hidden" id="pf-id" />
+
+            <div class="row gy-2">
+              <div class="col-md-6">
+                <label>Address 1</label>
+                <input type="text" id="pf-address1" class="form-control" />
+
+                <label class="mt-2">City</label>
+                <input type="text" id="pf-city" class="form-control" />
+
+                <label class="mt-2">Postal/Zip</label>
+                <input type="text" id="pf-postalzip" class="form-control" />
+
+                <label class="mt-2">Email</label>
+                <input type="email" id="pf-email" class="form-control" />
+
+                <label class="mt-2">Title</label>
+                <input type="text" id="pf-title" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label>Address 2</label>
+                <input type="text" id="pf-address2" class="form-control" />
+
+                <label class="mt-2">State</label>
+                <input type="text" id="pf-stateregion" class="form-control" />
+
+                <label class="mt-2">Phone Number</label>
+                <input type="text" id="pf-phone" class="form-control" />
+
+                <label class="mt-2">University</label>
+                <input type="text" id="pf-university" class="form-control" />
+
+                <label class="mt-2">Pronouns</label>
+                <input type="text" id="pf-pronoun" class="form-control" />
+              </div>
+            </div>
+
+            <!-- hidden profile‐fields -->
+            <input type="hidden" id="pf-activepictureurl" />
+            <input type="hidden" id="pf-country" />
+            <input type="hidden" id="pf-cellphone" />
+            <input type="hidden" id="pf-sms" />
+            <input type="hidden" id="pf-maritalstatus" />
+            <input type="hidden" id="pf-university1" />
+            <input type="hidden" id="pf-university2" />
+            <input type="hidden" id="pf-linkedinurl" />
+            <input type="hidden" id="pf-instagramurl" />
+            <input type="hidden" id="pf-vimeourl" />
+            <input type="hidden" id="pf-facebookurl" />
+            <input type="hidden" id="pf-googleurl" />
+            <input type="hidden" id="pf-userid" />
+            <input type="hidden" id="pf-employeeid" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="saveProfileBtn" class="btn btn-primary btn-sm" onclick="SaveProfile();">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Picture Modal -->
+  <div class="modal fade" id="editPicModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Upload New Picture</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="file" id="picFile" class="form-control" accept="image/*" />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button id="uploadPicBtn" class="btn btn-success btn-sm">Upload & Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div id="userEnhancedModal" style="display:none; position:fixed; top:10%; left:20%; width:60%; background:#fff; border:1px solid #ccc; padding:20px; z-index:1000; overflow-y:auto; max-height:80vh;">
+  <h4>Edit Enhanced Profile</h4>
+  <form id="enhancedProfileForm">
+    <div id="userEnhancedContent">Loading...</div>
+    <div class="mt-3 text-end">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="saveEnhancedProfile()">Save Changes</button>
+    </div>
+  </form>
+</div>
+<!-- Change Password Modal -->
+<div id="passwordModal" style="display:none; position:fixed; top:20%; left:35%; background:#fff; padding:20px; border:1px solid #ccc; z-index:1000;">
+  <h3>Change Password</h3>
+  <input type="password" id="newPassword" placeholder="New Password" /><br /><br />
+  <input type="password" id="confirmPassword" placeholder="Confirm Password" /><br /><br />
+  <button onclick="submitNewPassword()">Submit</button>
+  <button onclick="closePasswordModal()">Cancel</button>
+  <p id="errorMsg" style="color:red;"></p>
+</div>
+
+  <footer class="footer">&copy; 2025 Cocky Investments. All rights reserved.</footer>
+
+
+<!-- Bootstrap Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const profileApiUrl = "https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Userprofile";
+const editProfileModal = new bootstrap.Modal(document.getElementById("editProfileModal"));
+const editPicModal = new bootstrap.Modal(document.getElementById("editPicModal"));
+//let profilerecordnumber = 0;
+
+//WORKING TO HERE
+
+function startProfile() {
+  // Map localStorage keys to element IDs
+  const fieldMap = {
+    fullname: "profile-fullname",
+    title: "profile-title",
+    university1: "profile-university",
+    address1: "profile-address1",
+    address2: "profile-address2",
+    city: "profile-city",
+    stateregion: "profile-stateregion",
+    postalzip: "profile-postalzip",
+    phone: "profile-phone",
+    email: "profile-email",
+    activepictureurl: "profile-pic"
+  };
+
+  // Loop through each mapping and update the DOM
+  Object.entries(fieldMap).forEach(([storageKey, elementId]) => {
+    const value = localStorage.getItem(storageKey);
+    if (value) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        if (elementId === "profile-pic") {
+          el.src = value; // update image source
+        } else {
+          el.textContent = value; // update text content
+        }
+      }
+    }
+  });
+}
+
+//WORKING TO HERE
+
+async function LoadProfile() {
+  const someuid = parseInt(localStorage.getItem("uid"));
+  if (!someuid) {
+    alert("User ID not found in localStorage.");
+    return;
+  }
+
+  const fullstring = `https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Userprofile/${someuid}`;
+  console.log("Fetching profile from:", fullstring);
+
+  try {
+    const response = await fetch(fullstring);
+    if (!response.ok) throw new Error("Failed to fetch profile.");
+
+    const data = await response.json();
+    const profile = Array.isArray(data) ? data[0] : data;
+
+    if (!profile || typeof profile !== "object") {
+      console.warn("No profile data found.");
+      return;
+    }
+    console.log("profile",profile);
+    profilerecordnumber = profile.id;
+    localStorage.setItem("profilerecordnumber", profilerecordnumber);
+    localStorage.setItem("profileid", profile.id);
+
+    Object.entries(profile).forEach(([key, value]) => {
+      localStorage.setItem(key, value ?? "");
+    });
+
+    document.getElementById("profile-fullname").textContent = profile.fullname || "";
+    document.getElementById("profile-title").textContent = profile.title || "";
+    document.getElementById("profile-university").textContent = profile.university1 || "";
+    document.getElementById("profile-address1").textContent = profile.address1 || "";
+    document.getElementById("profile-address2").textContent = profile.address2 || "";
+    document.getElementById("profile-city").textContent = profile.city || "";
+    document.getElementById("profile-stateregion").textContent = profile.stateregion || "";
+    document.getElementById("profile-postalzip").textContent = profile.postalzip || "";
+    document.getElementById("profile-phone").textContent = profile.phone || "";
+    document.getElementById("profile-email").textContent = profile.email || "";
+
+    if (profile.activepictureurl && profile.activepictureurl !== "string") {
+      document.getElementById("profile-pic").src = profile.activepictureurl;
+    }
+  } catch (error) {
+    console.error("Error loading profile:", error);
+    alert("Unable to load profile data.");
+  }
+}
+
+// WORKING TO HERE
+
+
+function openEditProfileModal() {
+  const fields = [
+    "id","address1","address2","city","stateregion","country","phone","cellphone","sms",
+    "email","maritalstatus","university1","university2","linkedinurl","instagramurl",
+    "vimeourl","facebookurl","googleurl","university","title","pronoun","title2",
+    "activepictureurl","userid","employeeid","postalzip","companyid","buid","managerid",
+    "regionid","branchid","fullname","firstname","lastname","defaultinstanceid",
+    "defaultshardid","useridstring"
+  ];
+
+  fields.forEach(field => {
+    const input = document.getElementById(`pf-${field.toLowerCase()}`);
+    if (input) {
+      input.value = localStorage.getItem(field) ?? "";
+    }
+  });
+  editProfileModal.show();
+}
+
+BROKEN
+
+function SaveProfile() {
+  const uid = localStorage.getItem("uid");
+
+  // Save modal fields → localStorage
+  saveFormToLocalStorage();
+
+  // Build payload with ONLY the fields you want (and NO id)
+  const payload = {
+    id: parseInt(uid),
+    userid: parseInt(uid),
+    useridstring: uid,
+    address1: localStorage.getItem("Address1") ?? "",
+    address2: localStorage.getItem("Address2") ?? "",
+    city: localStorage.getItem("City") ?? "",
+    stateregion: localStorage.getItem("Stateregion") ?? "",
+    postalzip: localStorage.getItem("Postalzip") ?? "",
+    phone: localStorage.getItem("Phone") ?? "",
+    email: localStorage.getItem("Email") ?? "",
+    university: localStorage.getItem("University") ?? "",
+    title: localStorage.getItem("Title") ?? "",
+    pronoun: localStorage.getItem("Pronoun") ?? "",
+
+    // required extra field
+    activepictureurl: localStorage.getItem("Activepictureurl") ?? ""
+  };
+
+  console.log("FINAL PAYLOAD:", payload);
+
+  const url = `https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Userprofile/profile/${uid}`;
+
+  fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(res => {
+      if (res.ok) {
+        alert("Profile updated successfully!");
+        bootstrap.Modal.getInstance(document.getElementById("editProfileModal")).hide();
+        LoadProfile();
+      } else {
+        alert("Failed to update profile.");
+      }
+    })
+    .catch(err => {
+      console.error("Error saving profile:", err);
+      alert("An error occurred while saving.");
+    });
+}
+
+//THIS FUNCTION WORKS PROPERLY.
+
+
+async function LoadProfileDetails() {
+  const someuid = parseInt(localStorage.getItem("uid"));    
+  /*if (!someuid) {
+    console.error("UID not found in localStorage");
+    return;
+  }*/
+
+  try {
+    const response = await fetch(`https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Userprofile/user/${someuid}`);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+    const data = await response.json();
+    const profile = Array.isArray(data) && data.length > 0 ? data[0] : data;
+
+    if (!profile || typeof profile !== "object") {
+      document.getElementById("userdetails").innerHTML = "<p>No profile data available.</p>";
+      return;
+    }
+
+    let html = '<div class="container">';
+    for (const [key, value] of Object.entries(profile)) {
+      html += `
+        <div class="row mb-1">
+          <div class="col-sm-4 text-muted">${key}</div>
+          <div class="col-sm-8">${value ?? '<em>null</em>'}</div>
+        </div>
+      `;
+    }
+    html += '</div>';
+
+    document.getElementById("userdetails").innerHTML = html;
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    document.getElementById("userdetails").innerHTML = "<p>Error loading profile.</p>";
+  }
+}
+
+function openUserEnhancedModal() {
+    const keys = [
+        "Id", "Address1", "Address2", "City", "Stateregion", "Country",
+        "Phone", "Cellphone", "Sms", "Email", "Maritalstatus",
+        "University1", "University2", "Linkedinurl", "Instagramurl",
+        "Vimeourl", "Facebookurl", "Googleurl", "University", "Title",
+        "Pronoun", "Title2", "Activepictureurl", "Userid", "Employeeid",
+        "Postalzip", "Companyid", "Buid", "Managerid", "Regionid",
+        "Branchid", "Fullname", "Firstname", "Lastname",
+        "Defaultinstanceid", "Defaultshardid", "Useridstring"
+    ];
+
+    let content = "";
+
+    keys.forEach(key => {
+        const value = localStorage.getItem(key) ?? "";
+        const label = key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
+
+        content += `
+            <div class="mb-2">
+                <label class="form-label"><strong>${label}</strong></label>
+                <input type="text" class="form-control form-control-sm" id="enh-${key}" value="${value}">
+            </div>
+        `;
+    });
+
+    document.getElementById("userEnhancedContent").innerHTML = content;
+    document.getElementById("userEnhancedModal").style.display = "block";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function saveEnhancedProfile() {
+  const uidRaw = localStorage.getItem("uid");
+  const uid = parseInt(uidRaw, 10);
+
+  const allowedFields = [
+    "address1", "address2", "city", "stateregion", "country",
+    "phone", "cellphone", "email", "maritalstatus",
+    "university1", "university2", "linkedinurl", "instagramurl",
+    "vimeourl", "facebookurl", "googleurl", "university",
+    "title", "pronoun", "title2", "activepictureurl",
+    "employeeid", "postalzip", "companyid", "buid", "managerid",
+    "regionid", "branchid",
+    // fullname removed — backend computes this
+    "firstname", "lastname",
+    "defaultinstanceid", "defaultshardid"
+  ];
+
+  const inputs = document.querySelectorAll("#userEnhancedContent input");
+  const payload = {};
+
+  inputs.forEach(input => {
+    const key = input.id.replace("enh-", "");
+
+    if (allowedFields.includes(key)) {
+      payload[key] = input.value;
+    }
+
+    localStorage.setItem(key, input.value);
+  });
+
+  payload.userid = uid;
+  payload.useridstring = String(uid);
+
+  fetch(`https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Userprofile/profile/${uid}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(res => {
+      if (res.ok) {
+        alert("Enhanced profile updated!");
+        LoadProfile();
+        closeModal("enhancedProfileModal");
+      } else {
+        res.text().then(t => console.error("Save failed, body:", t));
+        alert("Failed to update enhanced profile.");
+      }
+    })
+    .catch(err => {
+      console.error("Error saving enhanced profile:", err);
+      alert("An error occurred while saving.");
+    });
+}
+
+
+
+
+
+async function submitNewPassword() {
+  const someuid = parseInt(localStorage.getItem("profilerecordnumber"), 10);    
+  const newPassword = document.getElementById("newPassword").value;
+  const confirmPassword = document.getElementById("confirmPassword").value;
+
+  if (!someuid) {
+    document.getElementById("errorMsg").innerText = "Missing user ID.";
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    document.getElementById("errorMsg").innerText = "Passwords do not match.";
+    return;
+  }
+
+  try {
+    const response = await fetch(`${profileApiUrl}/password/${someuid}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: newPassword })
+    });
+
+    if (response.ok) {
+      alert("Password updated successfully.");
+      closePasswordModal();
+    } else {
+      const errorText = await response.text();
+      document.getElementById("errorMsg").innerText = "Server error: " + errorText;
+    }
+  } catch (err) {
+    document.getElementById("errorMsg").innerText = "Network error: " + err.message;
+  }
+}
+
+function closeModal(modalId) {
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl) {
+        console.warn("closeModal: modal element not found:", modalId);
+        return;
+    }
+
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) {
+        modal.hide();
+    } else {
+        // If no instance exists yet, create one and hide it
+        const newModal = new bootstrap.Modal(modalEl);
+        newModal.hide();
+    }
+}
+
+function saveFormToLocalStorage() {
+  const fields = [
+    "Id","Address1","Address2","City","Stateregion","Country","Phone","Cellphone","Sms",
+    "Email","Maritalstatus","University1","University2","Linkedinurl","Instagramurl",
+    "Vimeourl","Facebookurl","Googleurl","University","Title","Pronoun","Title2",
+    "Activepictureurl","Userid","Employeeid","Postalzip","Companyid","Buid","Managerid",
+    "Regionid","Branchid","Fullname","Firstname","Lastname","Defaultinstanceid",
+    "Defaultshardid","Useridstring"
+  ];
+
+  fields.forEach(key => {
+    const input = document.getElementById(`enh-${key}`);
+    if (input) {
+      localStorage.setItem(key, input.value ?? "");
+    }
+  });
+}
+
+function buildPayloadFromLocalStorage() {
+  const someuid = localStorage.getItem("uid");
+
+  return {
+    id: parseInt(uid),
+    address1: localStorage.getItem("Address1") ?? "",
+    address2: localStorage.getItem("Address2") ?? "",
+    city: localStorage.getItem("City") ?? "",
+    stateregion: localStorage.getItem("Stateregion") ?? "",
+    country: localStorage.getItem("Country") ?? "",
+    phone: localStorage.getItem("Phone") ?? "",
+    cellphone: localStorage.getItem("Cellphone") ?? "",
+    email: localStorage.getItem("Email") ?? "",
+    maritalstatus: localStorage.getItem("Maritalstatus") ?? "",
+    university: localStorage.getItem("University") ?? "",
+    university1: localStorage.getItem("University1") ?? "",
+    university2: localStorage.getItem("University2") ?? "",
+    linkedinurl: localStorage.getItem("Linkedinurl") ?? "",
+    instagramurl: localStorage.getItem("Instagramurl") ?? "",
+    vimeourl: localStorage.getItem("Vimeourl") ?? "",
+    facebookurl: localStorage.getItem("Facebookurl") ?? "",
+    googleurl: localStorage.getItem("Googleurl") ?? "",
+    title: localStorage.getItem("Title") ?? "",
+    pronoun: localStorage.getItem("Pronoun") ?? "",
+    title2: localStorage.getItem("Title2") ?? "",
+    activepictureurl: localStorage.getItem("Activepictureurl") ?? "",
+    postalzip: localStorage.getItem("Postalzip") ?? "",
+    fullname: localStorage.getItem("Fullname") ?? "",
+    firstname: localStorage.getItem("Firstname") ?? "",
+    lastname: localStorage.getItem("Lastname") ?? "",
+    useridstring: localStorage.getItem("uid") ?? "0",
+    userid: parseInt(localStorage.getItem("uid"))
+  };
+}
+
+function loadCartMaster() {
+  window.open('cartmaster.html','_self');
+}
+function openUpdatePictureModal() {
+  editPicModal.show();
+}
+
+function closeModal() {
+  document.getElementById("userEnhancedModal").style.display = "none";
+}
+
+function openPasswordModal() {
+  document.getElementById("passwordModal").style.display = "block";
+  document.getElementById("errorMsg").innerText = "";
+}
+
+function closePasswordModal() {
+  document.getElementById("passwordModal").style.display = "none";
+}
+
+
+
+</script>
+
+</body>
+   <!-- Footer -->
+  <footer class="footer"> &copy; Cocky Investments 2025. <br> All rights reserved.<br>  <span align="center"><a href="sitemap.html" class="sitelink">SiteMap</a></span></footer>
+
+</html>
+  

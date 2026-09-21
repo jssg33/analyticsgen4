@@ -1,0 +1,231 @@
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
+
+namespace Enterprise.Models;
+
+public partial class EnterpriseContext : DbContext
+{
+    public EnterpriseContext()
+    {
+    }
+
+    public EnterpriseContext(DbContextOptions<EnterpriseContext> options)
+        : base(options)
+    {
+    }
+
+    public virtual DbSet<Apilog> Apilogs { get; set; }
+    public virtual DbSet<CockyCipherBlock> CockyCipherBlocks {get; set;}
+    public virtual DbSet<Allstock> Allstocks { get; set; }
+    public virtual DbSet<CipherSupport> CipherSupports { get; set; }
+    public virtual DbSet<Customer> Customers { get; set; } //NEW
+    public virtual DbSet<Keyassignment> Keyassignments { get; set; }
+    public virtual DbSet<Learndetail> Learndetails { get; set; }
+    public virtual DbSet<Learnlog> Learnlogs { get; set; }
+    public virtual DbSet<Portfolio> Portfolios { get; set; }
+    public virtual DbSet<PortfolioStock> PortfolioStocks { get; set; }
+    public virtual DbSet<SystemStocks> SystemStocks { get; set; }
+    public virtual DbSet<Trader> Traders { get; set; } //NEW
+    public virtual DbSet<TradeOrders> TradeOrders { get; set; } //NEW
+
+    public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<Usergroup> Usergroups { get; set; }
+    public virtual DbSet<UserLocation> UserLocations { get; set; }
+    public virtual DbSet<Userhelp> Userhelps { get; set; }
+    public virtual DbSet<Usersession> Usersessions { get; set; }
+    public virtual DbSet<Userprofile> Userprofiles { get; set; }
+    public virtual DbSet<Sectorsummary> Sectorsummaries { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsCipherSupportilder)
+        => optionsCipherSupportilder.UseSqlite("Data Source=./data/submission.stats542.sqlite");
+
+    protected override void OnModelCreating(ModelBuilder ModelBuilder)
+    {
+        // -----------------------------
+        // allstocks table
+        // -----------------------------
+        ModelBuilder.Entity<Allstock>(entity =>
+        {
+            entity.ToTable("allstocks");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("Id");
+            entity.Property(e => e.Company).HasColumnName("Company");
+            entity.Property(e => e.Ticker).HasColumnName("Ticker");
+
+            entity.Property(e => e.Price2016).HasColumnName("Price_2016");
+            entity.Property(e => e.Price2017).HasColumnName("Price_2017");
+            entity.Property(e => e.Price2018).HasColumnName("Price_2018");
+            entity.Property(e => e.Price2019).HasColumnName("Price_2019");
+            entity.Property(e => e.Price2020).HasColumnName("Price_2020");
+            entity.Property(e => e.Price2021).HasColumnName("Price_2021");
+            entity.Property(e => e.Price2022).HasColumnName("Price_2022");
+            entity.Property(e => e.Price2023).HasColumnName("Price_2023");
+            entity.Property(e => e.Price2024).HasColumnName("Price_2024");
+            entity.Property(e => e.Price2025).HasColumnName("Price_2025");
+            entity.Property(e => e.Price2026).HasColumnName("Price_2026");
+
+            entity.Property(e => e.Div2016).HasColumnName("Div_2016");
+            entity.Property(e => e.Div2017).HasColumnName("Div_2017");
+            entity.Property(e => e.Div2018).HasColumnName("Div_2018");
+            entity.Property(e => e.Div2019).HasColumnName("Div_2019");
+            entity.Property(e => e.Div2020).HasColumnName("Div_2020");
+            entity.Property(e => e.Div2021).HasColumnName("Div_2021");
+            entity.Property(e => e.Div2022).HasColumnName("Div_2022");
+            entity.Property(e => e.Div2023).HasColumnName("Div_2023");
+            entity.Property(e => e.Div2024).HasColumnName("Div_2024");
+            entity.Property(e => e.Div2025).HasColumnName("Div_2025");
+            entity.Property(e => e.Div2026).HasColumnName("Div_2026");
+
+            entity.Property(e => e.Sector).HasColumnName("sector");
+            entity.Property(e => e.Avgdividend).HasColumnName("avgdividend");
+            entity.Property(e => e.Totaldividends).HasColumnName("totaldividends");
+
+            entity.Property(e => e.PriceStart).HasColumnName("price_start");
+            entity.Property(e => e.PriceEnd).HasColumnName("price_end");
+            entity.Property(e => e.Change).HasColumnName("change");
+            entity.Property(e => e.Totalreturn).HasColumnName("totalreturn");
+            entity.Property(e => e.Totalreturnover10).HasColumnName("totalreturnover10");
+
+            entity.Property(e => e.Shares500).HasColumnName("shares500");
+            entity.Property(e => e.Totalspend).HasColumnName("totalspend");
+
+            entity.Property(e => e.Fiveyearequityproj).HasColumnName("fiveyearequityproj");
+            entity.Property(e => e.Fiveyeardivproj).HasColumnName("fiveyeardivproj");
+            entity.Property(e => e.Totalfiveyearview).HasColumnName("totalfiveyearview");
+            entity.Property(e => e.Source).HasColumnName("Source");
+        });
+
+        // -----------------------------
+        // sectorssummaries table
+        // -----------------------------
+        ModelBuilder.Entity<Sectorsummary>(entity =>
+        {
+            entity.ToTable("sectorssummaries");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("Id");
+            entity.Property(e => e.Company).HasColumnName("Company");
+            entity.Property(e => e.Ticker).HasColumnName("Ticker");
+            entity.Property(e => e.Sector).HasColumnName("sector");
+
+            entity.Property(e => e.Avgdividend).HasColumnName("avgdividend");
+            entity.Property(e => e.Totaldividends).HasColumnName("totaldividends");
+
+            entity.Property(e => e.PriceStart).HasColumnName("price_start");
+            entity.Property(e => e.PriceEnd).HasColumnName("price_end");
+            entity.Property(e => e.Change).HasColumnName("change");
+            entity.Property(e => e.Totalreturn).HasColumnName("totalreturn");
+            entity.Property(e => e.Totalreturnover10).HasColumnName("totalreturnover10");
+
+            entity.Property(e => e.Shares500).HasColumnName("shares500");
+            entity.Property(e => e.Totalspend).HasColumnName("totalspend");
+
+            entity.Property(e => e.Fiveyearequityproj).HasColumnName("fiveyearequityproj");
+            entity.Property(e => e.Fiveyeardivproj).HasColumnName("fiveyeardivproj");
+            entity.Property(e => e.Totalfiveyearview).HasColumnName("totalfiveyearview");
+
+            entity.Property(e => e.Selected).HasColumnName("selected");
+            entity.Property(e => e.useridasstring).HasColumnName("useridasstring");
+            entity.Property(e => e.userid).HasColumnName("userid");
+                        
+        });
+
+        // -----------------------------
+        // CipherSupport table
+        // -----------------------------
+        ModelBuilder.Entity<CipherSupport>(entity =>
+        {
+            entity.ToTable("CipherSupport");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("Id");
+            entity.Property(e => e.CipherName).HasColumnName("CipherName");
+            entity.Property(e => e.Version).HasColumnName("Version");
+            entity.Property(e => e.Description).HasColumnName("Description");
+            entity.Property(e => e.CipherKey).HasColumnName("CipherKey");
+            entity.Property(e => e.IsActive).HasColumnName("IsActive");
+            entity.Property(e => e.DateCreated).HasColumnName("DateCreated");
+        });
+
+            ModelBuilder.Entity<SystemStocks>(entity =>
+            {
+                entity.ToTable("SystemStocks");
+
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                      .ValueGeneratedOnAdd(); // SQLite autoincrement
+
+                entity.Property(e => e.Ticker)
+                      .HasMaxLength(50);
+
+                entity.Property(e => e.CompanyName)
+                      .HasMaxLength(200);
+
+                entity.Property(e => e.Country)
+                      .HasMaxLength(50);
+
+                entity.Property(e => e.PrimaryExchange)
+                      .HasMaxLength(50);
+
+                entity.Property(e => e.SecondaryExchange)
+                      .HasMaxLength(50);
+
+                entity.Property(e => e.Source)
+                      .HasConversion<int>(); // store enum as integer
+            });
+
+ModelBuilder.Entity<Portfolio>(entity =>
+{
+    entity.ToTable("Portfolios");
+
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.UserId)
+          .IsRequired()
+          .HasMaxLength(200);
+
+    entity.Property(e => e.PortfolioTargetInvestment)
+          .HasColumnType("decimal(18,2)");
+
+    entity.HasMany(e => e.PortfolioStocks)
+          .WithOne()                           // no navigation property on PortfolioStock
+          .HasForeignKey(s => s.PortfolioId)
+          .OnDelete(DeleteBehavior.Cascade);
+});
+
+ModelBuilder.Entity<PortfolioStock>(entity =>
+{
+    entity.ToTable("PortfolioStocks");
+
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.PortfolioId);
+    entity.Property(e => e.Ticker)
+          .HasMaxLength(50);
+
+    entity.Property(e => e.CompanyName)
+          .HasMaxLength(200);
+
+    entity.Property(e => e.Shares)
+          .HasColumnType("decimal(18,4)");
+
+    entity.Property(e => e.PreviousDayPrice)
+          .HasColumnType("decimal(18,4)");
+
+    entity.Property(e => e.StockTargetInvestment)
+          .HasColumnType("decimal(18,2)");
+});
+
+        OnModelCreatingPartial(ModelBuilder);
+    }
+
+
+
+    partial void OnModelCreatingPartial(ModelBuilder ModelBuilder);
+}
+

@@ -1,0 +1,3 @@
+
+dotnet ef dbcontext scaffold 'Server=tcp:cockysql.database.windows.net,1433;Initial Catalog=gemroot;Persist Security Info=False;User ID=cockysa;Password=!test123456;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;' Microsoft.EntityFrameworkCore.SqlServer --context LunaContext --context-dir Models --output-dir Models --namespace Enterprise.Models --force
+

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sector View Dashboard</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="./js/542.js"></script>
+<link href="./css/login.css" rel="stylesheet" />
+<link href="./css/dropmenu.css" rel="stylesheet" />
+
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 20px; 
+      background: white;
+    }
+
+    /* --- TWO COLUMN LAYOUT --- */
+    #container {
+      display: flex;
+      gap: 20px;
+    }
+
+    #leftColumn {
+      width: 33%;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    #rightColumn {
+      width: 66%;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    #sectorSelector div { margin: 6px 0; }
+    svg { border: 1px solid #ccc; }
+  </style>
+</head>
+
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+<h2>📊 Stock Sector Performance Dashboard</h2>
+
+<div id="container">
+
+  <!-- ===================== LEFT COLUMN ===================== -->
+  <div id="leftColumn">
+    <h3>1. Select a Sector</h3>
+
+    <div id="sectorSelector">
+      <div><input type="radio" name="sector" value="Financials"> Financials</div>
+      <div><input type="radio" name="sector" value="Media & Entertainment"> Media & Entertainment</div>
+      <div><input type="radio" name="sector" value="Autos"> Autos</div>
+      <div><input type="radio" name="sector" value="Industrials"> Industrials</div>
+      <div><input type="radio" name="sector" value="Health Care"> Health Care</div>
+      <div><input type="radio" name="sector" value="Cash/Reits"> Cash/Reits</div>
+    </div>
+  </div>
+
+  <!-- ===================== RIGHT COLUMN ===================== -->
+  <div id="rightColumn">
+    <h3>2. Choose Metric + View Chart</h3>
+
+    <div>
+      <label><input type="radio" name="metric" value="equity" checked> Equity (Price)</label>
+      <label><input type="radio" name="metric" value="dividends"> Dividends</label>
+    </div>
+
+    <br>
+
+    <svg id="chart" width="900" height="500"></svg>
+  </div>
+
+</div>
+
+<script>
+  const apiURL = "http://localhost:5000/api/Sectorsummaries";
+  
+  const svg = d3.select("#chart");
+  const width = +svg.attr("width");
+  const height = +svg.attr("height");
+  const margin = { top: 30, right: 120, bottom: 40, left: 60 };
+  
+  let sectorData = [];
+  let selectedSector = null;
+  
+  // Fetch API data
+  fetch(apiURL)
+    .then(res => res.json())
+    .then(data => {
+      sectorData = data;
+      setupSectorSelector();
+    });
+  
+  // Setup predefined sector selector
+  function setupSectorSelector() {
+    document.querySelectorAll('input[name="sector"]').forEach(radio => {
+      radio.addEventListener("change", () => {
+        selectedSector = radio.value;
+        drawChart();
+      });
+    });
+  }
+  
+  // Extract 10-year series
+  function extractSeries(row, metric) {
+    const years = d3.range(2016, 2027);
+  
+    return years.map(year => ({
+      year,
+      value: metric === "equity"
+        ? row.price_start + (row.price_end - row.price_start) * ((year - 2016) / 10)
+        : row.avgdividend
+    }));
+  }
+  
+  // Draw chart
+  function drawChart() {
+    svg.selectAll("*").remove();
+  
+    if (!selectedSector) return;
+  
+    const metric = document.querySelector('input[name="metric"]:checked').value;
+  
+    const rows = sectorData.filter(s => s.sector === selectedSector);
+  
+    if (rows.length === 0) return;
+  
+    const allPoints = rows
+      .map(r => extractSeries(r, metric))
+      .flat()
+      .filter(d => d.value != null);
+  
+    const x = d3.scaleLinear()
+      .domain([2016, 2026])
+      .range([margin.left, width - margin.right]);
+  
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(allPoints, d => d.value)]).nice()
+      .range([height - margin.bottom, margin.top]);
+  
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+  
+    const line = d3.line()
+      .defined(d => d.value != null)
+      .x(d => x(d.year))
+      .y(d => y(d.value));
+  
+    // Axes
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+  
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y));
+  
+    // Lines + labels
+    rows.forEach((row, i) => {
+      const series = extractSeries(row, metric);
+  
+      svg.append("path")
+        .datum(series)
+        .attr("fill", "none")
+        .attr("stroke", color(i))
+        .attr("stroke-width", 2)
+        .attr("d", line);
+  
+      const lastValid = [...series].reverse().find(d => d.value != null);
+      if (lastValid) {
+        svg.append("text")
+          .attr("x", x(lastValid.year) + 5)
+          .attr("y", y(lastValid.value))
+          .attr("alignment-baseline", "middle")
+          .attr("fill", color(i))
+          .style("font-size", "12px")
+          .text(row.company);
+      }
+    });
+  
+    // Title
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", margin.top - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "18px")
+      .text(metric === "equity" ? "Sector Equity Projection" : "Sector Dividend View");
+  }
+  </script>
+  
+
+</body>
+</html>
+

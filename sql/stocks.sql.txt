@@ -1,0 +1,37 @@
+CREATE TABLE SystemStocks (
+Id INTEGER PRIMARY KEY AUTOINCREMENT,
+Ticker TEXT,
+CompanyName TEXT,
+Source INTEGER NOT NULL DEFAULT 0,
+Country TEXT DEFAULT 'US',
+PrimaryExchange TEXT,
+SecondaryExchange TEXT
+);
+ 
+
+CREATE INDEX IX_SystemStocks_Ticker
+ON SystemStocks (Ticker);
+ 
+CREATE INDEX IX_SystemStocks_Source
+ON SystemStocks (Source);
+ 
+CREATE INDEX IX_SystemStocks_PrimaryExchange
+ON SystemStocks (PrimaryExchange);
+
+Enum mapping:
+
+Plain Text
+1
+0 = Unknown
+2
+1 = USFortune500
+3
+2 = Global500
+4
+3 = Tokyo
+5
+4 = London
+6
+5 = NYSE
+7
+6 = Nasdaq

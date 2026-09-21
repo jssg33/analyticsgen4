@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Complete Payment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="login.css" />
+  <link rel="stylesheet" href="dropmenu.css" />
+  <script src="./js/bikes.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    .table-striped tbody tr:nth-of-type(odd) {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- Navigation Bar -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button> 
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cart5.html">MyCart</a>
+          <a href="mybookings5.html">MyReservations</a>
+          <a href="manager.html">Manager Utilities</a>
+        </div>
+      </div> 
+    <div class="logo">&nbsp&nbsp<H5>CockyAnalyticsv25 - Review Parks</H5></div>
+    </div>
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User" style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="loginBtn" class="btn secondary-btn" onclick="loginUser(event)">Login</a>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+              <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+    </div>
+  </div>
+<div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+  <div class="container mt-5">
+    <h2>Choose a Credit Card</h2>
+  
+  <div id="no-card-message" class="mt-3 text-danger fw-bold"></div>
+       <div align="left">
+    <button id="add-card-button" class="btn btn-secondary mt-2" data-bs-toggle="modal" data-bs-target="#addCardModal">Add Card</button>
+    </div>
+
+    <table class="table table-bordered table-striped mt-4">
+      <thead class="table-dark">
+        <tr>
+          <th>Card Type</th>
+          <th>Vendor</th>
+          <th>Last 4 Digits</th>
+          <th>Expiration</th>
+          <th>Billing Zip</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="card-table-body"></tbody>
+    </table>
+
+ 
+<div id="no-card-message" class="mt-3 text-danger fw-bold"></div>
+    <div id="payment-status" class="mt-4"></div>
+     <div align="center">
+    <button id="reviewreservations" class="btn btn-info mt-3" onclick="window.location.href='mybookings5.html'">Review My Reservations</button>
+  </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="addCardModal" tabindex="-1" aria-labelledby="addCardModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form id="add-card-form" class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addCardModalLabel">Add New Card</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="card-uid">
+            <div class="mb-3">
+              <label for="cardType" class="form-label">Card Type</label>
+              <input type="text" class="form-control" id="cardType" required>
+            </div>
+            <div class="mb-3">
+              <label for="cardVendor" class="form-label">Card Vendor</label>
+              <input type="text" class="form-control" id="cardVendor" required>
+            </div>
+            <div class="mb-3">
+              <label for="cardLast4" class="form-label">Last 4 Digits</label>
+              <input type="text" class="form-control" id="cardLast4" maxlength="4" required>
+            </div>
+            <div class="mb-3">
+              <label for="cardExpDate" class="form-label">Expiration Date</label>
+              <input type="text" class="form-control" id="cardExpDate" placeholder="MM/YY" required>
+            </div>
+            <div class="mb-3">
+              <label for="billingZip" class="form-label">Billing Zip</label>
+              <input type="text" class="form-control" id="billingZip" required>
+            </div>
+              <div class="mb-3">
+              <label for="billingZip" class="form-label">Card BillingTelephoneNumber</label>
+              <input type="text" class="form-control" id="cardbtn" required>
+            </div>
+          <div class="mb-3">
+              <label for="billingZip" class="form-label">Card Name As Printed</label>
+              <input type="text" class="form-control" id="fullname" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Save Card</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<!-- Update Card Modal -->
+<div class="modal fade" id="updateCardModal" tabindex="-1" aria-labelledby="updateCardModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="update-card-form" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="updateCardModalLabel">Update Card</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="update-cardId">
+        <div class="mb-3">
+          <label for="update-cardType" class="form-label">Card Type</label>
+          <input type="text" class="form-control" id="update-cardType">
+        </div>
+        <div class="mb-3">
+          <label for="update-cardVendor" class="form-label">Card Vendor</label>
+          <input type="text" class="form-control" id="update-cardVendor">
+        </div>
+        <div class="mb-3">
+          <label for="update-cardLast4" class="form-label">Last 4 Digits</label>
+          <input type="text" class="form-control" id="update-cardLast4" maxlength="4">
+        </div>
+        <div class="mb-3">
+          <label for="update-cardExpDate" class="form-label">Expiration Date</label>
+          <input type="text" class="form-control" id="update-cardExpDate" placeholder="MM/YY">
+        </div>
+        <div class="mb-3">
+          <label for="update-billingZip" class="form-label">Billing Zip</label>
+          <input type="text" class="form-control" id="update-billingZip">
+        </div>
+        <div class="mb-3">
+          <label for="update-cardbtn" class="form-label">Billing Telephone Number</label>
+          <input type="text" class="form-control" id="update-cardbtn">
+        </div>
+        <div class="mb-3">
+          <label for="update-fullname" class="form-label">Card Name As Printed</label>
+          <input type="text" class="form-control" id="update-fullname">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-success">Update Card</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  const baseUrl = "https://yellow-cliff-04c6b2d10.7.azurestaticapps.net";
+  const cardApi = `${baseUrl}/api/Card`;
+  const paymentApi = `${baseUrl}/api/Payments`;
+  const cartApi = `${baseUrl}/api/Cart`;
+  const bookingApi = `${baseUrl}/api/Booking`;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const uid = urlParams.get("uid") || "1";
+  const amount = urlParams.get("amount") || "0.00";
+  const cartIds = urlParams.get("cartIds")?.split(",") || [];
+  const cartDetails = cartIds.map(id => parseInt(id));
+  
+ 
+  document.getElementById("card-uid").value = uid;
+
+  
+  function getTodayDate() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+ 
+  
+  
+  
+  async function fetchCards(uid) {
+    const url = `${cardApi}?uid=${uid}`;
+    const response = await fetch(url);
+    const cards = await response.json();
+    return cards;
+  }
+
+  function renderCards(cards) {
+    const tbody = document.getElementById("card-table-body");
+    tbody.innerHTML = "";
+    const noCardMsg = document.getElementById("no-card-message");
+
+    if (!cards || cards.length === 0) {
+      noCardMsg.textContent = "No credit card on file.";
+      alert("No card on file. Please add one to proceed.");
+      return;
+    }
+
+    noCardMsg.textContent = "";
+
+    cards.forEach(card => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${card.cardType}</td>
+        <td>${card.cardVendor}</td>
+        <td>${card.cardLast4}</td>
+        <td>${card.cardExpDate}</td>
+        <td>${card.billingZip}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick='simulatePayment(${JSON.stringify(card)})'>
+            Pay $${amount}
+          </button>
+            <button class="btn btn-warning btn-sm ms-2" onclick='openUpdateModal(${JSON.stringify(card)})'>
+    UpdateCard
+  </button>
+          
+          
+          
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  function generateTransactionId() {
+    const letters = Array.from({ length: 3 }, () =>
+      String.fromCharCode(65 + Math.floor(Math.random() * 26))
+    ).join("");
+    const digits = Math.floor(100000000 + Math.random() * 900000000).toString();
+    return letters + digits;
+  }
+
+  async function simulatePayment(card) {
+  const transactionId = generateTransactionId();
+
+  const paymentData = {
+    paymentId: 0,
+    bookingId: 0,
+    paymentMethod: "Credit Card",
+    cardType: card.cardType,
+    cardLast4: card.cardLast4,
+    cardExpDate: card.cardExpDate,
+    amountPaid: parseFloat(amount),
+    paymentDate: new Date().toISOString(),
+    transactionId: transactionId
+  };
+
+  try {
+    await fetch(paymentApi, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(paymentData)
+    });
+
+    const cartIds = urlParams.get("cartIds")?.split(",").map(id => parseInt(id)) || [];
+    const parkIds = urlParams.get("parkIds")?.split(",").map(id => parseInt(id)) || [];
+    const parkNames = urlParams.get("parkNames")?.split(",").map(name => decodeURIComponent(name)) || [];
+    const startDates = urlParams.get("startDate")?.split(",") || [];
+    const endDates = urlParams.get("endDate")?.split(",") || [];
+    const adultsList = urlParams.get("adults")?.split(",").map(a => parseInt(a)) || [];
+    const childrenList = urlParams.get("children")?.split(",").map(c => parseInt(c)) || [];
+    const params = new URLSearchParams(window.location.search);
+    const someparkName = params.get("parkNames");
+    alert(someparkName);
+    const cartDataArray = await fetchCartDetails(cartIds);
+
+    for (let i = 0; i < cartIds.length; i++) {
+      const cartId = cartIds[i];
+      const parkId = parkIds[i] || 1001;
+      const parkName = parkNames[i] || someparkName;
+      const resStart = startDates[i] || new Date().toISOString();
+      const resEnd = endDates[i] || new Date().toISOString();
+      const quantityAdults = adultsList[i] || 1;
+      const quantityChildren = childrenList[i] || 0;
+
+      const cartData = cartDataArray.find(c => c.cartId === cartId);
+
+      // Update cart
+      const updateUrl = `${cartApi}/${cartId}`;
+      const updatedItem = {
+        cartId: cartId,
+        isCheckedOut: 1,
+        paymentid: transactionId,
+        totalcartitems: cartIds.length
+      };
+
+      await fetch(updateUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedItem)
+      });
+
+      // Create booking
+      const bookingData = {
+        uid: uid,
+        billingTelephoneNumber: card.cardbtn || "000-000-0000",
+        creditCardType: card.cardType,
+        creditCardLast4: card.cardLast4,
+        creditCardExpDate: card.cardExpDate,
+        quantityAdults: quantityAdults,
+        quantityChildren: quantityChildren,
+        customerBillingName: card.fullname?.trim() || "Unknown",
+        totalAmount: parseFloat(amount),
+        transactionId: transactionId,
+        parkId: parkId,
+        parkName: someparkName,
+        cartid: cartId.toString(),
+        reservationtype: "Biking",
+        reservationstatus: "Active",
+        reservationStartDate: resStart,
+        reservationEndDate: resEnd,
+        cartDetailsJson: JSON.stringify(cartIds),
+        totalcartitems: cartIds.length,
+        adults: quantityAdults,
+        children: quantityChildren,
+        resStart: resStart,
+        resEnd: resEnd,
+        tentsites: 0
+      };
+
+      await fetch(bookingApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData)
+      });
+    
+    await UpdateParkCalendar(bookingData);
+    }
+
+    alert("Transaction complete!");
+    document.getElementById("payment-status").innerHTML = `
+      <p class="fw-bold text-success">✅ Payment of $${amount} processed using card ending in ${card.cardLast4}.</p>
+      <p>Transaction ID: <strong>${transactionId}</strong></p>
+      <p>Cart IDs: ${cartIds.join(", ")}</p>
+      <p>User ID: ${uid}</p>
+    `;
+  } catch (err) {
+    console.error("❌ Error submitting payment or updating cart:", err);
+    document.getElementById("payment-status").innerHTML = `
+      <p class="text-danger">❌ Payment failed. Please try again.</p>
+    `;
+  }
+}
+
+
+  document.getElementById("add-card-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const newCard = {
+      cardId: 0,
+      uid: uid,
+      cardType: document.getElementById("cardType").value,
+      cardVendor: document.getElementById("cardVendor").value,
+      cardLast4: document.getElementById("cardLast4").value,
+      cardExpDate: document.getElementById("cardExpDate").value,
+      billingZip: document.getElementById("billingZip").value,
+      isActive: 1
+    };
+
+    try {
+      const response = await fetch(cardApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCard)
+      });
+
+      if (!response.ok) throw new Error("Card submission failed");
+
+      const resultText = await response.text();
+      const result = resultText ? JSON.parse(resultText) : null;
+
+      const modal = bootstrap.Modal.getInstance(document.getElementById("addCardModal"));
+      modal.hide();
+
+      await refreshCards();
+    } catch (err) {
+      console.error("Error adding card:", err);
+      alert("Failed to add card. Please try again.");
+    }
+  });
+
+  async function refreshCards() {
+    const cards = await fetchCards(uid);
+    renderCards(cards);
+  }
+
+  refreshCards();
+  
+  function openUpdateModal(card) {
+  document.getElementById("update-cardId").value = card.cardId;
+  document.getElementById("update-cardType").value = card.cardType || "";
+  document.getElementById("update-cardVendor").value = card.cardVendor || "";
+  document.getElementById("update-cardLast4").value = card.cardLast4 || "";
+  document.getElementById("update-cardExpDate").value = card.cardExpDate || "";
+  document.getElementById("update-billingZip").value = card.billingZip || "";
+  document.getElementById("update-cardbtn").value = card.cardbtn || "";
+  document.getElementById("update-fullname").value = card.fullname || "";
+
+  const modal = new bootstrap.Modal(document.getElementById("updateCardModal"));
+  modal.show();
+}
+
+document.getElementById("update-card-form").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const cardId = document.getElementById("update-cardId").value;
+  const updatedCard = {
+    cardId: parseInt(cardId),
+    cardType: document.getElementById("update-cardType").value,
+    cardVendor: document.getElementById("update-cardVendor").value,
+    cardLast4: document.getElementById("update-cardLast4").value,
+    cardExpDate: document.getElementById("update-cardExpDate").value,
+    billingZip: document.getElementById("update-billingZip").value,
+    cardbtn: document.getElementById("update-cardbtn").value,
+    fullname: document.getElementById("update-fullname").value
+  };
+
+  try {
+    const updateUrl = `${cardApi}/${cardId}`;
+    const response = await fetch(updateUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedCard)
+    });
+
+    if (!response.ok) throw new Error("Update failed");
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById("updateCardModal"));
+    modal.hide();
+
+    await refreshCards();
+    alert("Card updated successfully!");
+  } catch (err) {
+    console.error("Error updating card:", err);
+    alert("Failed to update card. Please try again.");
+  }
+});
+  
+async function fetchCartDetails(ids) {
+  const promises = ids.map(id =>
+    fetch(`${cartApi}/${id}`).then(res => res.json())
+  );
+  return Promise.all(promises);
+}
+  
+//ADDED NEW FUNCTIONS TO UPDATE THE PARK CALENDAR
+  
+  async function UpdateParkCalendar(bookingInfo) {
+  const parkCalendarApi = `${baseUrl}/api/ParkCalendar`;
+  const parkInventoryApi = `${baseUrl}/api/ParkInventory/addguests`;
+
+  // Build the ParkCalendar payload
+  const parkCalendarEntry = {
+    id: 0,
+    parkId: bookingInfo.parkId?.toString() || "0",
+    customerId: parseInt(bookingInfo.uid) || 0,
+    startDate: bookingInfo.reservationStartDate || bookingInfo.resStart,
+    endDate: bookingInfo.reservationEndDate || bookingInfo.resEnd,
+    transactionId: bookingInfo.transactionId,
+    bookId: bookingInfo.cartid?.toString() || bookingInfo.transactionId,
+    qtyAdults: bookingInfo.quantityAdults || bookingInfo.adults || 0,
+    qtyChildren: bookingInfo.quantityChildren || bookingInfo.children || 0,
+    parkGuid: bookingInfo.parkGuid || ""
+  };
+  console.log("parkCalendarpayload", parkCalendarEntry);
+  try {
+    // 1️⃣ Update Park Calendar
+    const response = await fetch(parkCalendarApi, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([parkCalendarEntry]) // API expects an array
+    });
+
+    if (!response.ok) {
+      throw new Error(`ParkCalendar update failed: ${response.statusText}`);
+    }
+    console.log("✅ Park calendar updated successfully");
+
+    // 2️⃣ Update Park Inventory capacity
+    const totalGuests =
+      (parkCalendarEntry.qtyAdults || 0) + (parkCalendarEntry.qtyChildren || 0);
+
+    const inventoryUrl = `${parkInventoryApi}?park=${parkCalendarEntry.parkId}&Addsomeguests=${totalGuests}`;
+
+    const invResponse = await fetch(inventoryUrl, { method: "POST" });
+
+    if (!invResponse.ok) {
+      throw new Error(`ParkInventory update failed: ${invResponse.statusText}`);
+    }
+    console.log("✅ Park inventory updated successfully");
+  } catch (err) {
+    console.error("❌ Error updating park calendar or inventory:", err);
+  }
+}
+
+
+</script>
+
+  <!-- Footer -->
+  <footer class="footer">
+    &copy; Cocky Investments 2025. <br> All rights reserved.<br>
+    <span align="center"><a href="sitemap.html" class="sitelink">SiteMap</a></span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="stylesheet" href="login.css" />
+<link rel="stylesheet" href="dropmenu.css" />
+<script src="./js/bikes.js"></script>
+  <title>Cancel Reservation</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<style>
+
+#userGreeting
+{
+text-align: center;
+vertical-align: middle;
+color: white;
+}
+#banner
+{
+background-color: lightgrey;
+height: 60px;
+vertical-align: middle;
+width: 100%;
+}
+
+#cancelBtn
+{
+width: 400px;
+}
+
+</style>
+
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture(); writelocation();">
+  <!-- Navigation Bar -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png" width="100%" height="350px"></button> 
+        <div class="dropdown-content">
+             <a href="index.html">Site Home</a>
+                  <a href="cartreview.html">MyCart</a>
+                  <a href="parks5.html">Review Park Options</a>
+                  <a href="parksreview5.html">Park Reviews</a>
+                  <a href="mybookings5.html">MyReservations</a>
+                  <a href="manager.html">Manager Utilities</a>
+        </div>
+      </div> 
+    <div class="logo">&nbsp&nbsp<H5>CockyAnalyticsv25 - Cancel Reservation</H5></div><BR>
+    </div>
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User" style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner">User</span>
+      <a href="login.html" id="loginBtn" class="btn secondary-btn" onclick="loginUser(event)">Login</a>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+              <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+    </div>
+  </div>
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+  <div class="container py-5">
+  <h3 class="text-center mb-4">Booking Details</h3>
+  <div class="card mx-auto" style="max-width: 700px;">
+    <div class="card-body">
+      <p><strong>Booking ID:</strong> <span id="bookingId"></span></p>
+      <p><strong>User ID:</strong> <span id="uid"></span></p>
+      <p><strong>Billing Telephone:</strong> <span id="billingTelephoneNumber"></span></p>
+      <p><strong>Credit Card Type:</strong> <span id="creditCardType"></span></p>
+      <p><strong>Card Last 4:</strong> <span id="creditCardLast4"></span></p>
+      <p><strong>Card Expiry:</strong> <span id="creditCardExpDate"></span></p>
+      <p><strong>Billing Name:</strong> <span id="customerBillingName"></span></p>
+      <p><strong>Adults:</strong> <span id="quantityAdults"></span></p>
+      <p><strong>Children:</strong> <span id="quantityChildren"></span></p>
+      <p><strong>Total Amount:</strong> $<span id="totalAmount"></span></p>
+      <p><strong>Transaction ID:</strong> <span id="transactionId"></span></p>
+      <p><strong>Reverse Transaction ID:</strong> <span id="reversetransactionid"></span></p>
+      <p><strong>Refund Amount:</strong> <span id="refundamount"></span></p>
+      <p><strong>Park ID:</strong> <span id="parkId"></span></p>
+      <p><strong>Park Name:</strong> <span id="parkName"></span></p>
+      <p><strong>Cart ID:</strong> <span id="cartid"></span></p>
+      <p><strong>Reservation Type:</strong> <span id="reservationtype"></span></p>
+      <p><strong>Reservation Status:</strong> <span id="reservationstatus"></span></p>
+    <hr>
+        <p class="text-danger" id="CustomerAlert">Are you sure you want to cancel this reservation?</p>
+        <button id="cancelBtn" class="btn btn-danger" onclick="confirmCancellation()">Confirm Cancellation</button>
+        <button class="btn btn-secondary" onclick="window.location.href='mybookings5.html'">Go Back</button>
+    </div>
+  </div>
+</div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+ <script>
+
+// ✅ Generate a 3-letter + 6-digit reverse transaction ID
+function generateReverseTransactionId() {
+  const alpha = Array.from({ length: 3 }, () =>
+    String.fromCharCode(65 + Math.floor(Math.random() * 26))
+  ).join("");
+  const numeric = Math.floor(100000 + Math.random() * 900000);
+  return alpha + numeric;
+}
+
+// ✅ Load booking details on page load
+$(document).ready(function () {
+  const urlParams = new URLSearchParams(window.location.search);
+  const bookingId = urlParams.get('bookingid');
+
+  $.ajax({
+    url: `https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Booking/${bookingId}`,
+    method: "GET",
+    success: function (bookings) {
+      if (!Array.isArray(bookings) || bookings.length === 0) {
+        alert("No booking found.");
+        return;
+      }
+
+      const booking = bookings[0];
+
+      // Populate booking fields
+      $("#bookingId").text(booking.bookingId);
+      $("#uid").text(booking.uid);
+      $("#billingTelephoneNumber").text(booking.billingTelephoneNumber);
+      $("#creditCardType").text(booking.creditCardType);
+      $("#creditCardLast4").text(booking.creditCardLast4);
+      $("#creditCardExpDate").text(booking.creditCardExpDate);
+      $("#customerBillingName").text(booking.customerBillingName);
+      $("#quantityAdults").text(booking.quantityAdults);
+      $("#quantityChildren").text(booking.quantityChildren);
+      $("#totalAmount").text(
+        !isNaN(parseFloat(booking.totalAmount)) ? parseFloat(booking.totalAmount).toFixed(2) : "0.00"
+      );
+      $("#transactionId").text(booking.transactionId);
+      $("#reversetransactionid").text(booking.reversetransactionid);
+      $("#refundamount").text(
+        booking.cancellationrefund != null && !isNaN(booking.cancellationrefund)
+          ? booking.cancellationrefund.toFixed(2)
+          : "0.00"
+      );
+      $("#parkId").text(booking.parkId);
+      $("#parkName").text(booking.parkName);
+      $("#cartid").text(booking.cartid);
+      $("#reservationtype").text(booking.reservationtype);
+      $("#reservationstatus").text(booking.reservationstatus);
+
+      // Highlight if already cancelled
+      if (booking.reversetransactionid && booking.reversetransactionid.trim() !== "") {
+        const reverseElem = document.getElementById("reversetransactionid");
+        reverseElem.style.backgroundColor = "yellow";
+        reverseElem.style.padding = "2px 6px";
+        reverseElem.style.borderRadius = "4px";
+        reverseElem.style.fontWeight = "bold";
+
+        const customerNotice = document.getElementById("CustomerAlert");
+        customerNotice.innerHTML = "This item has already been cancelled and refunded to the card on file!";
+        $("#cancelBtn").prop("disabled", true).text("Already Cancelled");
+      }
+    },
+    error: function () {
+      alert("Failed to load booking details.");
+    }
+  });
+});
+
+// ✅ Helper: Promise-based wait
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ✅ Helper: fetch wrapper
+async function api(url, method = "GET", body = null) {
+  const options = { method, headers: { "Content-Type": "application/json" } };
+  if (body) options.body = JSON.stringify(body);
+
+  const res = await fetch(url, options);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json().catch(() => ({}));
+}
+
+// ✅ Cancel reservation (fully async)
+async function confirmCancellation() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingId = urlParams.get("bookingid");
+    const cartId = urlParams.get("cartid");
+
+    // 1️⃣ Load cart
+    const cart = await api(`https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Cart/${cartId}`);
+    const refundAmount = parseFloat($("#totalAmount").text());
+
+    alert(`Reservation will be cancelled.\nRefund Amount: $${refundAmount}`);
+
+    // 2️⃣ Generate reverse transaction ID
+    const reverseId = generateReverseTransactionId();
+    $("#reversetransactionid").text(reverseId);
+
+    // 3️⃣ Update booking
+    await api(
+      `https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Booking/${bookingId}`,
+      "PUT",
+      {
+        reservationstatus: "Cancelled",
+        bookingId,
+        reservationtype: "Biking",
+        reversetransactionid: reverseId,
+        cancellationrefund: refundAmount,
+        emailnoticeaddress: localStorage.getItem("email")
+      }
+    );
+
+    // 4️⃣ Reverse payment + create refund record
+    await reversepayment(reverseId);
+
+    // 5️⃣ Optional delay
+    await wait(1500);
+
+    alert("Reservation cancelled successfully.");
+    window.location.href = "mybookings5.html";
+
+  } catch (err) {
+    console.error(err);
+    alert("Cancellation failed.");
+  }
+}
+
+// ✅ Reverse payment (fully async)
+async function reversepayment(reverseId) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const bookingId = urlParams.get("bookingid");
+
+  // 1️⃣ Load booking
+  const bookings = await api(`https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Booking/${bookingId}`);
+  const booking = bookings[0];
+
+  const refundAmount = parseFloat(booking.totalAmount);
+
+  const payment = {
+  paymentId: 0,                                 // same pattern as refundId
+  cartid: booking.cartid,
+  bookingId: booking.bookingId,                 // same field name as refund
+  paymentMethod: booking.creditCardType,        // matches refund.paymentMethod
+  cardType: booking.creditCardType,             // same as refund.cardType
+  cardLast4: booking.creditCardLast4,           // same as refund.cardLast4
+  cardExpDate: booking.creditCardExp,           // same as refund.cardExpDate
+  amountPaid:   refundAmount * -1,                 // matches refund.amountPaid
+  amountRefunded: refundAmount,                  // Reverse amount
+  paymentDate: new Date().toISOString(),        // same field name as refund
+  transactionId: booking.transactionId,
+  refundTransactionid: reverseId,
+  useridasstring: booking.uid.toString(),       // same as refund.useridasstring
+  transtype: "Reversal",                          // refund uses "Refund"
+  fullname: booking.fullName || "",
+  parkName: booking.parkName || "",
+  state: booking.state || "",
+  parkId: booking.parkId || 0
+};
+
+
+
+
+  
+ console.log(payment);
+  
+  // ✅ Post reversal
+  await api("https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Payments", "POST", payment);
+
+  // 3️⃣ Build refund record
+  const refund = {
+    refundId: 0,
+    bookingId: booking.bookingId,
+    paymentMethod: booking.creditCardType,
+    cardType: booking.creditCardType,
+    cardLast4: booking.creditCardLast4,
+    cardExpDate: booking.creditCardExp,
+    amountPaid: refundAmount,
+    amountRefunded: refundAmount,
+    paymentDate: new Date().toISOString(),
+    transactionId: booking.transactionId,
+    refundTransactionid: reverseId,
+    useridasstring: booking.uid.toString(),
+    transtype: "Refund",
+    fullname: booking.fullName || "",
+    parkName: booking.parkName || "",
+    state: booking.state || "",
+    parkId: booking.parkId || 0
+  };
+  console.log(refund);
+  
+  // ✅ Post refund
+  await api("https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Refunds", "POST", refund);
+}
+
+</script>
+
+
+
+  <!-- Footer -->
+  <footer class="footer text-center mt-5">
+    &copy; Cocky Investments 2025. <br> All rights reserved.<br>
+    <a href="sitemap.html" class="sitelink">SiteMap</a><BR><span id="locElement"></span><BR><span id="ipElement"></span>
+  </footer>
+</body>
+</html>

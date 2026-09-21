@@ -1,0 +1,28 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+ 
+namespace Enterprise.Models
+{
+public enum StockSource
+{
+Unknown = 0,
+USFortune500,
+Global500,
+Tokyo,
+London,
+NYSE,
+Nasdaq,
+Manual
+}
+public partial class SystemStocks
+{
+public int Id { get; set; }
+public string? Ticker { get; set; }
+public string? CompanyName { get; set; }
+public StockSource Source { get; set; }
+public string? Country { get; set; } = "US";
+public string? PrimaryExchange { get; set; }
+public string? SecondaryExchange { get; set; }
+}
+}

@@ -1,0 +1,92 @@
+<html>
+<head>
+<script src="./js/542.js"></script>
+<link href="./css/login.css" rel="stylesheet" />
+<link href="./css/dropmenu.css" rel="stylesheet" />
+<style>
+  body 
+  {
+    width: 100%; 
+    background-color: black;
+  }
+  .container
+  {
+    max-width: 1600px;
+    max-height: 1300px;
+    position: relative;
+    margin: 0 auto;
+    background-color: lightgrey;
+    padding: 50px;
+    margin-top: 100px;
+    margin-bottom: 100px;
+  }
+  .footer
+  {
+  background-color: darkgrey;
+  color: white;
+  text-align: center;
+  }
+</style>  
+</head>  
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="https://usc542.shinyapps.io/Final0426/">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+<div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+<div align="center"><p><img src="./images/cocky542.png" width=150px height=150px></p></div>
+<div id="header" align="center"><H2>Cocky Investments Quick Links</H2></div>
+<H3>InitialDataSets</H3>
+  <ul>
+  <li><a href="https://cyrusjones159.github.io/Cockey-Investments/Automotive/ConsumerDiscretionaryAutoscreener_results.xls">1.Automotive Data Set</a></li>
+  <li><a href="https://cyrusjones159.github.io/Cockey-Investments/Financials/FinancialsScreener_results.xls">2.Financials Data Set</a></li>
+  <li><a href="https://cyrusjones159.github.io/Cockey-Investments/Media/MediaEntertainmentScreener_results.xls">3.Media and Entertainment Data Set</a></li>
+  <li><a href="https://cyrusjones159.github.io/Cockey-Investments/Healthcare/HCscreener_results.xls">4.Healthcare Data Set</a></li>
+</ul>
+<H3>Tools</H3>
+<ul>
+<li><a href="https://cyrusjones159.github.io/Cockey-Investments/Stage2Filtering/PythonCipherSupportlkget.py">A.(Python) Code for 3 Tickers</a></li>
+<li><a href="https://cyrusjones159.github.io/Cockey-Investments/Stage2Filtering/RCipherSupportlkget.r">B. R Code for 3 Tickers</a></li> 
+<li><a href="https://cyrusjones159.github.io/Cockey-Investments/Stage2Filtering/samplexlscode.R">Sample Code with SQLDF From class</a></li> 
+<li><a href="https://cyrusjones159.github.io/Cockey-Investments/Stage3Smash/SectorAllSummaries.R">A Working Code Base which summarizes Returns using Yahoo Data... It returns tickers in a vector, and then passes the vector to the function.</a></li> 
+</ul>
+<H3>Sample Results</H3>
+<ul>
+<li><a href="https://cyrusjones159.github.io/Cockey-Investments/Financials/financials.result.xlsx">Financial Summary Result</a></li>
+</ul>
+<H3>Hosting Providers</H3>
+<ul>
+<li><a href="https://usc542.shinyapps.io/Project1/">Initial Shiny App V2</a></li>
+<li><a href="https://usc542.shinyapps.io/documents">John's Shiny App</a></li>
+<li><a href="https://usc542.shinyapps.io/Final0426">Final0426 Shiny App V3</a></li>
+</ul>  
+</body>
+</html>

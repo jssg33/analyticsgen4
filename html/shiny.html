@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="./js/542.js"></script>
+    <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <title>Dashboard Portal</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+    }
+
+    /* NAVBAR */
+    .navbar {
+      background-color: black;
+      color: white;
+      height: 65px;
+      padding: 20px;
+    }
+
+    .navCipherSupporttton {
+      background-color: darkgrey;
+      color: lightblue;
+      height: 40px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+
+    .navspan { float: right; }
+
+    /* CENTERCOURT IFRAME */
+    #centercourt {
+      width: 1600px;
+      height: 1200px; /* adjust as needed */
+      margin: 0 auto;
+      display: block;
+      border: none;
+      background: white;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      background-color: black;
+      color: white;
+      height: 60px;
+      padding: 20px;
+      margin-top: 20px;
+      position: relative;
+      bottom: 0px;
+      width: 100%;
+    }
+    html {   max-height: 900px;  }
+    body {background-color: darkgrey; max-height:900px; height: 900px; width: 100%; scroll-behavior   : none;}
+  </style>
+
+  <script>
+    // Load different dashboards into the iframe
+    function loadView(page) {
+      document.getElementById("centercourt").src = page;
+    }
+  </script>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+<!-- NAV BAR -->
+<div class="navbar">
+  <div class="nav-left">
+    <div class="dropdown">
+      <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+      <div class="dropdown-content">
+        <a href="index.html">Site Home</a>
+        <a href="cartreview.html">MyCart</a>
+        <a href="myaccount.html">MyAccount</a>
+        <a href="manager.html">Manager Utilities</a>
+        <a href="interiorindex.html">LegacyPortal</a>
+        <a href="twocolumn.html">StockViews</a>
+        <a href="sectorview5.html">SectorViews</a>
+        <a href="epoch.html">EpochView</a>
+        <a href="portfolio.html">PortfolioView</a>
+        <a href="shiny.html">ShinyViewsFull</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+      </div>
+    </div>
+    <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+  </div>
+
+  <div class="nav-right">
+    <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+         style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+    <span id="H3UserBanner"></span>
+    <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+    <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+    </div>
+</div>
+
+<div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+
+  <!-- CENTERCOURT IFRAME -->
+  <iframe id="centercourt" name="centercourt" src="https://usc542.shinyapps.io/Final0426/"></iframe>
+
+  <!-- FOOTER -->
+  <footer>
+    &copy; Cocky Investments, Inc - The University of South Carolina Spring 2026<br>
+    John S. Stritzinger - All rights reserved.
+  </footer>
+
+</body>
+</html>

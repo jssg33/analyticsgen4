@@ -1,0 +1,97 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using Microsoft.AspNetCore.Http;
+using System.Net.Mail;
+using Enterprise.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.Http;
+namespace somecontrollers.Controllers;
+
+public static class CipherSupportEndpoints
+{
+
+    public static void MapCipherSupportEndpoints(this IEndpointRouteBuilder routes)
+    {
+        var group = routes.MapGroup("/api/CipherSupport").WithTags(nameof(CipherSupport));
+
+        //[HttpGet]
+        group.MapGet("/", () =>
+        {
+            using (var context = new EnterpriseContext())
+            {
+                return context.CipherSupports.ToList();
+            }
+
+        })
+        .WithName("GetAllCipherSupports")
+        .WithOpenApi();
+
+        //[HttpGet]
+        group.MapGet("/{id}", (int id) =>
+        {
+            using (var context = new EnterpriseContext())
+            {
+                return context.CipherSupports.Where(m => m.Id == id).ToList();
+            }
+        })
+        .WithName("GetCipherSupportById")
+        .WithOpenApi();
+
+        //[HttpPut]
+        group.MapPut("/{id}", async (int id, CipherSupport input) =>
+        {
+            using (var context = new EnterpriseContext())
+            {
+                CipherSupport[] someCipherSupport = context.CipherSupports.Where(m => m.Id == id).ToArray();
+                context.CipherSupports.Attach(someCipherSupport[0]);
+                someCipherSupport[0].CipherSupportname = input.CipherSupportname;
+                someCipherSupport[0].CipherSupporthqaddress1 = input.CipherSupporthqaddress1;
+                someCipherSupport[0].CipherSupporthqaddress2 = input.CipherSupporthqaddress2;
+                someCipherSupport[0].CipherSupporthqcity = input.CipherSupporthqcity;
+                someCipherSupport[0].CipherSupporthqstate = input.CipherSupporthqstate;
+                someCipherSupport[0].CipherSupporthqpostal = input.CipherSupporthqpostal;
+                await context.SaveChangesAsync();
+                return TypedResults.Accepted("Updated ID:" + input.Id);
+            }
+
+
+        })
+        .WithName("UpdateCipherSupport")
+        .WithOpenApi();
+
+        group.MapPost("/", async (CipherSupport input) =>
+        {
+            using (var context = new EnterpriseContext())
+            {
+                Random rnd = new Random();
+                int dice = rnd.Next(1000, 10000000);
+                //input.Id = dice;
+                context.CipherSupports.Add(input);
+                await context.SaveChangesAsync();
+                return TypedResults.Created("Created ID:" + input.Id);
+            }
+
+        })
+        .WithName("CreateCipherSupport")
+        .WithOpenApi();
+
+        group.MapDelete("/{id}", async (int id) =>
+        {
+            using (var context = new EnterpriseContext())
+            {
+                //context.CipherSupports.Add(std);
+                CipherSupport[] someCipherSupports = context.CipherSupports.Where(m => m.Id == id).ToArray();
+                context.CipherSupports.Attach(someCipherSupports[0]);
+                context.CipherSupports.Remove(someCipherSupports[0]);
+                await context.SaveChangesAsync();
+            }
+
+        })
+        .WithName("DeleteCipherSupport")
+        .WithOpenApi();
+    }
+}
+

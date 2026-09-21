@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>API Auditor — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0F1420;
+    --panel: #161D2B;
+    --border: #2A3448;
+    --border-soft: #212B3D;
+    --text: #E7ECF5;
+    --text-dim: #8D98AF;
+    --text-faint: #5C6780;
+    --accent: #4FD1C5;
+    --warn: #E8A94C;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5;
+    min-height: 100vh; display:flex; align-items:center; justify-content:center; padding: 24px;
+  }
+  label{ display:block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 6px; }
+  input[type=text], input[type=password]{
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
+    padding: 9px 10px; border-radius: 4px; outline: none;
+  }
+  input:focus{ border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,209,197,0.15); }
+  button{
+    font-family: var(--sans); font-weight: 600; font-size: 13.5px;
+    border-radius: 4px; border: 1px solid transparent; padding: 9px 16px; cursor: pointer;
+  }
+  button.primary{ background: var(--accent); color: #08201D; width: 100%; padding: 11px; margin-top: 4px; }
+  button.primary:hover{ background: #6EE0D5; }
+  button:disabled{ opacity: 0.5; cursor: not-allowed; }
+
+  .login-card{
+    width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 32px 30px;
+  }
+  .login-card .mark{
+    font-family: var(--mono); color: var(--accent); font-size: 13px; letter-spacing: 0.02em; margin-bottom: 10px;
+  }
+  .login-card h1{ font-size: 22px; margin: 0 0 6px; font-weight: 600; }
+  .login-card p.sub{ color: var(--text-dim); font-size: 13.5px; margin: 0 0 24px; }
+  .field{ margin-bottom: 16px; }
+  .hint{
+    font-size: 12px; color: var(--warn); margin-top: 12px; line-height: 1.5; display:none;
+  }
+  .hint.visible{ display:block; }
+  .hint code{
+    font-family: var(--mono); background: rgba(255,255,255,0.05); padding: 1px 5px; border-radius: 3px;
+  }
+  .login-note{
+    margin-top: 18px; font-size: 11.5px; color: var(--text-faint); line-height: 1.6;
+    border-top: 1px solid var(--border-soft); padding-top: 14px;
+  }
+  .login-note code{
+    font-family: var(--mono); background: rgba(255,255,255,0.05); padding: 1px 5px; border-radius: 3px; color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="mark">API AUDITOR</div>
+    <h1>Sign in</h1>
+    <p class="sub">Signs in against your Enterprise API. Your name, role, and audit trail come from that account.</p>
+
+    <div class="field">
+      <label for="backendUrl">Backend URL</label>
+      <input type="text" id="backendUrl" value="https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net" />
+    </div>
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="e.g. jsmith" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="" autocomplete="current-password" />
+    </div>
+    <button class="primary" id="loginBtn" type="button">Sign in</button>
+    <div class="hint" id="loginError"></div>
+
+    <div class="login-note">
+      This page POSTs your username and password directly to <code id="noteEndpoint"></code> over HTTPS — nothing else. On success you're redirected to <code>auditviewer.html</code>. If sign-in fails with a network/CORS-looking error rather than a rejected-credentials message, the backend needs this page's origin added to its allowed CORS origins. Your name/role are saved to this browser's storage so <code>auditviewer.html</code> still knows who you are after a reload; your password and session token are never saved anywhere.
+      <br><br>
+      For local testing without a live backend: <code>manager</code> / <code>manager</code> signs in without making any network call at all.
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  const SESSION_KEY = "session-v1";
+
+  const backendUrlInput = document.getElementById("backendUrl");
+  const noteEndpoint = document.getElementById("noteEndpoint");
+  function updateNoteEndpoint(){
+    const base = backendUrlInput.value.trim().replace(/\/$/, "");
+    noteEndpoint.textContent = (base || "(backend URL)") + "/api/Auth/login";
+  }
+  backendUrlInput.addEventListener("input", updateNoteEndpoint);
+  updateNoteEndpoint();
+
+  const loginErrorEl = document.getElementById("loginError");
+  function showError(msg){
+    loginErrorEl.textContent = msg;
+    loginErrorEl.classList.add("visible");
+  }
+  function clearError(){
+    loginErrorEl.classList.remove("visible");
+    loginErrorEl.textContent = "";
+  }
+
+  async function persistIdentity(name, team){
+    // Only identity/display fields — never the token — go into shared storage.
+    try{
+      await window.storage.set(SESSION_KEY, JSON.stringify({ name, team }), false);
+    }catch(e){ console.warn("could not save session", e); }
+  }
+
+  function redirectToViewer(name, team, token, userId){
+    const payload = encodeURIComponent(JSON.stringify({ name, team, token, userId }));
+    window.location.href = "auditviewer.html#s=" + payload;
+  }
+
+  // ---------------------------------------------------------------------
+  // TEST-ONLY LOCAL BYPASS — manager / manager
+  // Short-circuits before any network call; never touches the real backend.
+  // This is a hardcoded credential sitting in a client-side file — fine for
+  // local/dev testing, but it's exactly the kind of thing that accidentally
+  // ships to production and becomes a real backdoor. Remove this block (or
+  // gate it behind a build flag) before this file goes anywhere a real user
+  // could reach it.
+  // ---------------------------------------------------------------------
+  const TEST_BYPASS_USERNAME = "manager";
+  const TEST_BYPASS_PASSWORD = "manager";
+  async function tryTestBypass(username, password){
+    if(username.toLowerCase() !== TEST_BYPASS_USERNAME || password !== TEST_BYPASS_PASSWORD) return false;
+    const name = "Manager (test account)";
+    const team = "Test — bypassed API";
+    await persistIdentity(name, team);
+    redirectToViewer(name, team, null, null);
+    return true;
+  }
+
+  document.getElementById("loginBtn").addEventListener("click", async () => {
+    const base = backendUrlInput.value.trim().replace(/\/$/, "");
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    clearError();
+
+    if(!username){ showError("Enter a username."); document.getElementById("username").focus(); return; }
+    if(!password){ showError("Enter a password."); document.getElementById("password").focus(); return; }
+
+    if(await tryTestBypass(username, password)) return;
+
+    if(!base){ showError("Enter the backend URL."); return; }
+
+    const loginBtn = document.getElementById("loginBtn");
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Signing in...";
+
+    try{
+      const resp = await fetch(base + "/api/Auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Matches LoginRequest { Username, PlainPassword } — ASP.NET Core's
+        // default camelCase JSON policy turns PlainPassword into plainPassword.
+        body: JSON.stringify({ username, plainPassword: password }),
+      });
+
+      const text = await resp.text();
+      let data = null;
+      try{ data = JSON.parse(text); }catch(e){ /* not JSON */ }
+
+      if(resp.ok){
+        const name = (data && (data.userFullName || data.userUsername)) || username;
+        const team = (data && data.userRole) || "";
+        const token = (data && data.token) || null;
+        const userId = (data && data.userId) || null;
+
+        await persistIdentity(name, team);
+
+        // One-time handoff to auditviewer.html via the URL fragment (never
+        // sent to any server, unlike a query string) so the very first load
+        // there can pick up the token too. auditviewer.html strips this from
+        // the address bar immediately and never persists the token.
+        redirectToViewer(name, team, token, userId);
+      } else {
+        // Backend returns Results.BadRequest("User not found.") / "Password
+        // mismatch." — a bare JSON string, not an object with a .message field.
+        const msg = typeof data === "string" ? data
+          : (data && (data.message || data.title))
+          || text
+          || `Login failed (HTTP ${resp.status})`;
+        showError(msg);
+      }
+    } catch(e){
+      showError(`Could not reach the backend — likely a CORS or network issue: ${e.message}`);
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Sign in";
+    }
+  });
+})();
+</script>
+</body>
+</html>

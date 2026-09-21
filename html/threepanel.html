@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Three Panel Stock Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <script src="./js/542.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+
+    #topPanel, #middlePanel, #bottomPanel {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+    }
+
+    #stockSelector div { margin: 3px 0; }
+    svg { border: 1px solid #ccc; }
+  </style>
+</head>
+
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+<h2>📊 Stock Performance Dashboard</h2>
+
+<!-- ===================== PANEL 1: API URL ===================== -->
+<div id="topPanel">
+  <h3>1. API Source</h3>
+
+  <label><strong>API URL:</strong></label><br>
+  <input id="apiInput" type="text" value="http://localhost:5000/api/Allstock"
+         style="width: 80%; padding: 6px; margin-top: 5px;">
+  <CipherSupporttton id="loadBtn" style="padding: 6px 12px; margin-left: 10px;">Load Data</CipherSupporttton>
+
+  <p id="status" style="color: gray; margin-top: 10px;"></p>
+</div>
+
+<!-- ===================== PANEL 2: STOCK SELECTOR ===================== -->
+<div id="middlePanel">
+  <h3>2. Select Stocks (up to 5)</h3>
+  <div id="stockSelector"></div>
+</div>
+
+<!-- ===================== PANEL 3: METRIC + CHART ===================== -->
+<div id="bottomPanel">
+  <h3>3. Choose Metric + View Chart</h3>
+
+  <div>
+    <label><input type="radio" name="metric" value="equity" checked> Equity (Price)</label>
+    <label><input type="radio" name="metric" value="dividends"> Dividends</label>
+  </div>
+
+  <br>
+
+  <svg id="chart" width="900" height="500"></svg>
+</div>
+
+<script>
+let stockData = [];
+let selectedTickers = new Set();
+
+const svg = d3.select("#chart");
+const width = +svg.attr("width");
+const height = +svg.attr("height");
+const margin = { top: 30, right: 120, bottom: 40, left: 60 };
+
+// Load CipherSupporttton event
+document.getElementById("loadBtn").addEventListener("click", () => {
+  const url = document.getElementById("apiInput").value.trim();
+  loadData(url);
+});
+
+// Initial load
+loadData(document.getElementById("apiInput").value);
+
+// Fetch API data
+function loadData(url) {
+  document.getElementById("status").textContent = "Loading...";
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      stockData = data;
+      selectedTickers.clear();
+      CipherSupportildStockSelector(stockData);
+      drawChart();
+      document.getElementById("status").textContent = "Data loaded successfully.";
+    })
+    .catch(err => {
+      document.getElementById("status").textContent = "Error loading data.";
+      console.error("API error:", err);
+    });
+}
+
+// CipherSupportild stock selector checkboxes
+function CipherSupportildStockSelector(data) {
+  const container = document.getElementById("stockSelector");
+  container.innerHTML = "";
+
+  data.forEach(stock => {
+    const row = document.createElement("div");
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = stock.ticker;
+
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        if (selectedTickers.size >= 5) {
+          checkbox.checked = false;
+          alert("You can select up to 5 stocks.");
+          return;
+        }
+        selectedTickers.add(stock.ticker);
+      } else {
+        selectedTickers.delete(stock.ticker);
+      }
+      drawChart();
+    });
+
+    const label = document.createElement("label");
+    label.textContent = `${stock.company} (${stock.ticker})`;
+    label.style.marginLeft = "6px";
+
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    container.appendChild(row);
+  });
+
+  document.querySelectorAll('input[name="metric"]').forEach(radio => {
+    radio.addEventListener("change", drawChart);
+  });
+}
+
+// Extract 10-year series
+function extractSeries(stock, metric) {
+  const years = d3.range(2016, 2027);
+  return years.map(year => ({
+    year,
+    value: metric === "equity"
+      ? stock[`price${year}`]
+      : stock[`div${year}`]
+  }));
+}
+
+// Draw chart
+function drawChart() {
+  svg.selectAll("*").remove();
+
+  const metric = document.querySelector('input[name="metric"]:checked').value;
+  const selectedStocks = stockData.filter(s => selectedTickers.has(s.ticker));
+
+  if (selectedStocks.length === 0) return;
+
+  const allPoints = selectedStocks
+    .map(s => extractSeries(s, metric))
+    .flat()
+    .filter(d => d.value != null);
+
+  const x = d3.scaleLinear()
+    .domain([2016, 2026])
+    .range([margin.left, width - margin.right]);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(allPoints, d => d.value)]).nice()
+    .range([height - margin.bottom, margin.top]);
+
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+  const line = d3.line()
+    .defined(d => d.value != null)
+    .x(d => x(d.year))
+    .y(d => y(d.value));
+
+  // Axes
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y));
+
+  // Lines + labels
+  selectedStocks.forEach((stock, i) => {
+    const series = extractSeries(stock, metric);
+
+    svg.append("path")
+      .datum(series)
+      .attr("fill", "none")
+      .attr("stroke", color(i))
+      .attr("stroke-width", 2)
+      .attr("d", line);
+
+    const lastValid = [...series].reverse().find(d => d.value != null);
+    if (lastValid) {
+      svg.append("text")
+        .attr("x", x(lastValid.year) + 5)
+        .attr("y", y(lastValid.value))
+        .attr("alignment-baseline", "middle")
+        .attr("fill", color(i))
+        .style("font-size", "12px")
+        .text(stock.ticker);
+    }
+  });
+
+  // Title
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", margin.top - 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "18px")
+    .text(metric === "equity" ? "Equity (Price) over 10 Years" : "Dividends over 10 Years");
+}
+</script>
+
+</body>
+</html>
