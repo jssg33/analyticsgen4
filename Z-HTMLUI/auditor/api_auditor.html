@@ -21,6 +21,9 @@
     --accent-dim: #2E6E68;
     --warn: #E8A94C;
     --danger: #E8724C;
+    --dept-accent: #4FD1C5;
+    --app-accent: #6E8CD6;
+    --api-accent: #C6A15A;
     --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
@@ -31,30 +34,62 @@
     color: var(--text);
     font-family: var(--sans);
     line-height: 1.5;
-    padding: 40px 24px 120px;
   }
-  .wrap{ max-width: 1080px; margin: 0 auto; }
+  .wrap{ max-width: 1160px; margin: 0 auto; padding: 32px 24px 120px; }
 
-  header{ margin-bottom: 32px; }
-  header .mark{
+  /* ---- top nav ---- */
+  .topnav{
+    display:none;
+    align-items:center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .topnav.visible{ display:flex; }
+  .topnav .brand{
     font-family: var(--mono);
     color: var(--accent);
     font-size: 13px;
     letter-spacing: 0.02em;
-    margin-bottom: 8px;
+    display:flex;
+    align-items:center;
+    gap: 14px;
   }
-  h1{
-    font-size: 28px;
-    font-weight: 600;
-    margin: 0 0 6px;
-    letter-spacing: -0.01em;
-  }
-  header p{
+  .topnav .breadcrumb{
+    font-family: var(--sans);
     color: var(--text-dim);
-    margin: 0;
-    font-size: 14.5px;
-    max-width: 62ch;
+    font-size: 13px;
   }
+  .topnav .breadcrumb .sep{ color: var(--text-faint); margin: 0 6px; }
+  .topnav .breadcrumb button{
+    background:none; border:none; color: var(--text-dim);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    cursor:pointer; padding:0;
+  }
+  .topnav .breadcrumb button:hover{ color: var(--accent); }
+  .topnav .breadcrumb .current{ color: var(--text); font-weight: 600; }
+  .topnav .session{
+    display:flex; align-items:center; gap: 12px;
+    font-size: 12.5px; color: var(--text-dim);
+  }
+  .topnav .session b{ color: var(--text); font-family: var(--mono); font-weight: 600; }
+  .topnav .session button{
+    background:none; border: 1px solid var(--border); color: var(--text-dim);
+    font-size: 11.5px; font-weight: 500; padding: 5px 10px; border-radius: 4px; cursor:pointer;
+  }
+  .topnav .session button:hover{ border-color: var(--text-dim); color: var(--text); }
+
+  header.page-header{ margin-bottom: 28px; }
+  header.page-header .mark{
+    font-family: var(--mono); color: var(--accent); font-size: 13px;
+    letter-spacing: 0.02em; margin-bottom: 8px;
+  }
+  h1{ font-size: 26px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  header.page-header p{ color: var(--text-dim); margin: 0; font-size: 14px; max-width: 68ch; }
 
   section{
     background: var(--panel);
@@ -64,127 +99,57 @@
     margin-bottom: 20px;
   }
   section > h2{
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: none;
-    color: var(--text);
-    margin: 0 0 16px;
-    display:flex;
-    align-items:center;
-    gap:8px;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    margin: 0 0 16px; display:flex; align-items:center; gap:8px;
   }
   section > h2 .count{
-    font-family: var(--mono);
-    color: var(--accent);
-    font-size: 12px;
-    background: rgba(79,209,197,0.1);
-    border: 1px solid var(--accent-dim);
-    padding: 1px 8px;
-    border-radius: 100px;
+    font-family: var(--mono); color: var(--accent); font-size: 12px;
+    background: rgba(79,209,197,0.1); border: 1px solid var(--accent-dim);
+    padding: 1px 8px; border-radius: 100px;
   }
 
-  label{
-    display:block;
-    font-size: 12.5px;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
+  label{ display:block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 6px; }
   input[type=text], input[type=password], textarea, select{
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 9px 10px;
-    border-radius: 4px;
-    outline: none;
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
+    padding: 9px 10px; border-radius: 4px; outline: none;
   }
   input:focus, textarea:focus, select:focus{
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(79,209,197,0.15);
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,209,197,0.15);
   }
-  textarea{ font-size: 12px; min-height: 120px; resize: vertical; }
+  textarea{ font-size: 12px; min-height: 110px; resize: vertical; }
 
-  .grid{
-    display:grid;
-    grid-template-columns: 1.6fr 1fr 1fr;
-    gap: 14px;
-  }
+  .grid{ display:grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 14px; }
   .field{ margin-bottom: 0; }
+  .field.grow{ flex: 1; }
   .row{ display:flex; gap:14px; flex-wrap: wrap; align-items:flex-end; }
 
   button{
-    font-family: var(--sans);
-    font-weight: 600;
-    font-size: 13.5px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-    padding: 9px 16px;
-    cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease;
+    font-family: var(--sans); font-weight: 600; font-size: 13.5px;
+    border-radius: 4px; border: 1px solid transparent; padding: 9px 16px;
+    cursor: pointer; transition: background 0.12s ease, border-color 0.12s ease;
   }
-  button.primary{
-    background: var(--accent);
-    color: #08201D;
-  }
+  button.primary{ background: var(--accent); color: #08201D; }
   button.primary:hover{ background: #6EE0D5; }
-  button.ghost{
-    background: transparent;
-    border-color: var(--border);
-    color: var(--text);
-  }
+  button.ghost{ background: transparent; border-color: var(--border); color: var(--text); }
   button.ghost:hover{ border-color: var(--text-dim); }
   button:disabled{ opacity: 0.45; cursor: not-allowed; }
 
-  .toggle-link{
-    background:none;
-    border:none;
-    color: var(--accent);
-    font-size: 12.5px;
-    font-family: var(--sans);
-    font-weight: 500;
-    cursor:pointer;
-    padding: 0;
-    margin-top: 14px;
-  }
-  .toggle-link:hover{ text-decoration: underline; }
-
-  #pasteBlock{ display:none; margin-top: 16px; }
-
   .status-log{
-    margin-top: 16px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-dim);
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 4px;
-    padding: 10px 12px;
-    max-height: 160px;
-    overflow-y: auto;
-    display:none;
+    margin-top: 16px; font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+    background: var(--bg); border: 1px solid var(--border-soft); border-radius: 4px;
+    padding: 10px 12px; max-height: 150px; overflow-y: auto; display:none;
   }
   .status-log div{ padding: 1px 0; }
   .status-log .ok{ color: var(--accent); }
   .status-log .err{ color: var(--danger); }
 
-  .default-db-row{
-    display:flex;
-    gap: 12px;
-    align-items: flex-end;
-  }
+  .default-db-row{ display:flex; gap: 12px; align-items: flex-end; }
   .default-db-row .field{ flex: 1; }
 
   .badge{
-    font-family: var(--mono);
-    font-size: 10.5px;
-    padding: 2px 7px;
-    border-radius: 3px;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    margin-right: 5px;
-    display:inline-block;
+    font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 3px;
+    border: 1px solid var(--border); color: var(--text-dim); margin-right: 5px; display:inline-block;
   }
   .method-get{ color: #7FD1F0; border-color: #244452; }
   .method-post{ color: #8FE0A8; border-color: #275238; }
@@ -192,223 +157,277 @@
   .method-delete{ color: var(--danger); border-color: #5A2F24; }
   .method-patch{ color: #C6A8F0; border-color: #453258; }
 
-  .empty-state{
-    color: var(--text-faint);
-    font-size: 13px;
-    text-align:center;
-    padding: 30px 0;
-  }
+  .empty-state{ color: var(--text-faint); font-size: 13px; padding: 16px 0; }
 
-  /* ---- grouped tables ---- */
-  .group{
-    margin-bottom: 26px;
-  }
+  .group{ margin-bottom: 22px; }
   .group:last-child{ margin-bottom: 0; }
   .group-title{
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 8px;
-    display:flex;
-    align-items:baseline;
-    gap: 8px;
+    font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px; display:flex; align-items:baseline; gap: 8px;
   }
-  .group-title .group-count{
-    font-size: 11px;
-    color: var(--text-faint);
-    font-weight: 400;
-  }
+  .group-title .group-count{ font-size: 11px; color: var(--text-faint); font-weight: 400; }
 
   table.resource-table{
-    width: 100%;
-    border-collapse: collapse;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--panel-raised);
+    width: 100%; border-collapse: collapse; border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden; background: var(--panel);
   }
   table.resource-table thead th{
-    text-align: left;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-faint);
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,0.02);
+    text-align: left; font-size: 11px; font-weight: 600; color: var(--text-faint);
+    padding: 8px 10px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
   }
-  table.resource-table tbody tr.data-row{
-    border-bottom: 1px solid var(--border-soft);
-  }
+  table.resource-table tbody tr.data-row{ border-bottom: 1px solid var(--border-soft); }
   table.resource-table tbody tr.data-row:last-child{ border-bottom: none; }
   table.resource-table tbody tr.data-row:hover{ background: rgba(255,255,255,0.015); }
-  table.resource-table td{
-    padding: 10px 12px;
-    vertical-align: middle;
-    font-size: 13px;
-  }
-  td.col-resource{
-    font-family: var(--mono);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  td.col-resource .indent{
-    color: var(--text-faint);
-    font-weight: 400;
-    margin-right: 4px;
-  }
+  table.resource-table td{ padding: 9px 10px; vertical-align: middle; font-size: 12.5px; }
+  td.col-resource{ font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+  td.col-resource .indent{ color: var(--text-faint); font-weight: 400; margin-right: 4px; }
   td.col-methods{ white-space: nowrap; }
-  td.col-endpoints{
-    color: var(--text-dim);
-    font-size: 12px;
-    white-space: nowrap;
-  }
+  td.col-endpoints{ color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
   td.col-endpoints button{
-    background:none;
-    border:none;
-    color: var(--accent);
-    font-family: var(--sans);
-    font-size: 11.5px;
-    font-weight: 500;
-    padding: 0;
-    cursor: pointer;
+    background:none; border:none; color: var(--accent); font-family: var(--sans);
+    font-size: 11px; font-weight: 500; padding: 0; cursor: pointer;
   }
   td.col-endpoints button:hover{ text-decoration: underline; }
-  td.col-db input{ min-width: 130px; }
-  td.col-svc select{ min-width: 170px; }
+  td.col-db input{ min-width: 120px; }
+  td.col-svc select{ min-width: 160px; }
   td.col-svc .overridden-tag{
-    font-size: 10px;
-    color: var(--warn);
-    font-family: var(--mono);
-    display:block;
-    margin-top: 4px;
+    font-size: 9.5px; color: var(--warn); font-family: var(--mono); display:block; margin-top: 4px;
   }
 
   tr.detail-row{ display:none; }
   tr.detail-row.open{ display: table-row; }
   tr.detail-row td{
-    background: var(--bg);
-    padding: 10px 12px 12px 34px;
-    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg); padding: 10px 10px 12px 30px; border-bottom: 1px solid var(--border-soft);
   }
-  .endpoint-list{
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-dim);
-  }
+  .endpoint-list{ font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); }
   .endpoint-list div{ padding: 3px 0; display:flex; gap:10px; }
   .endpoint-list .path{ color: var(--text); }
   .endpoint-list .summary{ color: var(--text-faint); }
 
-  .footer-actions{
-    position: sticky;
-    bottom: 20px;
-    display:flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 8px;
+  #jsonPreview pre, .api-json-preview pre{
+    background: var(--bg); border: 1px solid var(--border-soft); border-radius: 4px;
+    padding: 14px; font-family: var(--mono); font-size: 11.5px; color: var(--text-dim);
+    max-height: 340px; overflow: auto; white-space: pre-wrap; word-break: break-word;
   }
 
-  #jsonPreview{
-    display:none;
-    margin-top: 16px;
-  }
-  #jsonPreview pre{
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 4px;
-    padding: 14px;
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--text-dim);
-    max-height: 340px;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .hint{
-    font-size: 12px;
-    color: var(--text-faint);
-    margin-top: 10px;
-    line-height: 1.5;
-  }
+  .hint{ font-size: 12px; color: var(--text-faint); margin-top: 10px; line-height: 1.5; }
   .hint code{
-    font-family: var(--mono);
-    background: rgba(255,255,255,0.05);
-    padding: 1px 5px;
-    border-radius: 3px;
-    color: var(--text-dim);
+    font-family: var(--mono); background: rgba(255,255,255,0.05);
+    padding: 1px 5px; border-radius: 3px; color: var(--text-dim);
   }
+  .hint.warn{ color: var(--warn); }
+
+  .stats-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 18px; }
+  .stat-chip{
+    font-family: var(--sans); font-size: 12px; color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: 5px; padding: 8px 14px;
+    background: var(--panel-raised); min-width: 90px;
+  }
+  .stat-chip b{
+    color: var(--text); font-size: 17px; display:block; margin-bottom: 2px;
+    font-family: var(--mono); font-weight: 600;
+  }
+
+  .add-inline{
+    display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;
+    margin: 4px 0 16px; padding: 12px; background: var(--bg);
+    border: 1px solid var(--border-soft); border-radius: 5px;
+  }
+  .add-inline .field{ min-width: 130px; }
+  .add-inline .field.narrow{ min-width: 70px; max-width: 80px; }
+
+  .icon-btn{
+    background:none; border:none; color: var(--text-faint);
+    font-size: 17px; line-height:1; cursor:pointer; padding: 2px 6px;
+  }
+  .icon-btn:hover{ color: var(--danger); }
+
+  .status-badge{
+    font-family: var(--mono); font-size: 10px; padding: 2px 9px; border-radius: 100px;
+    border: 1px solid var(--border); color: var(--text-faint); white-space: nowrap;
+  }
+  .status-badge.audited{ color: var(--accent); border-color: var(--accent-dim); background: rgba(79,209,197,0.08); }
+
+  .tree-node{
+    border: 1px solid var(--border); border-radius: 6px; background: var(--panel-raised);
+    margin-bottom: 10px; overflow: hidden;
+  }
+  .tree-node > .tree-head{
+    display:flex; align-items:center; justify-content: space-between;
+    padding: 12px 14px; cursor: pointer; gap: 14px;
+  }
+  .tree-node > .tree-head:hover{ background: rgba(255,255,255,0.02); }
+  .tree-node > .tree-body{ display:none; padding: 4px 14px 16px; border-top: 1px solid var(--border-soft); }
+  .tree-node.open > .tree-body{ display:block; }
+  .tree-node .chevron{
+    font-family: var(--mono); color: var(--text-faint); transition: transform 0.15s ease; flex-shrink:0;
+  }
+  .tree-node.open > .tree-head .chevron{ transform: rotate(90deg); }
+
+  .tree-level-dept{ border-left: 3px solid var(--dept-accent); }
+  .tree-level-app{ margin-left: 20px; border-left: 3px solid var(--app-accent); }
+  .tree-level-api{ margin-left: 0; border-left: 3px solid var(--api-accent); }
+
+  .tree-name{ font-family: var(--mono); font-weight: 600; font-size: 14px; }
+  .tree-meta{ font-size: 11.5px; color: var(--text-faint); margin-top: 3px; }
+  .tree-head-right{ display:flex; align-items:center; gap: 10px; flex-shrink:0; }
+
+  /* ---- pages ---- */
+  .page{ display:none; }
+  .page.active{ display:block; }
+
+  /* ---- login page ---- */
+  #page-login .login-wrap{
+    min-height: 90vh; display:flex; align-items:center; justify-content:center; padding: 24px;
+  }
+  .login-card{
+    width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 32px 30px;
+  }
+  .login-card .mark{
+    font-family: var(--mono); color: var(--accent); font-size: 13px; letter-spacing: 0.02em; margin-bottom: 10px;
+  }
+  .login-card h1{ font-size: 22px; margin-bottom: 6px; }
+  .login-card p.sub{ color: var(--text-dim); font-size: 13.5px; margin: 0 0 24px; }
+  .login-card .field{ margin-bottom: 16px; }
+  .login-card button.primary{ width: 100%; padding: 11px; margin-top: 4px; }
+  .login-note{
+    margin-top: 18px; font-size: 11.5px; color: var(--text-faint); line-height: 1.6;
+    border-top: 1px solid var(--border-soft); padding-top: 14px;
+  }
+  .loading-state{
+    min-height: 60vh; display:flex; align-items:center; justify-content:center;
+    color: var(--text-faint); font-family: var(--mono); font-size: 13px;
+  }
+
+  .breadcrumb-bar{ margin-bottom: 20px; font-size: 13px; }
+  .breadcrumb-bar a, .breadcrumb-bar button.link{
+    background:none; border:none; color: var(--accent); font-family: var(--sans);
+    font-size: 13px; font-weight: 500; cursor:pointer; padding:0; text-decoration:none;
+  }
+  .breadcrumb-bar a:hover, .breadcrumb-bar button.link:hover{ text-decoration: underline; }
+  .breadcrumb-bar .sep{ color: var(--text-faint); margin: 0 8px; }
+  .breadcrumb-bar .current{ color: var(--text-dim); }
 </style>
 </head>
 <body>
+
+<div class="topnav" id="topnav">
+  <div class="brand">
+    <span>API AUDITOR</span>
+    <span class="breadcrumb" id="breadcrumbNav"></span>
+  </div>
+  <div class="session">
+    <span>Signed in as <b id="sessionNameDisplay"></b></span>
+    <button id="logoutBtn" type="button">Log out</button>
+  </div>
+</div>
+
 <div class="wrap">
 
-  <header>
-    <div class="mark">API AUDITOR</div>
-    <h1>Endpoint & service audit</h1>
-    <p>Pulls the OpenAPI/Swagger spec from your API, groups routes into resources, and lets you confirm the database and service type for each one before exporting the result as JSON.</p>
-  </header>
-
-  <section id="connectionSection">
-    <h2>Connection</h2>
-    <div class="grid">
-      <div class="field">
-        <label for="baseUrl">Base URL</label>
-        <input type="text" id="baseUrl" value="https://api242.onrender.com" />
-      </div>
-      <div class="field">
-        <label for="username">Username</label>
-        <input type="text" id="username" value="admin" />
-      </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" value="spirit" />
-      </div>
-    </div>
-    <div class="row" style="margin-top:14px;">
-      <button class="primary" id="discoverBtn">Discover endpoints</button>
-      <button class="ghost" id="pasteToggleBtn" type="button">Paste spec JSON instead</button>
-    </div>
-    <div class="hint">
-      If <strong>Discover</strong> fails, it's most likely the browser blocking the cross-origin request (CORS) — the target API needs to send <code>Access-Control-Allow-Origin</code> headers for a page like this to fetch it directly. Fetch the spec once yourself (curl, Postman, or your browser's Network tab against <code>/swagger/v1/swagger.json</code>) and paste it in below instead.
-    </div>
-    <div id="pasteBlock">
-      <label for="pasteArea" style="margin-top:14px;">Paste Swagger / OpenAPI JSON</label>
-      <textarea id="pasteArea" placeholder='{"paths": { "/api/users": { ... } } }'></textarea>
-      <div class="row" style="margin-top:10px;">
-        <button class="primary" id="loadPastedBtn">Load pasted spec</button>
-      </div>
-    </div>
-    <div class="status-log" id="statusLog"></div>
-  </section>
-
-  <section id="defaultSection" style="display:none;">
-    <h2>Site-wide database default</h2>
-    <div class="default-db-row">
-      <div class="field">
-        <label for="siteDefault">Applies to every resource unless overridden below</label>
-        <input type="text" id="siteDefault" value="mongoose" />
-      </div>
-      <button class="ghost" id="applyAllBtn" type="button">Apply to all resources</button>
-    </div>
-  </section>
-
-  <section id="resourcesSection" style="display:none;">
-    <h2>Resources <span class="count" id="resourceCount">0</span></h2>
-    <div id="resourceList"></div>
-  </section>
-
-  <div class="footer-actions" id="footerActions" style="display:none;">
-    <button class="ghost" id="previewBtn">Preview JSON</button>
-    <button class="primary" id="downloadBtn">Download JSON</button>
+  <!-- ===================== LOADING ===================== -->
+  <div class="page active" id="page-loading">
+    <div class="loading-state">loading saved data...</div>
   </div>
 
-  <section id="jsonPreview">
-    <h2>JSON preview</h2>
-    <pre id="jsonPreviewText"></pre>
-  </section>
+  <!-- ===================== LOGIN ===================== -->
+  <div class="page" id="page-login">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="mark">API AUDITOR</div>
+        <h1>Sign in</h1>
+        <p class="sub">Identify yourself before auditing — this is used to label who ran each audit, not to restrict access.</p>
+        <div class="field">
+          <label for="loginName">Name</label>
+          <input type="text" id="loginName" placeholder="e.g. Jordan Lee" />
+        </div>
+        <div class="field">
+          <label for="loginTeam">Team / role (optional)</label>
+          <input type="text" id="loginTeam" placeholder="e.g. Platform Security" />
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="anything — see note below" />
+        </div>
+        <button class="primary" id="loginBtn" type="button">Sign in</button>
+        <div class="login-note">
+          This tool runs entirely in your browser with no server behind it, so this screen can't actually verify a password against anything — it's a lightweight identity gate, not real authentication. Your name is attached to the audits you tag. Data you enter is saved to your browser's storage for this tool only (not shared with other users) so it survives a page reload; API passwords are the one thing never saved and must be re-entered after a reload.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== HIERARCHY ===================== -->
+  <div class="page" id="page-hierarchy">
+    <header class="page-header">
+      <div class="mark">CORPORATE HIERARCHY</div>
+      <h1>Departments & apps</h1>
+      <p>Build out the org structure — departments own apps, apps own APIs. Open an app's inventory to run the endpoint audit against its APIs.</p>
+    </header>
+
+    <section id="orgSection">
+      <h2>Organization</h2>
+      <div class="stats-row" id="statsRow"></div>
+
+      <div class="add-inline">
+        <div class="field grow">
+          <label for="deptNameInput">Department name</label>
+          <input type="text" id="deptNameInput" placeholder="e.g. Marketing" />
+        </div>
+        <button class="primary" id="addDeptBtn" type="button">Add department</button>
+      </div>
+
+      <div id="deptList"></div>
+      <div class="empty-state" id="orgEmptyState">No departments yet — add one above to start building the hierarchy.</div>
+    </section>
+
+    <div class="row" style="justify-content:flex-end; margin-bottom: 20px;">
+      <button class="ghost" id="resetDataBtn">Reset all saved data</button>
+      <button class="ghost" id="previewFullBtn">Preview full JSON</button>
+      <button class="primary" id="downloadFullBtn">Download full audit JSON</button>
+    </div>
+
+    <section id="jsonPreview" style="display:none;">
+      <h2>JSON preview — full organization</h2>
+      <pre id="jsonPreviewText"></pre>
+    </section>
+  </div>
+
+  <!-- ===================== INVENTORY (per app) ===================== -->
+  <div class="page" id="page-inventory">
+    <div class="breadcrumb-bar" id="inventoryBreadcrumb"></div>
+    <header class="page-header">
+      <div class="mark">APP INVENTORY</div>
+      <h1 id="inventoryAppName">App</h1>
+      <p>The APIs this app owns. Expand one to discover its endpoints and tag each resource's database and service type.</p>
+    </header>
+
+    <section id="inventorySection">
+      <h2>APIs <span class="count" id="inventoryApiCount">0</span></h2>
+      <div class="add-inline">
+        <div class="field grow">
+          <label>API name</label>
+          <input type="text" id="invApiNameInput" placeholder="e.g. Orders Service" />
+        </div>
+        <div class="field grow">
+          <label>Base URL</label>
+          <input type="text" id="invApiUrlInput" placeholder="https://..." />
+        </div>
+        <button class="ghost" id="invAddApiBtn" type="button">Add API</button>
+        <div class="field narrow">
+          <label>Bulk add</label>
+          <input type="text" id="invBulkCount" placeholder="N" />
+        </div>
+        <div class="field grow">
+          <label>Name prefix</label>
+          <input type="text" id="invBulkPrefix" placeholder="API" />
+        </div>
+        <button class="ghost" id="invBulkAddBtn" type="button">Generate</button>
+      </div>
+      <div id="inventoryApiList"></div>
+      <div class="empty-state" id="inventoryEmptyState">No APIs yet — add one above.</div>
+    </section>
+  </div>
 
 </div>
 
@@ -419,36 +438,31 @@
   const IGNORED_SEGMENTS = new Set(["api","v1","v2","v3","v4"]);
   const SERVICE_TYPE_OPTIONS = ["single-service", "multi-subservices"];
   const CANDIDATE_SPEC_PATHS = [
-    "/swagger/v1/swagger.json",
-    "/swagger/v1/openapi.json",
-    "/swagger.json",
-    "/openapi.json",
-    "/v1/swagger.json",
-    "/api-docs",
-    "/api-docs.json",
-    "/v3/api-docs",
+    "/swagger/v1/swagger.json", "/swagger/v1/openapi.json", "/swagger.json",
+    "/openapi.json", "/v1/swagger.json", "/api-docs", "/api-docs.json", "/v3/api-docs",
   ];
+  const STORAGE_KEY = "org-hierarchy-v1";
+  const SESSION_KEY = "session-v1";
 
-  let resources = {};      // name -> { name, endpoints[], parents:Set, children:Set, rootLevel:bool }
-  let specUrlUsed = "";
-  let baseUrlUsed = "";
-
-  // ---------- logging ----------
-  const logEl = document.getElementById("statusLog");
-  function log(msg, cls){
-    logEl.style.display = "block";
-    const line = document.createElement("div");
-    if(cls) line.className = cls;
-    line.textContent = msg;
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
+  // ---------------------------------------------------------------------
+  // Utility
+  // ---------------------------------------------------------------------
+  let idCounter = 0;
+  function uid(prefix){ return prefix + "-" + (++idCounter); }
+  function bumpIdCounterFrom(id){
+    const m = /-(\d+)$/.exec(id);
+    if(m) idCounter = Math.max(idCounter, parseInt(m[1], 10));
   }
-  function clearLog(){
-    logEl.innerHTML = "";
-    logEl.style.display = "none";
+  function escapeHtml(s){
+    const div = document.createElement("div");
+    div.textContent = s == null ? "" : String(s);
+    return div.innerHTML;
   }
+  function methodBadgeClass(method){ return "method-" + method.toLowerCase(); }
 
-  // ---------- path -> resource parsing (mirrors the Python tool) ----------
+  // ---------------------------------------------------------------------
+  // Path -> resource parsing (pure)
+  // ---------------------------------------------------------------------
   function pathResources(path){
     const segments = path.split("/").filter(Boolean);
     const out = [];
@@ -471,11 +485,8 @@
         const details = methods[method];
         if(typeof details !== "object" || details === null) continue;
         endpoints.push({
-          path,
-          method: method.toUpperCase(),
-          summary: details.summary || "",
-          tags: details.tags || [],
-          resources: pathResources(path),
+          path, method: method.toUpperCase(), summary: details.summary || "",
+          tags: details.tags || [], resources: pathResources(path),
         });
       }
     }
@@ -485,9 +496,7 @@
   function buildResourceGraph(endpoints){
     const res = {};
     function getOrCreate(name){
-      if(!res[name]){
-        res[name] = { name, endpoints: [], parents: new Set(), children: new Set(), rootLevel: false };
-      }
+      if(!res[name]) res[name] = { name, endpoints: [], parents: new Set(), children: new Set(), rootLevel: false };
       return res[name];
     }
     for(const ep of endpoints){
@@ -495,9 +504,8 @@
       if(chain.length === 0) continue;
       chain.forEach((name, i) => {
         const node = getOrCreate(name);
-        if(i === 0){
-          node.rootLevel = true;
-        } else {
+        if(i === 0){ node.rootLevel = true; }
+        else {
           const parent = chain[i-1];
           node.parents.add(parent);
           res[parent].children.add(name);
@@ -514,45 +522,59 @@
     return hasRelationships ? "multi-subservices" : "single-service";
   }
 
-  // ---------- spec discovery ----------
-  function authHeader(user, pass){
-    return "Basic " + btoa(unescape(encodeURIComponent(user + ":" + pass)));
+  function buildGroups(resourcesObj){
+    const names = Object.keys(resourcesObj).sort();
+    const visited = new Set();
+    const groups = [];
+    function collect(name, depth, rows){
+      if(visited.has(name)) return;
+      visited.add(name);
+      rows.push({ name, depth });
+      const children = [...resourcesObj[name].children].sort();
+      for(const child of children) collect(child, depth + 1, rows);
+    }
+    const trueRoots = names.filter(n => resourcesObj[n].parents.size === 0);
+    for(const root of trueRoots){
+      const rows = [];
+      collect(root, 0, rows);
+      groups.push({ title: root, rows });
+    }
+    const orphans = names.filter(n => !visited.has(n));
+    if(orphans.length){
+      groups.push({ title: "(no clear root — circular or unresolved references)", rows: orphans.map(n => ({ name: n, depth: 0 })) });
+    }
+    return groups;
   }
 
-  async function tryFetchJson(url, headers){
+  // ---------------------------------------------------------------------
+  // Spec discovery
+  // ---------------------------------------------------------------------
+  function authHeader(user, pass){
+    return "Basic " + btoa(unescape(encodeURIComponent((user||"") + ":" + (pass||""))));
+  }
+  async function tryFetchJson(url, headers, logger){
     try{
       const resp = await fetch(url, { headers });
       if(resp.ok){
         try{
           const data = await resp.json();
           if(data && data.paths) return data;
-          log(`  ${url} -> 200 but no "paths" key`, "err");
-        }catch(e){
-          log(`  ${url} -> 200 but not valid JSON`, "err");
-        }
-      } else {
-        log(`  ${url} -> HTTP ${resp.status}`, "err");
-      }
-    }catch(e){
-      log(`  ${url} -> blocked or unreachable (likely CORS): ${e.message}`, "err");
-    }
+          logger(`  ${url} -> 200 but no "paths" key`, "err");
+        }catch(e){ logger(`  ${url} -> 200 but not valid JSON`, "err"); }
+      } else { logger(`  ${url} -> HTTP ${resp.status}`, "err"); }
+    }catch(e){ logger(`  ${url} -> blocked or unreachable (likely CORS): ${e.message}`, "err"); }
     return null;
   }
-
-  async function discoverSpec(baseUrl, user, pass){
+  async function discoverSpec(baseUrl, user, pass, logger){
     const headers = { "Authorization": authHeader(user, pass) };
     for(const path of CANDIDATE_SPEC_PATHS){
       const url = baseUrl.replace(/\/$/, "") + path;
-      log(`trying ${url} ...`);
-      const spec = await tryFetchJson(url, headers);
-      if(spec){
-        log(`found spec at ${url}`, "ok");
-        return { spec, specUrl: url };
-      }
+      logger(`trying ${url} ...`);
+      const spec = await tryFetchJson(url, headers, logger);
+      if(spec){ logger(`found spec at ${url}`, "ok"); return { spec, specUrl: url }; }
     }
-    // fallback: scrape /swagger UI page for the configured spec url
     const uiUrl = baseUrl.replace(/\/$/, "") + "/swagger";
-    log(`trying to scrape ${uiUrl} for spec location ...`);
+    logger(`trying to scrape ${uiUrl} for spec location ...`);
     try{
       const resp = await fetch(uiUrl, { headers });
       if(resp.ok){
@@ -561,120 +583,163 @@
         if(match){
           const specPath = match[1];
           const specUrl = specPath.startsWith("http") ? specPath : baseUrl.replace(/\/$/, "") + specPath;
-          log(`  found reference to ${specUrl}, fetching ...`);
-          const spec = await tryFetchJson(specUrl, headers);
-          if(spec){
-            log(`found spec at ${specUrl}`, "ok");
-            return { spec, specUrl };
-          }
-        } else {
-          log(`  no spec url pattern found in page HTML`, "err");
-        }
-      } else {
-        log(`  ${uiUrl} -> HTTP ${resp.status}`, "err");
-      }
-    }catch(e){
-      log(`  ${uiUrl} -> blocked or unreachable: ${e.message}`, "err");
-    }
+          logger(`  found reference to ${specUrl}, fetching ...`);
+          const spec = await tryFetchJson(specUrl, headers, logger);
+          if(spec){ logger(`found spec at ${specUrl}`, "ok"); return { spec, specUrl }; }
+        } else { logger(`  no spec url pattern found in page HTML`, "err"); }
+      } else { logger(`  ${uiUrl} -> HTTP ${resp.status}`, "err"); }
+    }catch(e){ logger(`  ${uiUrl} -> blocked or unreachable: ${e.message}`, "err"); }
     return null;
   }
 
-  // ---------- rendering ----------
-  const resourceListEl = document.getElementById("resourceList");
-  const resourceCountEl = document.getElementById("resourceCount");
-  const defaultSection = document.getElementById("defaultSection");
-  const resourcesSection = document.getElementById("resourcesSection");
-  const footerActions = document.getElementById("footerActions");
-  const siteDefaultInput = document.getElementById("siteDefault");
+  // ---------------------------------------------------------------------
+  // Data model
+  // ---------------------------------------------------------------------
+  let departments = [];
+  let session = null; // { name, team }
 
-  function methodBadgeClass(method){
-    return "method-" + method.toLowerCase();
+  function createDepartment(name){ return { id: uid("dept"), name, expanded: true, apps: [] }; }
+  function createApp(name){ return { id: uid("app"), name, expanded: true, apis: [] }; }
+  function createApi(name, baseUrl, username, password){
+    return {
+      id: uid("api"), name, baseUrl: baseUrl || "", username: username || "admin", password: password || "",
+      expanded: false, discovered: false, specUrl: "", siteDefault: "mongoose",
+      resources: {}, _log: [],
+    };
   }
 
-  // Group resources by top-level ancestor: any resource with zero parents
-  // starts a group; its children (and their children, recursively) are
-  // nested rows in the same table. A resource is only ever rendered once
-  // (first group that reaches it), so diamond relationships don't duplicate
-  // rows/inputs.
-  function buildGroups(){
-    const names = Object.keys(resources).sort();
-    const visited = new Set();
-    const groups = [];
-
-    function collect(name, depth, rows){
-      if(visited.has(name)) return;
-      visited.add(name);
-      rows.push({ name, depth });
-      const children = [...resources[name].children].sort();
-      for(const child of children){
-        collect(child, depth + 1, rows);
+  function computeStats(){
+    let apps = 0, apis = 0, audited = 0, resourcesTotal = 0;
+    for(const d of departments){
+      apps += d.apps.length;
+      for(const a of d.apps){
+        apis += a.apis.length;
+        for(const api of a.apis){
+          if(api.discovered) audited++;
+          resourcesTotal += Object.keys(api.resources).length;
+        }
       }
     }
-
-    const trueRoots = names.filter(n => resources[n].parents.size === 0);
-    for(const root of trueRoots){
-      const rows = [];
-      collect(root, 0, rows);
-      groups.push({ title: root, rows });
-    }
-
-    // Fallback for any resource never reached (only possible with a cycle
-    // that has no zero-parent entry point — rare, but don't lose data).
-    const orphans = names.filter(n => !visited.has(n));
-    if(orphans.length){
-      groups.push({
-        title: "(no clear root — circular or unresolved references)",
-        rows: orphans.map(n => ({ name: n, depth: 0 })),
-      });
-    }
-
-    return groups;
+    return { departments: departments.length, apps, apis, audited, resourcesTotal };
   }
 
-  function renderResources(){
-    resourceListEl.innerHTML = "";
-    const groups = buildGroups();
-    const totalResources = Object.keys(resources).length;
-    resourceCountEl.textContent = totalResources;
+  // ---------------------------------------------------------------------
+  // Persistence (window.storage) — passwords are never persisted
+  // ---------------------------------------------------------------------
+  function serializeDepartments(){
+    return departments.map(d => ({
+      id: d.id, name: d.name, expanded: d.expanded,
+      apps: d.apps.map(a => ({
+        id: a.id, name: a.name, expanded: a.expanded,
+        apis: a.apis.map(api => ({
+          id: api.id, name: api.name, baseUrl: api.baseUrl, username: api.username,
+          expanded: api.expanded, discovered: api.discovered, specUrl: api.specUrl,
+          siteDefault: api.siteDefault, _log: api._log,
+          resources: Object.fromEntries(Object.entries(api.resources).map(([k, r]) => [k, {
+            name: r.name, endpoints: r.endpoints, parents: [...r.parents], children: [...r.children],
+            rootLevel: r.rootLevel, _serviceType: r._serviceType, _database: r._database,
+          }])),
+        })),
+      })),
+    }));
+  }
 
-    if(totalResources === 0){
-      resourceListEl.innerHTML = '<div class="empty-state">No resources discovered yet.</div>';
+  function deserializeDepartments(raw){
+    return (raw || []).map(d => {
+      bumpIdCounterFrom(d.id);
+      return {
+        id: d.id, name: d.name, expanded: !!d.expanded,
+        apps: (d.apps || []).map(a => {
+          bumpIdCounterFrom(a.id);
+          return {
+            id: a.id, name: a.name, expanded: !!a.expanded,
+            apis: (a.apis || []).map(api => {
+              bumpIdCounterFrom(api.id);
+              return {
+                id: api.id, name: api.name, baseUrl: api.baseUrl || "", username: api.username || "admin",
+                password: "", // never persisted — must be re-entered each session
+                expanded: !!api.expanded, discovered: !!api.discovered, specUrl: api.specUrl || "",
+                siteDefault: api.siteDefault || "mongoose", _log: api._log || [],
+                resources: Object.fromEntries(Object.entries(api.resources || {}).map(([k, r]) => [k, {
+                  name: r.name, endpoints: r.endpoints || [],
+                  parents: new Set(r.parents || []), children: new Set(r.children || []),
+                  rootLevel: !!r.rootLevel, _serviceType: r._serviceType, _database: r._database,
+                }])),
+              };
+            }),
+          };
+        }),
+      };
+    });
+  }
+
+  let saveTimer = null;
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persistState, 500);
+  }
+  async function persistState(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(serializeDepartments()), false);
+    }catch(e){ console.warn("could not save org state", e); }
+  }
+  async function loadState(){
+    try{
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if(result && result.value) return deserializeDepartments(JSON.parse(result.value));
+    }catch(e){ /* no saved state yet, or storage unavailable */ }
+    return [];
+  }
+  async function persistSession(){
+    try{
+      await window.storage.set(SESSION_KEY, JSON.stringify(session), false);
+    }catch(e){ console.warn("could not save session", e); }
+  }
+  async function loadSession(){
+    try{
+      const result = await window.storage.get(SESSION_KEY, false);
+      if(result && result.value) return JSON.parse(result.value);
+    }catch(e){ /* no saved session */ }
+    return null;
+  }
+  async function clearAllStorage(){
+    try{ await window.storage.delete(STORAGE_KEY, false); }catch(e){}
+    try{ await window.storage.delete(SESSION_KEY, false); }catch(e){}
+  }
+
+  // ---------------------------------------------------------------------
+  // Per-API resource table rendering
+  // ---------------------------------------------------------------------
+  function renderResourceTablesInto(api, containerEl, countBadgeEl){
+    containerEl.innerHTML = "";
+    const groups = buildGroups(api.resources);
+    const total = Object.keys(api.resources).length;
+    if(countBadgeEl) countBadgeEl.textContent = total;
+
+    if(total === 0){
+      containerEl.innerHTML = '<div class="empty-state">No resources discovered yet.</div>';
       return;
     }
 
     for(const group of groups){
       const groupEl = document.createElement("div");
       groupEl.className = "group";
-
       const titleEl = document.createElement("div");
       titleEl.className = "group-title";
-      titleEl.innerHTML = `${group.title} <span class="group-count">${group.rows.length} resource${group.rows.length===1?"":"s"}</span>`;
+      titleEl.innerHTML = `${escapeHtml(group.title)} <span class="group-count">${group.rows.length} resource${group.rows.length===1?"":"s"}</span>`;
       groupEl.appendChild(titleEl);
 
       const table = document.createElement("table");
       table.className = "resource-table";
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>Resource</th>
-            <th>Methods</th>
-            <th>Endpoints</th>
-            <th>Database</th>
-            <th>Service type</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
+      table.innerHTML = `<thead><tr><th>Resource</th><th>Methods</th><th>Endpoints</th><th>Database</th><th>Service type</th></tr></thead><tbody></tbody>`;
       const tbody = table.querySelector("tbody");
 
       for(const { name, depth } of group.rows){
-        const r = resources[name];
+        const r = api.resources[name];
         const suggested = inferServiceType(r);
         if(!r._serviceType) r._serviceType = suggested;
-        if(r._database === undefined) r._database = siteDefaultInput.value || "";
-
+        if(r._database === undefined) r._database = api.siteDefault || "";
         const methods = [...new Set(r.endpoints.map(e => e.method))].sort();
-        const rowId = "row-" + name.replace(/[^a-zA-Z0-9_-]/g, "_");
 
         const dataRow = document.createElement("tr");
         dataRow.className = "data-row";
@@ -682,9 +747,7 @@
 
         const resourceCell = document.createElement("td");
         resourceCell.className = "col-resource";
-        resourceCell.innerHTML = depth > 0
-          ? `<span class="indent">${"—".repeat(depth)}</span>${name}`
-          : name;
+        resourceCell.innerHTML = depth > 0 ? `<span class="indent">${"—".repeat(depth)}</span>${escapeHtml(name)}` : escapeHtml(name);
 
         const methodsCell = document.createElement("td");
         methodsCell.className = "col-methods";
@@ -702,7 +765,7 @@
         const dbInput = document.createElement("input");
         dbInput.type = "text";
         dbInput.value = r._database;
-        dbInput.addEventListener("input", () => { r._database = dbInput.value; });
+        dbInput.addEventListener("input", () => { r._database = dbInput.value; scheduleSave(); });
         dbCell.appendChild(dbInput);
 
         const svcCell = document.createElement("td");
@@ -722,6 +785,7 @@
         select.addEventListener("change", () => {
           r._serviceType = select.value;
           overriddenTag.style.display = (r._serviceType !== suggested) ? "block" : "none";
+          scheduleSave();
         });
         svcCell.appendChild(select);
         svcCell.appendChild(overriddenTag);
@@ -735,152 +799,622 @@
 
         const detailRow = document.createElement("tr");
         detailRow.className = "detail-row";
-        detailRow.id = rowId + "-detail";
         const detailCell = document.createElement("td");
         detailCell.colSpan = 5;
         const endpointList = document.createElement("div");
         endpointList.className = "endpoint-list";
-        endpointList.innerHTML = r.endpoints
-          .slice()
+        endpointList.innerHTML = r.endpoints.slice()
           .sort((a,b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
-          .map(e => `<div><span class="badge ${methodBadgeClass(e.method)}">${e.method}</span><span class="path">${e.path}</span><span class="summary">${e.summary || ""}</span></div>`)
+          .map(e => `<div><span class="badge ${methodBadgeClass(e.method)}">${e.method}</span><span class="path">${escapeHtml(e.path)}</span><span class="summary">${escapeHtml(e.summary || "")}</span></div>`)
           .join("");
         detailCell.appendChild(endpointList);
         detailRow.appendChild(detailCell);
         tbody.appendChild(detailRow);
 
-        toggleBtn.addEventListener("click", () => {
-          detailRow.classList.toggle("open");
-        });
+        toggleBtn.addEventListener("click", () => detailRow.classList.toggle("open"));
       }
-
       groupEl.appendChild(table);
-      resourceListEl.appendChild(groupEl);
+      containerEl.appendChild(groupEl);
     }
   }
 
-  // ---------- output ----------
-  function buildOutput(){
-    const names = Object.keys(resources).sort();
+  function buildApiOutput(api){
+    const names = Object.keys(api.resources).sort();
     const resourceList = names.map(name => {
-      const r = resources[name];
+      const r = api.resources[name];
       const suggested = inferServiceType(r);
       const confirmed = r._serviceType || suggested;
       return {
-        resource: name,
-        database: r._database || siteDefaultInput.value || "",
-        service_type: confirmed,
-        service_type_suggested: suggested,
+        resource: name, database: r._database || api.siteDefault || "",
+        service_type: confirmed, service_type_suggested: suggested,
         admin_overrode_service_type: confirmed !== suggested,
-        parents: [...r.parents].sort(),
-        children: [...r.children].sort(),
+        parents: [...r.parents].sort(), children: [...r.children].sort(),
         endpoint_count: r.endpoints.length,
         endpoints: r.endpoints.slice().sort((a,b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method)),
       };
     });
-
     return {
-      tool: "API Auditor",
-      generated_at: new Date().toISOString(),
-      base_url: baseUrlUsed,
-      spec_url: specUrlUsed,
-      site_default_database: siteDefaultInput.value || "",
-      resource_count: resourceList.length,
+      api: api.name, base_url: api.baseUrl, spec_url: api.specUrl, discovered: api.discovered,
+      site_default_database: api.siteDefault || "", resource_count: resourceList.length,
       endpoint_count: resourceList.reduce((sum, r) => sum + r.endpoint_count, 0),
       resources: resourceList,
     };
   }
 
-  function downloadJson(){
-    const output = buildOutput();
+  // ---------------------------------------------------------------------
+  // Per-API audit panel (used inside the Inventory page)
+  // ---------------------------------------------------------------------
+  function buildApiPanel(api, badgeEl, onChange){
+    const wrap = document.createElement("div");
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    grid.innerHTML = `
+      <div class="field"><label>Base URL</label><input type="text" class="f-baseurl" /></div>
+      <div class="field"><label>Username</label><input type="text" class="f-username" /></div>
+      <div class="field"><label>Password <span style="color:var(--text-faint);">(not saved between sessions)</span></label><input type="password" class="f-password" /></div>
+    `;
+    const baseUrlInput = grid.querySelector(".f-baseurl"); baseUrlInput.value = api.baseUrl;
+    baseUrlInput.addEventListener("input", () => { api.baseUrl = baseUrlInput.value; if(onChange) onChange(); scheduleSave(); });
+    const userInput = grid.querySelector(".f-username"); userInput.value = api.username;
+    userInput.addEventListener("input", () => { api.username = userInput.value; scheduleSave(); });
+    const passInput = grid.querySelector(".f-password"); passInput.value = api.password;
+    passInput.addEventListener("input", () => { api.password = passInput.value; }); // never persisted
+    wrap.appendChild(grid);
+
+    const btnRow = document.createElement("div");
+    btnRow.className = "row";
+    btnRow.style.marginTop = "14px";
+    const discoverBtn = document.createElement("button");
+    discoverBtn.className = "primary"; discoverBtn.type = "button"; discoverBtn.textContent = "Discover endpoints";
+    const pasteToggleBtn = document.createElement("button");
+    pasteToggleBtn.className = "ghost"; pasteToggleBtn.type = "button"; pasteToggleBtn.textContent = "Paste spec JSON instead";
+    btnRow.appendChild(discoverBtn);
+    btnRow.appendChild(pasteToggleBtn);
+    wrap.appendChild(btnRow);
+
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.innerHTML = `If <strong>Discover</strong> fails, it's most likely the browser blocking the cross-origin request (CORS). Fetch the spec once yourself (curl, Postman, or your browser's Network tab against <code>/swagger/v1/swagger.json</code>) and paste it in below instead.`;
+    wrap.appendChild(hint);
+
+    const pasteBlock = document.createElement("div");
+    pasteBlock.style.display = "none";
+    pasteBlock.style.marginTop = "14px";
+    pasteBlock.innerHTML = `
+      <label>Paste Swagger / OpenAPI JSON</label>
+      <textarea class="f-paste" placeholder='{"paths": { "/api/users": { ... } } }'></textarea>
+      <div class="row" style="margin-top:10px;"><button class="primary f-load-paste" type="button">Load pasted spec</button></div>
+    `;
+    wrap.appendChild(pasteBlock);
+    pasteToggleBtn.addEventListener("click", () => {
+      pasteBlock.style.display = pasteBlock.style.display === "block" ? "none" : "block";
+    });
+
+    const statusLog = document.createElement("div");
+    statusLog.className = "status-log";
+    wrap.appendChild(statusLog);
+
+    function apiLog(msg, cls){
+      api._log.push({ msg, cls });
+      statusLog.style.display = "block";
+      const line = document.createElement("div");
+      if(cls) line.className = cls;
+      line.textContent = msg;
+      statusLog.appendChild(line);
+      statusLog.scrollTop = statusLog.scrollHeight;
+    }
+    for(const entry of api._log){
+      statusLog.style.display = "block";
+      const line = document.createElement("div");
+      if(entry.cls) line.className = entry.cls;
+      line.textContent = entry.msg;
+      statusLog.appendChild(line);
+    }
+
+    const defaultSection = document.createElement("div");
+    defaultSection.style.display = api.discovered ? "block" : "none";
+    defaultSection.style.marginTop = "18px";
+    defaultSection.innerHTML = `
+      <h2 style="font-size:12.5px; margin-bottom:10px;">Site-wide database default</h2>
+      <div class="default-db-row">
+        <div class="field"><label>Applies to every resource unless overridden below</label><input type="text" class="f-sitedefault" /></div>
+        <button class="ghost f-apply-all" type="button">Apply to all resources</button>
+      </div>
+    `;
+    const siteDefaultInput = defaultSection.querySelector(".f-sitedefault");
+    siteDefaultInput.value = api.siteDefault;
+    siteDefaultInput.addEventListener("input", () => { api.siteDefault = siteDefaultInput.value; scheduleSave(); });
+    wrap.appendChild(defaultSection);
+
+    const resourcesSection = document.createElement("div");
+    resourcesSection.style.display = api.discovered ? "block" : "none";
+    resourcesSection.style.marginTop = "18px";
+    resourcesSection.innerHTML = `<h2 style="font-size:12.5px; margin-bottom:10px;">Resources <span class="count resource-count-badge">0</span></h2><div class="resource-list-container"></div>`;
+    wrap.appendChild(resourcesSection);
+    const resourceCountBadge = resourcesSection.querySelector(".resource-count-badge");
+    const resourceListContainer = resourcesSection.querySelector(".resource-list-container");
+
+    function refreshResourceTables(){
+      renderResourceTablesInto(api, resourceListContainer, resourceCountBadge);
+    }
+
+    defaultSection.querySelector(".f-apply-all").addEventListener("click", () => {
+      const val = siteDefaultInput.value;
+      for(const name of Object.keys(api.resources)) api.resources[name]._database = val;
+      refreshResourceTables();
+      scheduleSave();
+    });
+
+    function onSpecLoaded(spec, specUrl){
+      api.specUrl = specUrl;
+      const endpoints = extractEndpoints(spec);
+      api.resources = buildResourceGraph(endpoints);
+      api.discovered = true;
+      apiLog(`parsed ${endpoints.length} endpoint(s) into ${Object.keys(api.resources).length} resource(s)`, "ok");
+      defaultSection.style.display = "block";
+      resourcesSection.style.display = "block";
+      apiFooter.style.display = "flex";
+      if(badgeEl){ badgeEl.textContent = "audited"; badgeEl.classList.add("audited"); }
+      refreshResourceTables();
+      renderStats();
+      scheduleSave();
+    }
+
+    discoverBtn.addEventListener("click", async () => {
+      if(!api.baseUrl){ apiLog("enter a base URL first", "err"); return; }
+      discoverBtn.disabled = true;
+      discoverBtn.textContent = "Discovering...";
+      try{
+        const result = await discoverSpec(api.baseUrl, api.username, api.password, apiLog);
+        if(result) onSpecLoaded(result.spec, result.specUrl);
+        else apiLog("could not locate a spec at any known path — try the paste option below", "err");
+      } finally {
+        discoverBtn.disabled = false;
+        discoverBtn.textContent = "Discover endpoints";
+      }
+    });
+
+    pasteBlock.querySelector(".f-load-paste").addEventListener("click", () => {
+      const raw = pasteBlock.querySelector(".f-paste").value.trim();
+      if(!raw){ apiLog("paste some JSON first", "err"); return; }
+      let spec;
+      try{ spec = JSON.parse(raw); } catch(e){ apiLog("that's not valid JSON: " + e.message, "err"); return; }
+      if(!spec.paths){ apiLog('parsed JSON but found no "paths" key — is this the right spec?', "err"); return; }
+      apiLog("loaded pasted spec", "ok");
+      onSpecLoaded(spec, "(pasted manually)");
+    });
+
+    const apiFooter = document.createElement("div");
+    apiFooter.className = "row";
+    apiFooter.style.marginTop = "16px";
+    apiFooter.style.display = api.discovered ? "flex" : "none";
+    apiFooter.innerHTML = `<button class="ghost f-preview" type="button">Preview this API's JSON</button><button class="ghost f-download" type="button">Download this API's JSON</button>`;
+    wrap.appendChild(apiFooter);
+
+    const apiPreview = document.createElement("div");
+    apiPreview.className = "api-json-preview";
+    apiPreview.style.display = "none";
+    apiPreview.style.marginTop = "12px";
+    apiPreview.innerHTML = `<pre></pre>`;
+    wrap.appendChild(apiPreview);
+
+    apiFooter.querySelector(".f-preview").addEventListener("click", () => {
+      apiPreview.querySelector("pre").textContent = JSON.stringify(buildApiOutput(api), null, 2);
+      apiPreview.style.display = apiPreview.style.display === "block" ? "none" : "block";
+    });
+    apiFooter.querySelector(".f-download").addEventListener("click", () => {
+      const output = buildApiOutput(api);
+      const blob = new Blob([JSON.stringify(output, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (api.name || "api").replace(/[^a-z0-9_-]+/gi, "_") + "_audit.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    if(api.discovered) refreshResourceTables();
+    return wrap;
+  }
+
+  // ---------------------------------------------------------------------
+  // Navigation state
+  // ---------------------------------------------------------------------
+  let currentView = { page: "loading" };
+
+  const pages = {
+    loading: document.getElementById("page-loading"),
+    login: document.getElementById("page-login"),
+    hierarchy: document.getElementById("page-hierarchy"),
+    inventory: document.getElementById("page-inventory"),
+  };
+  const topnav = document.getElementById("topnav");
+  const breadcrumbNav = document.getElementById("breadcrumbNav");
+  const sessionNameDisplay = document.getElementById("sessionNameDisplay");
+
+  function showPage(name){
+    for(const key of Object.keys(pages)) pages[key].classList.toggle("active", key === name);
+    topnav.classList.toggle("visible", name === "hierarchy" || name === "inventory");
+  }
+
+  function goToHierarchy(){
+    currentView = { page: "hierarchy" };
+    render();
+  }
+  function goToInventory(deptId, appId){
+    currentView = { page: "inventory", deptId, appId };
+    render();
+  }
+
+  function updateBreadcrumb(){
+    if(currentView.page === "hierarchy"){
+      breadcrumbNav.innerHTML = `<span class="current">Hierarchy</span>`;
+    } else if(currentView.page === "inventory"){
+      const dept = departments.find(d => d.id === currentView.deptId);
+      const app = dept ? dept.apps.find(a => a.id === currentView.appId) : null;
+      breadcrumbNav.innerHTML = `
+        <button data-nav="hierarchy">Hierarchy</button>
+        <span class="sep">/</span>
+        <span class="current">${escapeHtml(dept ? dept.name : "")} → ${escapeHtml(app ? app.name : "")}</span>
+      `;
+      const btn = breadcrumbNav.querySelector('[data-nav="hierarchy"]');
+      if(btn) btn.addEventListener("click", goToHierarchy);
+    } else {
+      breadcrumbNav.innerHTML = "";
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Hierarchy page rendering (structure only — no nested API panels)
+  // ---------------------------------------------------------------------
+  const deptListEl = document.getElementById("deptList");
+  const orgEmptyState = document.getElementById("orgEmptyState");
+  const statsRowEl = document.getElementById("statsRow");
+
+  function renderStats(){
+    const s = computeStats();
+    statsRowEl.innerHTML = `
+      <div class="stat-chip"><b>${s.departments}</b>departments</div>
+      <div class="stat-chip"><b>${s.apps}</b>apps</div>
+      <div class="stat-chip"><b>${s.apis}</b>APIs</div>
+      <div class="stat-chip"><b>${s.audited}/${s.apis}</b>audited</div>
+      <div class="stat-chip"><b>${s.resourcesTotal}</b>resources found</div>
+    `;
+  }
+
+  function renderHierarchyPage(){
+    deptListEl.innerHTML = "";
+    orgEmptyState.style.display = departments.length ? "none" : "block";
+    for(const dept of departments) deptListEl.appendChild(renderDepartment(dept));
+    renderStats();
+  }
+
+  function renderDepartment(dept){
+    const node = document.createElement("div");
+    node.className = "tree-node tree-level-dept" + (dept.expanded ? " open" : "");
+    const apiCount = dept.apps.reduce((sum, a) => sum + a.apis.length, 0);
+
+    const head = document.createElement("div");
+    head.className = "tree-head";
+    head.innerHTML = `
+      <div>
+        <div class="tree-name">${escapeHtml(dept.name)}</div>
+        <div class="tree-meta">${dept.apps.length} app${dept.apps.length===1?"":"s"} · ${apiCount} API${apiCount===1?"":"s"}</div>
+      </div>
+      <div class="tree-head-right">
+        <button class="icon-btn" data-action="delete" title="Remove department">×</button>
+        <div class="chevron">▸</div>
+      </div>
+    `;
+    head.addEventListener("click", (e) => {
+      if(e.target.closest('[data-action="delete"]')) return;
+      dept.expanded = !dept.expanded;
+      renderHierarchyPage();
+      scheduleSave();
+    });
+    head.querySelector('[data-action="delete"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      departments = departments.filter(d => d.id !== dept.id);
+      renderHierarchyPage();
+      scheduleSave();
+    });
+
+    const body = document.createElement("div");
+    body.className = "tree-body";
+
+    if(dept.expanded){
+      const addForm = document.createElement("div");
+      addForm.className = "add-inline";
+      addForm.innerHTML = `
+        <div class="field grow"><label>App name</label><input type="text" class="app-name-input" placeholder="e.g. Campaign Manager" /></div>
+        <button class="ghost add-app-btn" type="button">Add app</button>
+        <div class="field narrow"><label>Bulk add</label><input type="text" class="bulk-app-count" placeholder="N" /></div>
+        <div class="field grow"><label>Name prefix</label><input type="text" class="bulk-app-prefix" placeholder="App" /></div>
+        <div class="field narrow"><label>APIs each</label><input type="text" class="bulk-api-per-app" placeholder="1" /></div>
+        <button class="ghost bulk-add-apps-btn" type="button">Generate</button>
+      `;
+      body.appendChild(addForm);
+
+      addForm.querySelector(".add-app-btn").addEventListener("click", () => {
+        const input = addForm.querySelector(".app-name-input");
+        const name = input.value.trim();
+        if(!name) return;
+        dept.apps.push(createApp(name));
+        renderHierarchyPage();
+        scheduleSave();
+      });
+
+      addForm.querySelector(".bulk-add-apps-btn").addEventListener("click", () => {
+        const n = parseInt(addForm.querySelector(".bulk-app-count").value, 10);
+        const prefix = addForm.querySelector(".bulk-app-prefix").value.trim() || "App";
+        const apisEach = parseInt(addForm.querySelector(".bulk-api-per-app").value, 10) || 0;
+        if(!n || n < 1) return;
+        for(let i = 1; i <= n; i++){
+          const app = createApp(`${prefix} ${i}`);
+          for(let j = 1; j <= apisEach; j++) app.apis.push(createApi(`${prefix} ${i} API ${j}`, "", "admin", ""));
+          dept.apps.push(app);
+        }
+        renderHierarchyPage();
+        scheduleSave();
+      });
+
+      if(dept.apps.length === 0){
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "No apps yet.";
+        body.appendChild(empty);
+      } else {
+        for(const app of dept.apps) body.appendChild(renderAppSummary(dept, app));
+      }
+    }
+
+    node.appendChild(head);
+    node.appendChild(body);
+    return node;
+  }
+
+  // App row on the hierarchy page: summary only, links out to its Inventory page.
+  function renderAppSummary(dept, app){
+    const node = document.createElement("div");
+    node.className = "tree-node tree-level-app";
+    const auditedCount = app.apis.filter(a => a.discovered).length;
+
+    node.innerHTML = `
+      <div class="tree-head" style="cursor:default;">
+        <div>
+          <div class="tree-name">${escapeHtml(app.name)}</div>
+          <div class="tree-meta">${app.apis.length} API${app.apis.length===1?"":"s"} · ${auditedCount} audited</div>
+        </div>
+        <div class="tree-head-right">
+          <button class="icon-btn" data-action="delete" title="Remove app">×</button>
+          <button class="ghost" data-action="open" type="button">Open inventory →</button>
+        </div>
+      </div>
+    `;
+    node.querySelector('[data-action="delete"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      dept.apps = dept.apps.filter(a => a.id !== app.id);
+      renderHierarchyPage();
+      scheduleSave();
+    });
+    node.querySelector('[data-action="open"]').addEventListener("click", () => {
+      goToInventory(dept.id, app.id);
+    });
+    return node;
+  }
+
+  // ---------------------------------------------------------------------
+  // Inventory page (per app): manage & audit that app's APIs
+  // ---------------------------------------------------------------------
+  const inventoryAppName = document.getElementById("inventoryAppName");
+  const inventoryApiCount = document.getElementById("inventoryApiCount");
+  const inventoryApiList = document.getElementById("inventoryApiList");
+  const inventoryEmptyState = document.getElementById("inventoryEmptyState");
+  const inventoryBreadcrumb = document.getElementById("inventoryBreadcrumb");
+
+  function getCurrentAppRef(){
+    const dept = departments.find(d => d.id === currentView.deptId);
+    const app = dept ? dept.apps.find(a => a.id === currentView.appId) : null;
+    return { dept, app };
+  }
+
+  function renderInventoryPage(){
+    const { dept, app } = getCurrentAppRef();
+    if(!dept || !app){
+      // stale reference (e.g. app was deleted) — bounce back to hierarchy
+      goToHierarchy();
+      return;
+    }
+
+    inventoryBreadcrumb.innerHTML = `
+      <button class="link" data-nav="hierarchy">Hierarchy</button>
+      <span class="sep">/</span>
+      <span class="current">${escapeHtml(dept.name)} → ${escapeHtml(app.name)}</span>
+    `;
+    inventoryBreadcrumb.querySelector('[data-nav="hierarchy"]').addEventListener("click", goToHierarchy);
+
+    inventoryAppName.textContent = app.name;
+    inventoryApiCount.textContent = app.apis.length;
+    inventoryApiList.innerHTML = "";
+    inventoryEmptyState.style.display = app.apis.length ? "none" : "block";
+
+    for(const api of app.apis){
+      inventoryApiList.appendChild(renderApiRow(dept, app, api));
+    }
+  }
+
+  function renderApiRow(dept, app, api){
+    const node = document.createElement("div");
+    node.className = "tree-node tree-level-api" + (api.expanded ? " open" : "");
+
+    const head = document.createElement("div");
+    head.className = "tree-head";
+    head.innerHTML = `
+      <div>
+        <div class="tree-name">${escapeHtml(api.name)}</div>
+        <div class="tree-meta">${api.baseUrl ? escapeHtml(api.baseUrl) : "no base URL set"}</div>
+      </div>
+      <div class="tree-head-right">
+        <span class="status-badge${api.discovered ? " audited" : ""}">${api.discovered ? "audited" : "not audited"}</span>
+        <button class="icon-btn" data-action="delete" title="Remove API">×</button>
+        <div class="chevron">▸</div>
+      </div>
+    `;
+    const badgeEl = head.querySelector(".status-badge");
+    head.addEventListener("click", (e) => {
+      if(e.target.closest('[data-action="delete"]')) return;
+      api.expanded = !api.expanded;
+      renderInventoryPage();
+      scheduleSave();
+    });
+    head.querySelector('[data-action="delete"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      app.apis = app.apis.filter(a => a.id !== api.id);
+      renderInventoryPage();
+      scheduleSave();
+    });
+
+    const body = document.createElement("div");
+    body.className = "tree-body";
+    if(api.expanded){
+      body.appendChild(buildApiPanel(api, badgeEl));
+    }
+
+    node.appendChild(head);
+    node.appendChild(body);
+    return node;
+  }
+
+  document.getElementById("invAddApiBtn").addEventListener("click", () => {
+    const { app } = getCurrentAppRef();
+    if(!app) return;
+    const name = document.getElementById("invApiNameInput").value.trim();
+    const url = document.getElementById("invApiUrlInput").value.trim();
+    if(!name) return;
+    app.apis.push(createApi(name, url, "admin", ""));
+    document.getElementById("invApiNameInput").value = "";
+    document.getElementById("invApiUrlInput").value = "";
+    renderInventoryPage();
+    scheduleSave();
+  });
+
+  document.getElementById("invBulkAddBtn").addEventListener("click", () => {
+    const { app } = getCurrentAppRef();
+    if(!app) return;
+    const n = parseInt(document.getElementById("invBulkCount").value, 10);
+    const prefix = document.getElementById("invBulkPrefix").value.trim() || "API";
+    if(!n || n < 1) return;
+    for(let i = 1; i <= n; i++) app.apis.push(createApi(`${prefix} ${i}`, "", "admin", ""));
+    renderInventoryPage();
+    scheduleSave();
+  });
+
+  // ---------------------------------------------------------------------
+  // Full-organization output
+  // ---------------------------------------------------------------------
+  function buildFullOutput(){
+    return {
+      tool: "API Auditor",
+      generated_at: new Date().toISOString(),
+      audited_by: session ? { name: session.name, team: session.team } : null,
+      summary: computeStats(),
+      departments: departments.map(dept => ({
+        department: dept.name,
+        app_count: dept.apps.length,
+        apps: dept.apps.map(app => ({
+          app: app.name,
+          api_count: app.apis.length,
+          apis: app.apis.map(api => buildApiOutput(api)),
+        })),
+      })),
+    };
+  }
+
+  function downloadFullJson(){
+    const output = buildFullOutput();
     const blob = new Blob([JSON.stringify(output, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "api_audit.json";
+    a.download = "organization_api_audit.json";
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   }
 
-  // ---------- wiring ----------
-  function onSpecLoaded(spec, specUrl, baseUrl){
-    specUrlUsed = specUrl;
-    baseUrlUsed = baseUrl;
-    const endpoints = extractEndpoints(spec);
-    resources = buildResourceGraph(endpoints);
-    log(`parsed ${endpoints.length} endpoint(s) into ${Object.keys(resources).length} resource(s)`, "ok");
-    defaultSection.style.display = "block";
-    resourcesSection.style.display = "block";
-    footerActions.style.display = "flex";
-    renderResources();
+  // ---------------------------------------------------------------------
+  // Central render dispatcher
+  // ---------------------------------------------------------------------
+  function render(){
+    showPage(currentView.page);
+    updateBreadcrumb();
+    if(session) sessionNameDisplay.textContent = session.name + (session.team ? ` (${session.team})` : "");
+    if(currentView.page === "hierarchy") renderHierarchyPage();
+    if(currentView.page === "inventory") renderInventoryPage();
   }
 
-  document.getElementById("discoverBtn").addEventListener("click", async () => {
-    clearLog();
-    const baseUrl = document.getElementById("baseUrl").value.trim();
-    const user = document.getElementById("username").value;
-    const pass = document.getElementById("password").value;
-    if(!baseUrl){ log("enter a base URL first", "err"); return; }
-
-    const btn = document.getElementById("discoverBtn");
-    btn.disabled = true;
-    btn.textContent = "Discovering...";
-    try{
-      const result = await discoverSpec(baseUrl, user, pass);
-      if(result){
-        onSpecLoaded(result.spec, result.specUrl, baseUrl);
-      } else {
-        log("could not locate a spec at any known path — try the paste option below", "err");
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Discover endpoints";
-    }
+  // ---------------------------------------------------------------------
+  // Top-level wiring
+  // ---------------------------------------------------------------------
+  document.getElementById("addDeptBtn").addEventListener("click", () => {
+    const input = document.getElementById("deptNameInput");
+    const name = input.value.trim();
+    if(!name) return;
+    departments.push(createDepartment(name));
+    input.value = "";
+    renderHierarchyPage();
+    scheduleSave();
   });
 
-  document.getElementById("pasteToggleBtn").addEventListener("click", () => {
-    const block = document.getElementById("pasteBlock");
-    block.style.display = block.style.display === "block" ? "none" : "block";
-  });
-
-  document.getElementById("loadPastedBtn").addEventListener("click", () => {
-    clearLog();
-    const raw = document.getElementById("pasteArea").value.trim();
-    if(!raw){ log("paste some JSON first", "err"); return; }
-    let spec;
-    try{
-      spec = JSON.parse(raw);
-    }catch(e){
-      log("that's not valid JSON: " + e.message, "err");
-      return;
-    }
-    if(!spec.paths){
-      log('parsed JSON but found no "paths" key — is this the right spec?', "err");
-      return;
-    }
-    const baseUrl = document.getElementById("baseUrl").value.trim() || "(pasted spec)";
-    log("loaded pasted spec", "ok");
-    onSpecLoaded(spec, "(pasted manually)", baseUrl);
-  });
-
-  document.getElementById("applyAllBtn").addEventListener("click", () => {
-    const val = siteDefaultInput.value;
-    for(const name of Object.keys(resources)){
-      resources[name]._database = val;
-    }
-    renderResources();
-  });
-
-  document.getElementById("downloadBtn").addEventListener("click", downloadJson);
-
-  document.getElementById("previewBtn").addEventListener("click", () => {
+  document.getElementById("previewFullBtn").addEventListener("click", () => {
     const el = document.getElementById("jsonPreview");
     const text = document.getElementById("jsonPreviewText");
-    text.textContent = JSON.stringify(buildOutput(), null, 2);
+    text.textContent = JSON.stringify(buildFullOutput(), null, 2);
     el.style.display = el.style.display === "block" ? "none" : "block";
   });
+  document.getElementById("downloadFullBtn").addEventListener("click", downloadFullJson);
+
+  document.getElementById("resetDataBtn").addEventListener("click", async () => {
+    if(!confirm("This clears all saved departments, apps, and APIs from this browser. Continue?")) return;
+    departments = [];
+    await clearAllStorage();
+    renderHierarchyPage();
+  });
+
+  document.getElementById("loginBtn").addEventListener("click", async () => {
+    const name = document.getElementById("loginName").value.trim();
+    const team = document.getElementById("loginTeam").value.trim();
+    if(!name){ document.getElementById("loginName").focus(); return; }
+    session = { name, team };
+    await persistSession();
+    goToHierarchy();
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    session = null;
+    try{ await window.storage.delete(SESSION_KEY, false); }catch(e){}
+    currentView = { page: "login" };
+    render();
+  });
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  (async function init(){
+    const [savedDepts, savedSession] = await Promise.all([loadState(), loadSession()]);
+    departments = savedDepts;
+    session = savedSession;
+    if(session){
+      currentView = { page: "hierarchy" };
+    } else {
+      currentView = { page: "login" };
+    }
+    render();
+  })();
 
 })();
 </script>
