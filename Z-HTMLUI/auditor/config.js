@@ -1,0 +1,1 @@
+let CONFIG=null; async function loadConfig(){const r=await fetch('config.json'); CONFIG=await r.json(); return CONFIG;}
