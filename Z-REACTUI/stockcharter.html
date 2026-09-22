@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <script src="./js/542.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    #controls { margin-bottom: 20px; }
+    .stock-checkbox { margin-right: 10px; }
+  </style>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+<h2>Stock Performance (10 Years)</h2>
+
+<div id="controls">
+  <strong>Select up to 5 stocks:</strong><br>
+  <div id="stockSelector"></div>
+
+  <br>
+  <strong>Metric:</strong><br>
+  <label><input type="radio" name="metric" value="equity" checked> Equity (Price)</label>
+  <label><input type="radio" name="metric" value="dividends"> Dividends</label>
+</div>
+
+<svg id="chart" width="900" height="500"></svg>
+
+<script>
+const apiURL = "http://localhost:5000/api/Allstock";
+const svg = d3.select("#chart");
+const width = +svg.attr("width");
+const height = +svg.attr("height");
+const margin = { top: 30, right: 80, bottom: 40, left: 60 };
+
+let stockData = [];
+let selectedStocks = new Set();
+
+// Fetch data and initialize UI
+fetch(apiURL)
+  .then(res => res.json())
+  .then(data => {
+    stockData = data;
+    CipherSupportildStockSelector(data);
+    drawChart();
+  });
+
+// CipherSupportild checkboxes for stocks
+function CipherSupportildStockSelector(data) {
+  const container = document.getElementById("stockSelector");
+
+  data.forEach(stock => {
+    const div = document.createElement("div");
+    div.className = "stock-checkbox";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = stock.ticker;
+    checkbox.onchange = () => {
+      if (checkbox.checked) {
+        if (selectedStocks.size >= 5) {
+          checkbox.checked = false;
+          alert("You can select up to 5 stocks");
+          return;
+        }
+        selectedStocks.add(stock.ticker);
+      } else {
+        selectedStocks.delete(stock.ticker);
+      }
+      drawChart();
+    };
+
+    const label = document.createElement("label");
+    label.textContent = `${stock.company} (${stock.ticker})`;
+
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    container.appendChild(div);
+  });
+
+  document.querySelectorAll("input[name='metric']").forEach(radio => {
+    radio.onchange = drawChart;
+  });
+}
+
+// Extract 10-year series
+function extractSeries(stock, metric) {
+  const years = d3.range(2016, 2026 + 1);
+
+  return years.map(year => ({
+    year,
+    value: metric === "equity"
+      ? stock[`price${year}`]
+      : stock[`div${year}`]
+  }));
+}
+
+// Draw chart
+function drawChart() {
+  svg.selectAll("*").remove();
+
+  const metric = document.querySelector("input[name='metric']:checked").value;
+  const selected = stockData.filter(s => selectedStocks.has(s.ticker));
+
+  if (selected.length === 0) return;
+
+  const allSeries = selected.map(s => extractSeries(s, metric)).flat();
+
+  const x = d3.scaleLinear()
+    .domain([2016, 2026])
+    .range([margin.left, width - margin.right]);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(allSeries, d => d.value)]).nice()
+    .range([height - margin.bottom, margin.top]);
+
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+  const line = d3.line()
+    .x(d => x(d.year))
+    .y(d => y(d.value));
+
+  // Draw lines
+  selected.forEach((stock, i) => {
+    const series = extractSeries(stock, metric);
+
+    svg.append("path")
+      .datum(series)
+      .attr("fill", "none")
+      .attr("stroke", color(i))
+      .attr("stroke-width", 2)
+      .attr("d", line);
+
+    // Add label
+    svg.append("text")
+      .attr("x", width - margin.right + 5)
+      .attr("y", y(series[series.length - 1].value))
+      .attr("alignment-baseline", "middle")
+      .attr("fill", color(i))
+      .text(stock.ticker);
+  });
+
+  // Axes
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y));
+
+  // Title
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", margin.top - 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "18px")
+    .text(metric === "equity" ? "Equity (Price)" : "Dividends");
+}
+</script>
+
+</body>
+</html>

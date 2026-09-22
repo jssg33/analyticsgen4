@@ -1,0 +1,182 @@
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* Navigation Bar */
+nav {
+    background-color: #007bff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+nav .home-btn {
+    text-decoration: none;
+    background-color: white;
+    color: #007bff;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 5px;
+    border: 2px solid #007bff;
+    transition: 0.3s ease;
+    margin-right: auto;  /* Pushes home button to the left */
+}
+
+nav .home-btn:hover {
+    background-color: #ff00e6;
+    color: white;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Allows items to take up remaining space */
+    justify-content: center;
+}
+
+nav ul li {
+    display: inline;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    padding: 10px 20px;
+    transition: background 0.3s ease-in-out;
+    border-radius: 10px;
+}
+
+nav ul li a:hover {
+    background: #0056b3;
+}
+
+.register-page {
+    background: url("https://sc.edu/uofsc/images/story_images/2022/split-skyline-sunset-insidecarolina.jpg") no-repeat center center/cover;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background-size: cover; /* Ensure the background scales well */
+    padding-top: 70px;  /* Moves register up slightly */
+}
+
+.register-container {
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    width: 90%; /* Make it responsive with max-width */
+    max-width: 500px;
+    backdrop-filter: blur(10px);
+    animation: fadeIn 1s ease-in-out;
+    transform: translateY(-10%); /* Moves register container up */
+}
+
+.register-page::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1;
+}
+
+input {
+    width: calc(100% - 20px);
+    padding: 12px;
+    margin: 15px 0;
+    border: none;
+    border-bottom: 2px solid;
+    outline: none;
+    background: transparent;
+    color: #333;
+    font-size: 16px;
+    transition: border-color 0.3s ease-in-out;
+}
+
+input:focus {
+    border-bottom: 2px solid #0056b3;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.3s ease-in-out;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+.cancel-btn {
+    background-color: #cccccc; /* Grey for Cancel */
+    color: black;
+}
+
+.cancel-btn:hover {
+    background-color: #999999; /* Darker grey on hover */
+}
+
+a {
+    display: block;
+    margin-top: 15px;
+    color: #007bff;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease-in-out;
+}
+
+a:hover {
+    color: #0056b3;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Media Queries for responsiveness */
+
+@media (max-width: 768px) {
+    .register-container {
+        width: 80%; /* More flexible width on smaller screens */
+        transform: translateY(-5%); /* to make the login screen center on tablets */
+    }
+
+    input {
+        font-size: 14px; /* Adjust font size for smaller screens */
+    }
+}
+
+@media (max-width: 480px) {
+    .register-container {
+        width: 90%; /* Make the container take almost all space on mobile */
+        transform: translateY(-2%); /* to make the login screen center on mobile */
+    }
+
+    input {
+        font-size: 12px; /* Further reduce font size on very small screens */
+    }
+}
+
+

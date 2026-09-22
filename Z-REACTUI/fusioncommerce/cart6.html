@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="login.css" />
+  <link rel="stylesheet" href="dropmenu.css" />
+  <script src="./js/bikes.js"></script>
+  <title>Mountain Bike Parks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<style>
+#userGreeting
+{
+text-align: center;
+vertical-align: middle;
+color: white;
+}
+#banner
+{
+background-color: lightgrey;
+height: 60px;
+vertical-align: middle;
+width: 100%;
+}
+
+#cancelBtn
+{
+width: 400px;
+}
+
+#splash
+{
+font-size: 12pt;
+}
+
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { text-align: center; }
+    .container { display: flex; gap: 40px; justify-content: center; }
+    .panel { width: 40%; }
+    .panel h2 { text-align: center; }
+    select { width: 100%; height: 300px; }
+    .controls { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+    button { padding: 10px; font-size: 16px; }
+  </style>
+
+
+</style>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+    <!-- Navigation Bar -->
+    <div class="navbar">
+      <div class="nav-left">
+            <div class="dropdown">
+                  <button class="jsmenu"><img src="./images/jsmenu5.png"></button> 
+                  <div class="dropdown-content">
+                  <a href="index.html">Site Home</a>
+                  <a href="cart5.html">MyCart</a>
+                  <a href="mybookings5.html">MyReservations</a>
+                  <a href="manager.html">Manager Utilities</a>
+             </div>
+    </div> 
+              <div class="logo">&nbsp&nbspCockyAnalyticsv25 - Review Parks</div>
+      </div>
+      <div class="nav-right">
+        <img src="./images/blackcircle.png" id="profilephototarget" alt="User" style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+        <span id="H3UserBanner"></span>
+        <a href="login.html" id="loginBtn" class="btn secondary-btn" onclick="loginUser(event)">Login</a>
+        <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+                <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+    </div>
+<div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+  <h1>Sales Catalogue</h1>
+  <div class="container">
+    <div class="panel">
+      <h2>Available Items</h2>
+      <select id="catalogue" multiple></select>
+    </div>
+    <div class="controls">
+      <button onclick="moveToSelected()">➡️</button>
+      <button onclick="moveToCatalogue()">⬅️</button>
+      <button onclick="addSelectedToCart()">🛒 Add to Cart</button>
+    </div>
+    <div class="panel">
+      <h2>Selected Items</h2>
+      <select id="selected" multiple></select>
+    </div>
+  </div>
+
+  <script>
+    const API_ROOT = 'https://yellow-cliff-04c6b2d10.7.azurestaticapps.net';
+    const uid = localStorage.getItem('uid');
+    let cartId = null;
+    let catalogueItems = [];
+
+    async function ensureCartExists() {
+      const response = await fetch(`${API_ROOT}/api/Cart?uid=${uid}`);
+      const carts = await response.json();
+
+      if (carts.length > 0) {
+        cartId = carts[0].cartId;
+      } else {
+        const newCart = {
+          uid,
+          parkId: 0,
+          itemType: "",
+          itemDescription: "",
+          quantity: 0,
+          unitPrice: 0,
+          totalPrice: 0,
+          dateAdded: new Date().toISOString(),
+          isCheckedOut: 0,
+          paymentid: "",
+          bookinginfo: "",
+          totalcartitems: 0
+        };
+        const createResponse = await fetch(`${API_ROOT}/api/Cart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCart)
+        });
+        const createdCart = await createResponse.json();
+        cartId = createdCart.cartId;
+      }
+    }
+
+    async function loadCatalogue() {
+      const response = await fetch(`${API_ROOT}/api/SalesCatalogue`);
+      catalogueItems = await response.json();
+
+      const catalogueSelect = document.getElementById('catalogue');
+      catalogueItems.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.productid;
+        option.text = `${item.itemdescription} ($${item.itemextendedprice})`;
+        option.dataset.vendor = item.itemvendor;
+        option.dataset.price = item.itemextendedprice;
+        option.dataset.salescatid = item.salescatid;
+        catalogueSelect.appendChild(option);
+      });
+    }
+
+    function moveToSelected() {
+      const catalogue = document.getElementById('catalogue');
+      const selected = document.getElementById('selected');
+      Array.from(catalogue.selectedOptions).forEach(option => {
+        catalogue.removeChild(option);
+        selected.appendChild(option);
+      });
+    }
+
+    function moveToCatalogue() {
+      const catalogue = document.getElementById('catalogue');
+      const selected = document.getElementById('selected');
+      Array.from(selected.selectedOptions).forEach(option => {
+        selected.removeChild(option);
+        catalogue.appendChild(option);
+      });
+    }
+
+    async function addSelectedToCart() {
+      const selected = document.getElementById('selected');
+      const items = Array.from(selected.options);
+
+      for (const option of items) {
+        const qty = 1;
+        const cartItem = {
+          cartid: cartId,
+          cartitemdate: new Date().toISOString(),
+          itemvendor: option.dataset.vendor,
+          itemdescription: option.text,
+          itemextendedprice: parseFloat(option.dataset.price),
+          itemqty: qty,
+          itemtotals: parseFloat(option.dataset.price) * qty,
+          salescatid: parseInt(option.dataset.salescatid),
+          productid: option.value
+        };
+
+        await fetch(`${API_ROOT}/api/CartItem`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cartItem)
+        });
+      }
+
+      alert(`${items.length} item(s) added to cart`);
+      selected.innerHTML = '';
+    }
+
+    (async () => {
+      if (!uid) {
+        alert("No UID found in localStorage. Please log in.");
+        return;
+      }
+      await ensureCartExists();
+      await loadCatalogue();
+    })();
+  </script>
+</body>
+   <!-- Footer -->
+  <footer class="footer"> &copy; Cocky Investments 2025. <br> All rights reserved.<br>  <span align="center"><a href="sitemap.html" class="sitelink">SiteMap</a></span></footer>
+</html>

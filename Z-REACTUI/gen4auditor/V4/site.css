@@ -1,0 +1,35 @@
+body { background: #f4f6f8; }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 210px; flex-shrink: 0; background: #1f2328; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.sidebar .brand { color: #fff; font-weight: 700; font-size: 1.25rem; padding: 18px 16px; letter-spacing: .3px; border-bottom: 1px solid #343a40; }
+.sidebar a { color: #cfd4da; display: block; padding: 10px 16px; text-decoration: none; border-left: 3px solid transparent; }
+.sidebar a:hover { background: #343a40; color: #fff; }
+.sidebar a.active { background: #2b3137; color: #fff; border-left-color: #f0a020; }
+.sidebar .api-note { margin-top: auto; padding: 12px 16px; font-size: .75rem; color: #868e96; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.content { flex: 1; padding: 24px; min-width: 0; }
+.content h2 { margin-bottom: 4px; }
+.page-sub { color: #6c757d; margin-bottom: 20px; }
+.empty { padding: 32px; text-align: center; color: #6c757d; background: #fafbfc; border: 1px dashed #ced4da; border-radius: 6px; }
+tr.clickable { cursor: pointer; }
+.stat { border: 0; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.stat .num { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.stat .lbl { color: #6c757d; font-size: .85rem; text-transform: uppercase; letter-spacing: .5px; }
+.stat a { text-decoration: none; color: inherit; }
+.card { border: 0; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.check-list li { padding: 2px 0; }
+.lvl-pass { color: #198754; } .lvl-warn { color: #b7791f; } .lvl-fail { color: #dc3545; } .lvl-info { color: #6c757d; }
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
+  .sidebar .brand { width: 100%; }
+  .sidebar .api-note { display: none; }
+  .content { padding: 16px; }
+}
+
+.badge[class*="method-"] { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; min-width: 58px; }
+.method-get { background: #0d6efd; } .method-post { background: #198754; } .method-put, .method-patch { background: #b7791f; }
+.method-delete { background: #dc3545; } .method-head, .method-options { background: #6c757d; }
+.sidebar a.brand { color: #fff; }
+.form-section { border: 1px solid #e3e6ea; border-radius: 8px; padding: 8px 12px; }
+.form-section > summary { font-weight: 600; cursor: pointer; }
+.form-section[open] > summary { margin-bottom: 4px; }

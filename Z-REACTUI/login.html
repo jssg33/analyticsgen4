@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – Cocky Analytics</title>
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <script src="./js/542.js"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script>
+    function onGoogleSuccess(data)   { console.log("Google:", data); }
+    function onGoogleError(err)      { alert(err); }
+
+    function onFacebookSuccess(data) { console.log("Facebook:", data); }
+    function onFacebookError(err)    { alert(err); }
+
+    function onMicrosoftSuccess(data){ console.log("Microsoft:", data); }
+    function onMicrosoftError(err)   { alert(err); }
+  </script>
+</head>
+
+<body onload="checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User" style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+<div class="topbarspacer">  
+<!-- LOGIN FORM -->
+<div class="login-page">
+  <div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="text" id="username" placeholder="Username" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+
+      <button type="submit">Login</button>
+      <button type="button" id="cancelButton" class="cancel-btn">Cancel</button>
+      <button type="button" id="guestButton" class="cancel-btn" onclick="guestLogin()">GuestLogin</button>
+      <button type="button" id="microsoftButton" class="cancel-btn" onclick="googleLoginPopup()()">MSLogin</button>
+      <button type="button" id="facebookButton" class="cancel-btn" onclick="facebookLoginPopup()()">FBLogin</button>
+      <button type="button" id="googleButton" class="cancel-btn" onclick="googleLoginPopup()">GLogin</button>
+      <button onclick="googleLogin(onGoogleSuccess, onGoogleError)">Login with Google</button>
+      <button onclick="facebookLogin(onFacebookSuccess, onFacebookError)">Login with Facebook</button>
+      <button onclick="microsoftLogin(onMicrosoftSuccess, onMicrosoftError)">Login with Microsoft</button>
+      <label id="status"></label>
+    </form>
+  </div>
+</div>
+</div>
+<div><p align="center"><img src="./images/hardrockmarathonsandiego.jpg" width="100%" height="300px"></p></div>
+
+<script>
+/* ---------------------------------------------------------
+   FIXED: window.onload no longer overwrites <body onload="">
+--------------------------------------------------------- */
+window.addEventListener("load", () => {
+  if (!localStorage.getItem("uid") || localStorage.getItem("uid") === "901") {
+    localStorage.setItem("uid", "901");
+    localStorage.setItem("fullname", "Visitor");
+    localStorage.setItem("role", "guest");
+    localStorage.setItem("status", "loggedout");
+    localStorage.setItem("isemployee","0");
+    localStorage.setItem("activeurl", "./images/blackcircle.png");
+  }
+});
+
+/* ---------------------------------------------------------
+   LOGIN HANDLER
+--------------------------------------------------------- */
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const captcha  = window.grecaptcha && grecaptcha.getResponse();
+
+  if (!username || !password) return alert("Username and password are required!");
+  if (!captcha) return alert("Please complete the reCAPTCHA");
+
+  const payload = {
+    username: username,
+    plainPassword: password
+  };
+
+  console.log("→ sending login payload:", payload);
+
+  try {
+    const res = await fetch(
+      "https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net/api/Auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    console.log("← raw response status:", res.status);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Login API error:", res.status, text);
+      return alert(`Login failed (HTTP ${res.status}):\n\n${text || "(no response body)"}`);
+    }
+
+    const user = await res.json();
+    console.log("← parsed user:", user);
+
+    alert("Login successful! Redirecting…");
+
+    localStorage.setItem("token", user.token || "N/A");
+
+    storeUserData(user);
+
+    try { await logUserLogin(user, true); } catch (e) { console.error(e); }
+    try { await createSession(user); } catch (e) { console.error(e); }
+
+    const role = user.userRole ?? user.role ?? "guest";
+
+    if (role === "admin") {
+      window.location.href = "./adminhome.html";
+    } else if (role === "superuser") {
+      window.location.href = "./manager.html";
+    } else {
+      window.location.href = "index.html";
+    }
+
+  } catch (err) {
+    console.error("Fetch/login error:", err);
+    alert("An error occurred: " + err.message);
+  }
+});
+
+/* ---------------------------------------------------------
+   STORE USER DATA (Version 1 field names preserved)
+--------------------------------------------------------- */
+function storeUserData(u) {
+  console.log("storeUserData input:", u);
+
+  localStorage.setItem("uid",           u.userId);
+  localStorage.setItem("fullname",     u.userFullName);
+  localStorage.setItem("role",         u.userRole);
+  localStorage.setItem("status",       "loggedin");
+  localStorage.setItem("firstname",    u.userFirstname);
+  localStorage.setItem("lastname",     u.userLastname);
+  localStorage.setItem("username",     u.userUsername);
+  localStorage.setItem("email",        u.userEmail);
+  localStorage.setItem("employeeid",   u.employeeId || "N/A");
+  localStorage.setItem("isemployee",   u.isEmployee);
+  localStorage.setItem("microsoftid",  u.userMicrosoftId || "");
+  localStorage.setItem("ncrid",        u.userNcrId || "");
+  localStorage.setItem("oracleid",     u.userOracleId || "");
+  localStorage.setItem("azureid",      u.userAzureId || "");
+  localStorage.setItem("jid",          u.userJid || "");
+
+  const profileUrl = u.userProfileUrl || "./images/blackcircle.png";
+  localStorage.setItem("profileurl",       profileUrl);
+  localStorage.setItem("activepictureurl", profileUrl);
+  localStorage.setItem("activeurl",        profileUrl);
+
+  localStorage.setItem("company",      u.userCompany || "");
+  localStorage.setItem("btn",          u.userBtn || "");
+  localStorage.setItem("iscertified",  u.userIsCertified ?? false);
+  localStorage.setItem("logindate",    u.date);
+}
+
+/* ---------------------------------------------------------
+   USER LOGIN LOGGING
+--------------------------------------------------------- */
+async function logUserLogin(user, success) {
+  const ip    = await getIpAddress();
+  const stat  = success ? "successful" : "failed";
+  const uname = user.userUsername;
+
+  const descr = `Login ${stat} for ${uname} from ${ip} at ${new Date().toLocaleString()}`;
+
+  $.ajax({
+    url: "https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net/api/Userlog",
+    method: "POST",
+    contentType: "application/json",
+    data: JSON.stringify({ descr }),
+  }).fail(xhr => console.error("Log error:", xhr.responseText));
+}
+
+/* ---------------------------------------------------------
+   GET IP ADDRESS
+--------------------------------------------------------- */
+async function getIpAddress() {
+  try {
+    const r = await fetch("https://api.ipify.org?format=json");
+    return (await r.json()).ip;
+  } catch {
+    return "Unknown IP";
+  }
+}
+
+/* ---------------------------------------------------------
+   CREATE SESSION (Version 1 field names preserved)
+--------------------------------------------------------- */
+async function createSession(u) {
+  let someuid = Number(u.userId);
+  if (isNaN(someuid)) someuid = 1;
+
+  const someemail    = u.userEmail;
+  const somerole     = u.userRole;
+  const somefirstname= u.userFirstname;
+  const somelastname = u.userLastname;
+  const somefullname = u.userFullName;
+  const someusername = u.userUsername;
+  let   sometoken    = u.token || "defaulttoken";
+
+  const currentDate  = new Date();
+  const utcOffset    = currentDate.getTimezoneOffset() * 60000;
+  const estOffset    = -5 * 3600000;
+  const estDate      = new Date(currentDate.getTime() + utcOffset + estOffset);
+
+  const somedata = {
+    userid: someuid,
+    token:  sometoken,
+    sessionusername:  someusername,
+    sessionfirstname: somefirstname,
+    sessionlastname:  somelastname,
+    sessionemail:     someemail
+  };
+
+  console.log("Usersession payload:", somedata);
+
+  $.ajax({
+    url: 'https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net/api/Usersession',
+    type: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(somedata),
+    success: function(response) {
+      console.log('Record posted successfully:', response);
+    },
+    error: function(error) {
+      console.log('Error posting record:', error);
+      console.log('Record details on error:', somedata);
+    }
+  });
+}
+
+/* ---------------------------------------------------------
+   CANCEL BUTTON
+--------------------------------------------------------- */
+document.getElementById("cancelButton").addEventListener("click", () => {
+  document.getElementById("username").value = "";
+  document.getElementById("password").value = "";
+  if (window.grecaptcha) grecaptcha.reset();
+
+  localStorage.setItem("uid", "901");
+  localStorage.setItem("fullname", "Visitor");
+  localStorage.setItem("role", "guest");
+  localStorage.setItem("status", "loggedout");
+});
+
+/* ---------------------------------------------------------
+   SUPPORT PAGE
+--------------------------------------------------------- */
+function callcare() {
+  window.open("help.html", "_self");
+}
+
+  
+</script>
+
+<a href="help.html" class="help-button">
+  <img src="https://png.pngtree.com/element_our/png/20181205/question-mark-vector-icon-png_256683.jpg" alt="Help" />
+</a>
+
+<footer class="footer">
+  &copy; Cocky Investments, Inc.<br>
+  All rights reserved.<br>
+  <span align="center"><a href="sitemap.html" class="sitelink">SiteMap</a></span>
+</footer>
+
+</body>
+</html>

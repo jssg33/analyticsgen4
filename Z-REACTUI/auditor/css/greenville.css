@@ -1,0 +1,473 @@
+a, li {font-size: 10pt;}
+h1 > a { font-size: 30px;}
+h1 { margin-left: 30px;}
+h2 { margin-left: 30px;}
+h3 { 
+    margin-left: 30px;
+    text-align: left;
+    }
+h5 { font-size: 9pt;}
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1a1a1a; /* near-black text */
+    /*background-color: black; */
+    background-color: #f4f7f5;  /*soft gray-green background */
+    width: 100%;
+}
+
+header {
+    background: #0a2f1f; /* deep forest green */
+    color: #ffffff;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+nav {
+    background: #000000; /* black */
+    border-bottom: 1px solid #1f3b2d; /* dark green accent */
+    padding: 12px 20px;
+    text-align: center;
+}
+
+nav a {
+    margin: 0 15px;
+    text-decoration: none;
+    color: #4ade80; /* bright green accent */
+    font-weight: bold;
+}
+
+section h2 {
+    color: #0a2f1f; /* deep green */
+    margin-bottom: 20px;
+    margin-left: 30px;
+}
+
+.product-card {
+    background: #ffffff;
+    border: 1px solid #d1e7d9; /* pale green border */
+    border-radius: 6px;
+    padding: 25px;
+}
+
+.product-card h3 {
+    margin-top: 0;
+    color: #0a2f1f; /* deep green */
+}
+
+.cta {
+    background: darkgreen; /* was fffff all black */
+    color: #ffffff;
+    text-align: center;
+    padding: 50px 20px;
+    margin-top: 60px;
+}
+
+.cta a {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: #4ade80; /* bright green */
+    color: #000000; /* black text */
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 4px;
+}
+
+footer {
+    background: black;
+    border-top: 1px solid #d1e7d9;
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9rem;
+    color: #4b5563;
+    height: 50px;
+    margin-bottom: 0px;
+    position: relative;
+}
+#sales{ position: relative; margin: 0 auto; width: 85%; background-color: darkgreen;}
+.gacontainer{position: relative; margin: 0 auto; width: 90%;  border-radius: 5px; line-height: 1.6; text-align: center; background-color: #f4f7f5;}
+.container2{position: relative; margin: 0 auto; width: 90%;  border-radius: 5px; ,max-width: 1600px; background-color: #f4f7f5; border: 2px solid darkgreen;}
+.gacontainer2{position: relative; margin: 0 auto; max-width: 1600px; min-width: 90%;  border-radius: 5px; line-height: 1.6; text-align: center; background-color:#f4f7f5;}
+.container2{position: relative; margin: 0 auto; height: 100%; min-height: 1000px; max-width: 1600px; min-width:90%;  border-radius: 5px; background-color: #f4f7f5; border: 2px solid darkgreen;}
+nav { background: #000000; border-bottom: 1px solid #1f3b2d; padding: 0; } 
+nav .menu { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; } 
+nav .menu > li { position: relative; } 
+nav a { display: block; padding: 14px 20px; text-decoration: none; color: #4ade80; font-weight: bold; } 
+nav a:hover { background: #0a2f1f; color: #ffffff; } 
+.dropdown-content { display: none; position: absolute; background: #000000; border: 1px solid #1f3b2d; min-width: 180px; z-index: 1000; } 
+.dropdown-content li a { padding: 12px 16px; color: #4ade80; } .dropdown-content li a:hover { background: #0a2f1f; color: #ffffff; } 
+.dropdown:hover .dropdown-content { display: block; }
+li
+{
+text-align: left;
+}
+p
+{
+text-align: left;
+}
+span
+{
+text-align: center;
+}
+ /* HERO SECTION */
+ .hero {
+    background: #0a2f1f;
+    color: white;
+    padding: 80px 20px;
+    text-align: center;
+}
+
+.hero h2 {
+    margin: 0;
+    font-size: 2.2rem;
+}
+
+.hero p {
+    margin-top: 15px;
+    font-size: 1.2rem;
+    color: #d1e7d9;
+}
+
+/* THREE-COLUMN SECTION */
+.welcome-columns {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    width: 85%;
+    margin: 40px auto;
+}
+
+.welcome-card {
+    flex: 1;
+    background: #ffffff;
+    border: 1px solid #d1e7d9;
+    border-radius: 6px;
+    padding: 25px;
+}
+
+.welcome-images img {
+    width: 48%;
+    border-radius: 5px;
+}
+
+.sitemap-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sitemap-table th,
+.sitemap-table td {
+    padding: 8px;
+    border-bottom: 1px solid #d1e7d9;
+    text-align: left;
+}
+
+
+
+/*The Features are below the griddata */
+.features h2 {
+    color: #0a2f1f;
+    margin-bottom: 20px;
+}
+
+/* Grid layout for feature cards */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+/* Feature card styling */
+.feature-card {
+    display: block;
+    background: #ffffff;
+    border: 1px solid #d1e7d9;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+    text-decoration: none;
+    color: #1a1a1a;
+    transition: 0.2s ease-in-out;
+    max-width: 230px;
+    font-size: 9pt;
+}
+
+.feature-card:hover {
+    border-color: #4ade80;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+}
+
+/* Feature card image */
+.feature-card img {
+    width: 90px;
+    height: 90px;
+    margin-bottom: 15px;
+}
+
+/* Feature card title */
+.feature-card h3 {
+    margin: 10px 0;
+    color: #0a2f1f;
+}
+
+/* Feature card description */
+.feature-card p {
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+/*THE GRIDDATA SECTION IS SLATED FOR THE MIDDLE PART OF THE PAGE ABOVE THE FEATURES*/
+
+.griddata {
+    margin-bottom: 40px;
+}
+
+.griddata h2 {
+    color: #0a2f1f;
+    margin-bottom: 15px;
+}
+
+.griddata-table {
+    background: #ffffff;
+    border: 1px solid #d1e7d9;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.grid-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 10px 0;
+    border-bottom: 1px solid #d1e7d9;
+}
+
+.grid-row:last-child {
+    border-bottom: none;
+}
+
+.grid-row span {
+    color: #1a1a1a;
+}
+
+
+/* ================================
+   TOP NAV BAR
+   ================================ */
+.topnav {
+    width: 100%;
+    background-color: #000;   /* Black bar */
+    display: flex;
+    justify-content: space-between; /* Left menu + right icons */
+    align-items: center;
+    padding: 8px 12px;
+    box-sizing: border-box;
+}
+
+/* ================================
+   DROPDOWN MENU
+   ================================ */
+.dropdown .dropbtn {
+    color: white;
+    background-color: black;
+    border: none;
+    padding: 10px 14px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #222;
+    min-width: 160px;
+    z-index: 1;
+}
+
+.dropdown-content a {
+    color: white;
+    padding: 10px 14px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* ================================
+   RIGHT‑SIDE MATERIAL ICON BUTTONS
+   ================================ */
+.right-links {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Force Material Web Components to use white */
+.right-links md-text-button {
+    --md-sys-color-primary: #ffffff;
+    color: #ffffff;
+}
+
+/* Material Icons: white + 18px */
+.right-links .material-icons {
+    color: #ffffff;
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+    line-height: 18px;
+}
+
+.main-content
+{
+    margin-left: 50px;
+    margin-right: 50px;
+    margin-bottom: 60px;
+    max-width: 1580px;
+}
+
+.material-icons { color: white !important; }
+
+//SOME BOOTSTRAP GRID FORMATTING FOR GREEN AND BLACK
+
+/* GREENVILLE SPECIFIC BOOTSTRAP STUFF */
+
+    /* Black header with green text */
+    .table-header-green {
+        background-color: #000 !important;
+        color: #00c853 !important; /* bright green */
+    }
+
+    /* Table hover row highlight */
+    .review-table tbody tr:hover {
+        background-color: #e8f5e9 !important; /* pale green */
+    }
+
+    /* Add Review button styling */
+    .custom-add-btn {
+        background-color: #00c853 !important;
+        border-color: #00c853 !important;
+        color: #000 !important;
+        font-weight: 600;
+    }
+
+    .custom-add-btn:hover {
+        background-color: #009624 !important;
+        border-color: #009624 !important;
+        color: white !important;
+    }
+
+    /* Make table truly full width */
+    #reviewTable {
+        width: 100% !important;
+    }
+
+    /* Black header with bright green text */
+    .table-header-green {
+        background-color: #000 !important;
+        color: #00c853 !important;
+        font-weight: 600;
+    }
+
+    /* Table hover highlight */
+    #licenseTable tbody tr:hover {
+        background-color: #e8f5e9 !important;
+    }
+
+    /* Add License button */
+    .custom-add-btn {
+        background-color: #00c853 !important;
+        border-color: #00c853 !important;
+        color: #000 !important;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .custom-add-btn:hover {
+        background-color: #009624 !important;
+        border-color: #009624 !important;
+        color: white !important;
+    }
+
+    /* Update button (yellow replaced with green/black theme) */
+    .custom-update-btn {
+        background-color: #1b5e20 !important; /* dark green */
+        border-color: #1b5e20 !important;
+        color: #00e676 !important; /* neon green text */
+        font-weight: 600;
+    }
+
+    .custom-update-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .custom-update-btn:hover:not(:disabled) {
+        background-color: #2e7d32 !important;
+        border-color: #2e7d32 !important;
+        color: white !important;
+    }
+
+    /* Refresh button */
+    .custom-refresh-btn {
+        background-color: #004d40 !important;
+        border-color: #004d40 !important;
+        color: #00e676 !important;
+        font-weight: 600;
+    }
+
+    .custom-refresh-btn:hover {
+        background-color: #00695c !important;
+        border-color: #00695c !important;
+        color: white !important;
+    }
+
+//RECOMMENDED STYLING OF MATERIAL UI ICONS - BASE IS TO SIZE FOR TEXT
+     md-text-button.icon-only { 
+        --md-text-button-container-height: 32px; 
+        --md-text-button-container-shape: 4px; 
+        padding: 0; min-width: 32px; 
+    } 
+    
+    md-text-button.icon-only .material-icons 
+    { 
+        font-size: 15px; 
+        line-height: 1; 
+        padding: 5px;
+    }
+
+/* ================================
+   RIGHT‑SIDE MATERIAL ICON BUTTONS
+   ================================ */
+.right-links {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Force Material Web Components to use white */
+.right-links md-text-button {
+    --md-sys-color-primary: #ffffff;
+    color: #ffffff;
+}
+
+/* Material Icons: white + 18px */
+.right-links .material-icons {
+    color: #ffffff;
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+    line-height: 18px;
+}
+
+.main-content
+{
+    margin-left: 50px;
+    margin-right: 50px;
+    margin-bottom: 60px;
+    max-width: 1580px;
+}
+
+

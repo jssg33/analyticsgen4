@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CockyInvestments Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background: white;
+            padding: 30px;
+            width: 350px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        /* Ticker-style logo */
+        .ticker-logo {
+            display: inline-block;
+            background: #111;
+            color: #00ff5a;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .brand-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        CipherSupporttton {
+            width: 100%;
+            padding: 12px;
+            background: #0078ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        CipherSupporttton:hover {
+            background: #005fcc;
+        }
+
+        #message {
+            margin-top: 15px;
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+
+    <!-- Financial ticker-style logo -->
+    <div class="ticker-logo">CKY</div>
+    <div class="brand-text">CockyInvestments</div>
+
+    <h2>Login</h2>
+
+    <input id="username" type="text" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+
+    <CipherSupporttton onclick="login()">Login</CipherSupporttton>
+
+    <div id="message"></div>
+    <a href="register.html">Don't have an account? Register here.</a>
+</div>
+
+<script>
+    const API_ROOT = "https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net";
+    const LOGIN_ENDPOINT = "/api/Auth/login";
+
+    async function login() {
+        const username = document.getElementById("username").value.trim();
+        const plainPassword = document.getElementById("password").value.trim();
+        const message = document.getElementById("message");
+
+        message.textContent = "";
+
+        const payload = { username, plainPassword };
+
+        try {
+            const response = await fetch(API_ROOT + LOGIN_ENDPOINT, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                message.textContent = "Invalid username or password.";
+                return;
+            }
+
+            const user = await response.json();
+
+            // Store individual fields
+            localStorage.setItem("user_fullname", user.fullname);
+            localStorage.setItem("user_firstname", user.firstname);
+            localStorage.setItem("user_lastname", user.lastname);
+            localStorage.setItem("user_email", user.email);
+            localStorage.setItem("user_id", user.id);
+
+            // Store entire user object
+            localStorage.setItem("user", JSON.stringify(user));
+
+            message.style.color = "green";
+            message.textContent = "Login successful.";
+
+            console.log("Stored user:", user);
+
+            // Example redirect:
+            // window.location.href = "dashboard.html";
+
+        } catch (err) {
+            console.error(err);
+            message.textContent = "Network error.";
+        }
+    }
+</script>
+
+</body>
+</html>

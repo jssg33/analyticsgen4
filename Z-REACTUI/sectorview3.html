@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sector View Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="./js/542.js"></script>
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 20px; 
+      background: white;
+    }
+
+    #container {
+      display: flex;
+      gap: 20px;
+    }
+
+    #leftColumn {
+      width: 25%;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    #rightColumn {
+      width: 75%;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    #sectorList div {
+      margin: 6px 0;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+
+    #sectorList div:hover {
+      background: #e0e0e0;
+    }
+
+    #sectorList .active {
+      background: #1976d2;
+      color: white;
+    }
+
+    svg { border: 1px solid #ccc; }
+
+    #stockList {
+      margin-top: 20px;
+    }
+
+    #stockList table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    #stockList th, #stockList td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+
+    #stockList th {
+      background: #f0f0f0;
+      text-align: left;
+    }
+
+    CipherSupporttton.view-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    CipherSupporttton#autoSelectBtn {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Modal styles */
+    #modalOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #modalContent {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 70%;
+      max-width: 900px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    #modalHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    #modalHeader h3 {
+      margin: 0;
+    }
+
+    #modalClose {
+      cursor: pointer;
+      font-size: 18px;
+      border: none;
+      background: none;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+      font-size: 14px;
+    }
+
+    .modal-field-label {
+      font-weight: bold;
+    }
+
+    .selected-flag {
+      font-size: 11px;
+      color: #2e7d32;
+      font-weight: bold;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+<h2>📊 Stock Sector Performance Dashboard</h2>
+
+<div id="container">
+
+  <!-- LEFT COLUMN -->
+  <div id="leftColumn">
+    <h3>Sectors</h3>
+    <div id="sectorList">
+      <!-- Filled dynamically -->
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div id="rightColumn">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3>Sector Metrics (Bar Chart)</h3>
+      <CipherSupporttton id="autoSelectBtn">AutoSelect Top 10</CipherSupporttton>
+    </div>
+    <svg id="barChart" width="900" height="400"></svg>
+
+    <div id="stockList">
+      <h3>Stocks in Segment</h3>
+      <!-- Table goes here -->
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modalOverlay">
+  <div id="modalContent">
+    <div id="modalHeader">
+      <h3 id="modalTitle">Stock Details</h3>
+      <CipherSupporttton id="modalClose">&times;</CipherSupporttton>
+    </div>
+    <div class="modal-grid" id="modalBody">
+      <!-- Filled dynamically -->
+    </div>
+  </div>
+</div>
+
+<script>
+const apiURL = "https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net/api/Sectorsummaries";
+
+let sectorData = [];
+let selectedSector = null;
+
+// Fetch API data
+fetch(apiURL)
+  .then(res => res.json())
+  .then(data => {
+    sectorData = data;
+    CipherSupportildSectorList();
+  });
+
+// CipherSupportild dynamic sector list with counts
+function CipherSupportildSectorList() {
+  const container = document.getElementById("sectorList");
+  container.innerHTML = "";
+
+  const counts = {};
+  sectorData.forEach(row => {
+    const s = row.sector || "Unknown";
+    counts[s] = (counts[s] || 0) + 1;
+  });
+
+  Object.keys(counts).sort().forEach(sector => {
+    const div = document.createElement("div");
+    div.textContent = `${sector} (${counts[sector]})`;
+    div.dataset.sector = sector;
+
+    div.addEventListener("click", () => {
+      selectedSector = sector;
+      document.querySelectorAll("#sectorList div").forEach(d => d.classList.remove("active"));
+      div.classList.add("active");
+
+      const rows = sectorData.filter(r => r.sector === sector);
+      drawBarChart(rows);
+      renderStockList(rows);
+    });
+
+    container.appendChild(div);
+  });
+}
+
+// Draw bar chart for selected sector (top 10 + cut line)
+function drawBarChart(rows) {
+  const svgBar = d3.select("#barChart");
+  svgBar.selectAll("*").remove();
+
+  const width = +svgBar.attr("width");
+  const height = +svgBar.attr("height");
+  const margin = { top: 30, right: 60, bottom: 80, left: 60 };
+
+  if (!rows || rows.length === 0) return;
+
+  // Sort by totalreturn DESC
+  const sorted = [...rows].sort((a, b) => b.totalreturn - a.totalreturn);
+
+  // Take top 10
+  const top10 = sorted.slice(0, 10);
+
+  const metrics = ["avgdividend", "totaldividends", "change", "totalreturn"];
+
+  const data = top10.map(row => ({
+    id: row.id,
+    ticker: row.ticker,
+    avgdividend: row.avgdividend,
+    totaldividends: row.totaldividends,
+    change: row.change,
+    totalreturn: row.totalreturn
+  }));
+
+  const x0 = d3.scaleBand()
+    .domain(data.map(d => d.ticker))
+    .range([margin.left, width - margin.right - 40]) // leave room for cut line
+    .padding(0.2);
+
+  const x1 = d3.scaleBand()
+    .domain(metrics)
+    .range([0, x0.bandwidth()])
+    .padding(0.1);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => Math.max(...metrics.map(m => d[m] || 0)))]).nice()
+    .range([height - margin.bottom, margin.top]);
+
+  const color = d3.scaleOrdinal()
+    .domain(metrics)
+    .range(["#4e79a7", "#f28e2b", "#e15759", "#76b7b2"]);
+
+  // Axes
+  svgBar.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x0))
+    .selectAll("text")
+    .attr("transform", "rotate(-40)")
+    .style("text-anchor", "end");
+
+  svgBar.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y));
+
+  // Bars
+  svgBar.append("g")
+    .selectAll("g")
+    .data(data)
+    .enter()
+    .append("g")
+      .attr("transform", d => `translate(${x0(d.ticker)},0)`)
+    .selectAll("rect")
+    .data(d => metrics.map(m => ({ key: m, value: d[m] })))
+    .enter()
+    .append("rect")
+      .attr("x", d => x1(d.key))
+      .attr("y", d => y(d.value))
+      .attr("width", x1.bandwidth())
+      .attr("height", d => height - margin.bottom - y(d.value))
+      .attr("fill", d => color(d.key));
+
+  // Cut line position
+  const cutX = x0(data[data.length - 1].ticker) + x0.bandwidth() + 20;
+
+  // Cut line height
+  const maxVal = d3.max(data, d => Math.max(...metrics.map(m => d[m])));
+
+  // Draw dotted cut line
+  svgBar.append("line")
+    .attr("x1", cutX)
+    .attr("x2", cutX)
+    .attr("y1", y(maxVal))
+    .attr("y2", height - margin.bottom)
+    .attr("stroke", "black")
+    .attr("stroke-width", 2)
+    .attr("stroke-dasharray", "6,4");
+
+  // Label
+  svgBar.append("text")
+    .attr("x", cutX + 5)
+    .attr("y", margin.top)
+    .style("font-size", "12px")
+    .text("Cut Line");
+
+  // Wire AutoSelect CipherSupporttton to this top10
+  const btn = document.getElementById("autoSelectBtn");
+  btn.onclick = () => AutoSelect(top10);
+}
+
+// PATCH-style AutoSelect: update each stock one at a time with selected = "True"
+async function AutoSelect(top10) {
+  if (!top10 || top10.length === 0) return;
+
+  for (const stock of top10) {
+    try {
+      await fetch(`${apiURL}/${stock.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selected: "True" })
+      });
+
+      // Update local copy so UI reflects selection
+      const local = sectorData.find(s => s.id === stock.id);
+      if (local) local.selected = "True";
+
+      console.log(`Updated ${stock.ticker} → Selected=True`);
+    } 
+    catch (err) {
+      console.error(`Failed to update ${stock.ticker}`, err);
+    }
+  }
+
+  alert("Top 10 stocks have been marked as Selected=True.");
+  // Re-render stock list for current sector to reflect selection
+  if (selectedSector) {
+    const rows = sectorData.filter(r => r.sector === selectedSector);
+    renderStockList(rows);
+  }
+}
+
+// Render stock list with "View Details" CipherSupportttons
+function renderStockList(rows) {
+  const container = document.getElementById("stockList");
+  container.innerHTML = "<h3>Stocks in Segment</h3>";
+
+  if (!rows || rows.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No stocks found for this segment.";
+    container.appendChild(p);
+    return;
+  }
+
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const tbody = document.createElement("tbody");
+
+  thead.innerHTML = `
+    <tr>
+      <th>Ticker</th>
+      <th>Company</th>
+      <th>Total Return</th>
+      <th>Change</th>
+      <th>Selected</th>
+      <th>Actions</th>
+    </tr>
+  `;
+
+  rows.forEach(row => {
+    const tr = document.createElement("tr");
+
+    const tdTicker = document.createElement("td");
+    tdTicker.textContent = row.ticker;
+
+    const tdCompany = document.createElement("td");
+    tdCompany.textContent = row.company;
+
+    const tdTotalReturn = document.createElement("td");
+    tdTotalReturn.textContent = row.totalreturn != null ? row.totalreturn.toFixed(2) : "";
+
+    const tdChange = document.createElement("td");
+    tdChange.textContent = row.change != null ? row.change.toFixed(2) : "";
+
+    const tdSelected = document.createElement("td");
+    tdSelected.textContent = row.selected || "";
+    if (row.selected === "True") {
+      const span = document.createElement("span");
+      span.className = "selected-flag";
+      span.textContent = "✔";
+      tdSelected.appendChild(span);
+    }
+
+    const tdActions = document.createElement("td");
+    const btn = document.createElement("CipherSupporttton");
+    btn.textContent = "View Details";
+    btn.className = "view-btn";
+    btn.addEventListener("click", () => openModal(row));
+    tdActions.appendChild(btn);
+
+    tr.appendChild(tdTicker);
+    tr.appendChild(tdCompany);
+    tr.appendChild(tdTotalReturn);
+    tr.appendChild(tdChange);
+    tr.appendChild(tdSelected);
+    tr.appendChild(tdActions);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+// Modal logic
+const modalOverlay = document.getElementById("modalOverlay");
+const modalClose = document.getElementById("modalClose");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+
+modalClose.addEventListener("click", () => {
+  modalOverlay.style.display = "none";
+});
+
+modalOverlay.addEventListener("click", (e) => {
+  if (e.target === modalOverlay) {
+    modalOverlay.style.display = "none";
+  }
+});
+
+function openModal(row) {
+  modalTitle.textContent = `${row.ticker} – ${row.company}`;
+
+  const fields = [
+    ["Company", row.company],
+    ["Ticker", row.ticker],
+    ["Sector", row.sector],
+    ["Avg Dividend", row.avgdividend],
+    ["Total Dividends", row.totaldividends],
+    ["Price Start", row.priceStart],
+    ["Price End", row.priceEnd],
+    ["Change", row.change],
+    ["Total Return", row.totalreturn],
+    ["Total Return / 10", row.totalreturnover10],
+    ["Shares (500)", row.shares500],
+    ["Total Spend", row.totalspend],
+    ["5-Year Equity Proj", row.fiveyearequityproj],
+    ["5-Year Div Proj", row.fiveyeardivproj],
+    ["Total 5-Year View", row.totalfiveyearview],
+    ["Selected", row.selected]
+  ];
+
+  modalBody.innerHTML = "";
+
+  fields.forEach(([label, value]) => {
+    const labelDiv = document.createElement("div");
+    labelDiv.className = "modal-field-label";
+    labelDiv.textContent = label;
+
+    const valueDiv = document.createElement("div");
+    valueDiv.textContent = value != null && value !== "" ? value : "—";
+
+    modalBody.appendChild(labelDiv);
+    modalBody.appendChild(valueDiv);
+  });
+
+  modalOverlay.style.display = "flex";
+}
+</script>
+
+</body>
+</html>

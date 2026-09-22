@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="./js/542.js"></script>
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <title>Mountain Bike Parks - Superuser</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  
+<style>
+#userGreeting
+{
+text-align: center;
+vertical-align: middle;
+color: white;
+}
+#banner
+{
+background-color: lightgrey;
+height: 60px;
+vertical-align: middle;
+width: 100%;
+}
+
+#cancelBtn
+{
+width: 400px;
+}
+
+#splash
+{
+font-size: 12pt;
+}
+
+button
+{
+width: 120px;
+}
+* {
+  box-sizing: border-box;
+}
+
+/* Create two equal columns that floats next to each other */
+.column1 {
+  float: left;
+  width: 40%;
+  padding: 10px;
+  height: 700px; /* Should be removed. Only for demonstration */
+}
+/* Create two equal columns that floats next to each other */
+.column2 {
+  float: left;
+  width: 60%;
+  padding: 10px;
+  height: 700px; /* Should be removed. Only for demonstration */
+}
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+</style>
+</head>
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+
+
+<HR>
+<div align="center"><h3>CockyAnalytics Administration Options</h3></div>
+<HR>
+<div class="row">
+  <div class="column1" style="background-color:#bbb;">
+    <div align="center" style="margin: 0 auto;"><img src="./images/people.jpg" width=100% height=100% style="margin-left: 20px;"></div><BR><BR>
+    <div class="features">
+        <div class="feature" style="width: 500px; margin: 0 auto;"><a href="securityhome.html"><h3>Security Administrator</h3><p>Security Tools and Processes.</p></a></div>      
+    </div>
+ </div>
+  <div class="column2" style="background-color:#bbb;">
+      <div class="features" id="upperfeaturebar1">
+        <div class="feature"><a href="adminstuff.html"><h3>Portal <BR>Admin</h3><p>ISP Users, and Profiles</p></div>   
+        <div class="feature"><a href="usermaint.html"><h3>User<BR> Maintenance</h3><p>Update and Maintain Users.</p></a></div>
+        <div class="feature"><a href="employeemaint.html"><h3>Employee<BR> Maintenance</h3><p>Manage Employees</p></a></div>
+        <div class="feature"><a href="parkmaint.html"><h3>Park<BR> Maintenance</h3><p>Update and Maintain Parks.</p></a></div>
+        <div class="feature"><a href="companymaint.html"><h3>Corp<BR>Maintenance</h3><p>CompanyUpdates</p></a></div>
+      </div>
+        <div class="features" id="upperfeaturebar">
+          <div class="feature2"><a href="./reports/salesreport.html"><h3>Transaction<BR> Report</h3><p>Transaction Report By Park.</p></a></div>
+          <div class="feature2"><a href="./reports/bookingreportbypark.html"><h3>Booking<BR> Report</h3><p>Booked Parties Report.</p></a></div>  
+          <div class="feature2"><a href="transactions.html"><h3>Transaction<BR>Admin</h3><p>Completed Transactions</p></a></div>  
+          <div class="feature2"><a href="admincreditscancels.html"><h3>Credit<BR>Admin</h3><p>Credits and Cancellations</p></div> 
+          <div class="feature2"><a href="admintickets.html"><h3>Ticket<BR> Administration</h3><p>Customer Ticket Info.</p></div>   
+        </div>
+        <div class="features" id="upperfeaturebar3">
+          <div class="feature3"><a href="adminbookings5.html"><h3>Booking<BR>Admin</h3><p>Systemwide Reservations</p></a></div>
+          <div class="feature3"><a href="./reports/salescatalogue.html"><h3>Sales Catalogue<BR>Report</h3><p>SalesCat By Park.</p></a></div>
+          <div class="feature3"><a href="adminstatetaxtables.html"><h3>Tax<BR>Admin</h3><p>Tax Table Report By Region.</p></a></div>
+          <div class="feature3"><a href="salescatalogue5.html"><h3>Park Sales<BR> Catalogue</h3><p>Maintain Pricing.</p></a></div>    
+          <div class="feature3"><a href="adminErpBatches.html"><h3>ERP <BR>Batches</h3><p>Maintain Batches.</p></a></div>    
+        </div>
+      <div class="features" id="upperfeaturebar4">
+          <div class="feature4"><a href="./imagetest/selectorbar.html"><h3>Selector Bar</h3><p>Model Viz Home Page Testing & Selector</p></a></div>
+         <div class="feature4"><a href="celearn.html"><h3>CE Learn</h3><p>Learn Modules</p></a></div>
+          <div class="feature4"><a href="gridactions.html"><h3>Grid Actions<BR>For Parks</h3><p>Remote Parks Actions</p></a></div>
+         <div class="feature4"><a href="./reports/SessionReportByUserId.html"><h3>Session<BR>Report</h3><p>User Sessions</p></a></div>
+         <div class="feature4"><a href="./reports/BatchReportByType.html"><h3>Batch<BR>Report</h3><p>Batch Information</p></a></div>
+        </div>
+
+      </div>
+    </div>
+      
+
+        <script>
+        function myOpenCall() {
+           //alert('CallingOpenPublicManagerfunction');
+           let someuid = 1;
+           let someemployee = 0;
+           let somerole = 'admin';
+           someuid = localStorage.getItem('uid');
+           someemployee = localStorage.getItem('isemployee');
+           somerole = localStorage.getItem('role');
+            
+           if (someuid === '901') 
+           {
+           window.location.href = 'loginerror.html';
+           }
+           else if (somerole != 'superuser')
+           {
+           alert('This is a Superuser Website for Employees Only with a Domain Login. You do not have permissions for this site! Please Contact Your Manager if you think this is an error.');
+           //window.open("home.html", "_self");
+           }
+           else
+           {
+           alert("Calling Manager App"); 
+           window.open("http://manager2.590team1.info/index.aspx","_blank");
+           }
+        } 
+           
+       function mylocalCall() 
+           {
+           //alert('CallingOpenPublicManagerfunction');
+           let someuid = 1;
+           let someemployee = 0;
+           let somerole = 'admin';
+           someuid = localStorage.getItem('uid');
+           someemployee = localStorage.getItem('isemployee');
+           somerole = localStorage.getItem('role');
+               
+           if (someuid === '901') 
+           {
+           window.location.href = 'loginerror.html';
+           }
+           else if (somerole != 'superuser')
+           {
+           alert('This is a Superuser Website for Employees Only with a Domain Login. You do not have permissions for this site! Please Contact Your Manager if you think this is an error.');
+           //window.open("home.html", "_self");
+           }
+           else
+           {
+           alert("Calling Local Manager App - Domain Authentication Required"); 
+           window.open("http://manager.590team1.info","_blank");
+           }
+           }
+
+            function checkpll()
+               {
+               const someuid = localStorage.getItem('uid');
+               if (someuid === '901') 
+               {
+               window.location.href = 'loginerror.html';
+               }
+               }
+       
+          function myAzureCall() 
+          {
+          const someuid = localStorage.getItem('uid');
+          
+           if (someuid === '901') 
+           {
+           window.location.href = 'loginerror.html';
+           }
+           else
+           {
+           //alert("Calling Manager App"); 
+           window.open("https://home.590team1.info/managerupload.html","_self");
+           }
+        }
+         
+       
+       function myCertsDownloadCall() {
+          const someuid = localStorage.getItem('uid');
+          
+           if (someuid === '901') 
+           {
+           window.location.href = 'loginerror.html';
+           }
+           else
+           {
+           //alert("Calling Manager App"); 
+           window.open("https://home.590team1.info/downloadcertstocsv2.html","_self");
+              
+           }
+          
+       }
+    
+       
+       function onLogout(event) {
+      event.preventDefault();
+      console.log("Logging out user...");
+
+      localStorage.clear();
+      localStorage.setItem("uid", "901");
+      localStorage.setItem("fullname", "Guest");
+      localStorage.setItem("role", "guest");
+
+      console.log("Local storage after logout:", localStorage);
+      window.location.replace("login.html");
+    }
+
+function openmanager()
+{
+window.open("index.html", "_blank");
+}
+    </script>
+  <!-- Footer -->
+  <footer class="footer">
+    &copy; 2025 Cocky Investments.
+    <br>
+    All rights reserved.
+  </footer>
+</body>
+</html>

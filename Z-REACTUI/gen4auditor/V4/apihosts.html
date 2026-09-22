@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hosts · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Hosts</h2>
+  <div class="page-sub">Each host is one API. <b>Audit host</b> reads its swagger.json (using the saved Swagger login, or asking for it), registers any new operations using the host's default details, and audits every endpoint on that host. <b>Push details</b> copies the host's details onto its existing endpoints.</div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="swagger-import.js"></script>
+<script>
+const main = Cocky.layout("hosts");
+// Whole-host exceptions: shown as a badge next to the host name, and they block "Audit host"
+let hostExceptions = [];
+Cocky.SCHEMA.apihosts.format = {
+  apiHostName: (v, r) => {
+    const x = Cocky.hostException(hostExceptions, r.id);
+    return Cocky.fmtValue(v, "string") + (x ? ` <span class="badge text-bg-warning" title="${Cocky.esc(x.reason || "")}">Excepted #${x.id}${x.expirationDate ? " until " + Cocky.parseDate(x.expirationDate).toLocaleDateString() : ""}</span>` : "");
+  }
+};
+const page = Cocky.crudPage("apihosts", {
+  mount: main,
+  toolbarExtra: '<button class="btn btn-sm btn-success" id="addSwagger" type="button">+ Add API from Swagger</button>',
+  rowActions: [
+    { label: "Audit host", onClick: h => {
+        const x = Cocky.hostException(hostExceptions, h.id);
+        if (x) { Cocky.toast(`"${h.apiHostName}" is excepted from auditing (host exception #${x.id}${x.reason ? ": " + x.reason : ""}). End or expire the exception to audit it.`, "warning"); return; }
+        location.href = "apiaudit.html?host=" + h.id + "&walk=1";
+      } },
+    { label: "Sync Swagger", onClick: async h => { if (await SwaggerImport.open(h)) page.reload(); } },
+    { label: "Details", onClick: async h => {
+        const saved = await Cocky.openRecordForm("apihosts", h, page.rows(), {}, { view: "details" });
+        if (saved) { page.reload(); Cocky.toast("Host details saved. They're copied to this host's endpoints on the next Audit host, or use Push details now."); }
+      } },
+    { label: "Push details", onClick: pushDetails },
+    { label: "Except host", onClick: h => location.href = "apiexceptions.html?host=" + h.id }
+  ]
+});
+Cocky.api.list("hostexceptions")
+  .then(rows => { hostExceptions = rows; if (rows.some(Cocky.isLiveException)) page.reload(); })
+  .catch(e => Cocky.toast("Couldn't load host exceptions: " + e.message, "warning"));
+// Copy this host's filled-in defaults (contacts, department, building, DBA, Azure...) onto all of its endpoints
+async function pushDetails(h) {
+  const d = SwaggerImport.hostDefaults(h), n = Object.keys(d).length;
+  if (!n) { Cocky.toast("This host has no default details filled in yet. Use Edit to add them first.", "warning"); return; }
+  if (!confirm(`Copy ${n} filled-in field(s) from host "${h.apiHostName}" onto every endpoint of this host?\n\n${Object.keys(d).map(Cocky.titleCase).join(", ")}\n\nEndpoint values for these fields will be overwritten.`)) return;
+  Cocky.toast("Updating endpoints…", "info");
+  try {
+    const r = await SwaggerImport.pushHostDetails(h);
+    Cocky.toast(`${r.updated} of ${r.total} endpoint(s) updated` + (r.failures.length ? `, ${r.failures.length} failed: ${r.failures[0]}` : "."), r.failures.length ? "warning" : "success");
+  } catch (e) { Cocky.toast(e.message, "danger"); }
+}
+document.getElementById("addSwagger").onclick = async () => { if (await SwaggerImport.open()) page.reload(); };
+if (new URLSearchParams(location.search).has("add")) document.getElementById("addSwagger").click();
+</script>
+</body>
+</html>

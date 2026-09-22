@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – CertAethon Team 1</title>
+
+  <!-- your original login CSS -->
+  <link href="./css/login.css" rel="stylesheet" />
+  <link href="./css/dropmenu.css" rel="stylesheet" />
+  <script src="./js/bikes.js"></script>
+  <!-- jQuery (for AJAX logging) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Google reCAPTCHA -->
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
+  <!-- NAV BAR -->
+  <div class="navbar">
+    <div class="nav-left">
+      <div class="dropdown">
+        <button class="jsmenu"><img src="./images/jsmenu5.png"></button>
+        <div class="dropdown-content">
+          <a href="index.html">Site Home</a>
+          <a href="cartreview.html">MyCart</a>
+          <a href="myaccount.html">MyAccount</a>
+          <a href="manager.html">Manager Utilities</a>
+          <a href="interiorindex.html">LegacyPortal</a>
+          <a href="twocolumn.html">StockViews</a>
+          <a href="sectorview5.html">SectorViews</a>
+          <a href="epoch.html">EpochView</a>
+          <a href="portfolio.html">PortfolioView</a>
+          <a href="shiny.html">ShinyViewsFull</a>
+          <a href="login.html">Login</a>
+          <a href="register.html">Register</a>
+        </div>
+      </div>
+      <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
+    </div>
+  
+    <div class="nav-right">
+      <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
+           style="cursor:pointer;" onclick="window.location.href='profile.html'" />
+      <span id="H3UserBanner"></span>
+      <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
+      <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
+      </div>
+  </div>
+  
+  <div align="center" id="banner"><span id="userGreeting">Welcome Guest</span></div>
+<!-- Login Form -->
+  <div class="login-page">
+    <div class="login-container">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" required />
+        <input type="password" id="password" placeholder="Password" required />
+        <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+        <button type="submit">Login</button>
+        <button type="button" id="cancelButton" class="cancel-btn">Cancel</button>
+        <button type="button" id="careButton" class="cancel-btn" onclick="callcare()"> Customer Support</button>
+      </form>
+    </div>
+  </div>
+  
+  <div><p align="center"><img src="./images/hardrockmarathonsandiego.jpg" width=100% height=300px</p></div> <BR><BR>  
+  <script>
+    window.onload = () => {
+      if (!localStorage.getItem("uid") || localStorage.getItem("uid") === "901") {
+        localStorage.setItem("uid", "901");
+        localStorage.setItem("fullname", "590 Visitor");
+        localStorage.setItem("role", "guest");
+        localStorage.setItem("status", "loggedout");
+        localStorage.setItem("isemployee","0");
+        localStorage.setItem("activeurl", "./images/blackcircle.png");
+      }
+    };
+
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const captcha  = window.grecaptcha && grecaptcha.getResponse();
+  if (!username || !password) {
+      return alert("Username and password are required!");
+  }
+  if (!captcha) {
+      return alert("Please complete the reCAPTCHA");
+  }
+  // build your payload exactly as Swagger
+  const payload = {
+  username: username,
+  plainPassword: password
+  // don't include extra fields the API doesn't expect
+  };
+  console.log("→ sending login payload:", payload);
+  try {
+      const res = await fetch(
+        "https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      console.log("← raw response status:", res.status);
+
+      // if the server errored
+      if (!res.ok) {
+        const text = await res.text();               // grab whatever it sent
+        console.error("Login API error:", res.status, text);
+        return alert(
+          `Login failed (HTTP ${res.status}):\n\n${text || "(no response body)"}`
+        );
+      }
+
+      // only now safe to parse JSON
+      const user = await res.json();
+      console.log("← parsed user:", user);
+
+      alert("Login successful! Redirecting…");
+      localStorage.setItem("token", user.token || "N/A");
+      storeUserData(user);
+      await logUserLogin(user, true);
+      await createSession(user);
+      
+      if (user.userRole === "admin") 
+      {
+      window.location.href = "./adminhome.html";
+      } 
+      else if (user.userRole === "superuser") 
+      {
+      window.location.href = "./manager.html";
+      } 
+      else
+      {
+        window.location.href = "index.html";
+      }
+    } catch (err) {
+      console.error("Fetch/login error:", err);
+      alert("An error occurred: " + err.message);
+    }
+  });
+
+    function storeUserData(u) {
+      // alert('storing data'); //debug as this isnt working.
+      console.log(u);
+      localStorage.setItem("uid", u.userId);
+      localStorage.setItem("fullname", u.userFullName);
+      localStorage.setItem("role", u.userRole);
+      localStorage.setItem("status", "loggedin");
+      localStorage.setItem("firstname", u.userFirstname);
+      localStorage.setItem("lastname", u.userLastname);
+      localStorage.setItem("username", u.userUsername);
+      localStorage.setItem("email", u.userEmail);
+      localStorage.setItem("employeeid", u.employeeId || "N/A");
+      localStorage.setItem("isemployee", u.isEmployee);
+      localStorage.setItem("microsoftid", u.userMicrosoftId || "");
+      localStorage.setItem("ncrid", u.userNcrId || "");
+      localStorage.setItem("oracleid", u.userOracleId || "");
+      localStorage.setItem("azureid", u.userAzureId || "");
+      localStorage.setItem("jid", u.userJid || "");
+
+      // JOHNS FIX OF THE BROKEN PROFILE PROCESS
+      localStorage.setItem("profileurl", u.userProfileUrl || "./images/blackcircle.png"); //THE PROFILE URL HAS TO BE SYNCHED BETWEEN BOTH USER AND USERPROFILE TABLES. API WAS MODIFIED TO UPDATE BOTH.
+      localStorage.setItem("activepictureurl", u.userProfileUrl || "./images/blackcircle.png"); //THE PROFILE URL HAS TO BE SYNCHED BETWEEN BOTH USER AND USERPROFILE TABLES. API WAS ADJUSTED TO DO THIS.
+      localStorage.setItem("activeurl", u.userProfileUrl || "./images/blackcircle.png"); //THE PROFILE URL HAS TO BE SYNCHED BETWEEN BOTH USER AND USERPROFILE TABLES. API WAS ADJUSTED TO DO THIS.
+      localStorage.setItem("company", u.userCompany || "");
+      localStorage.setItem("btn", u.userBtn || "");
+      localStorage.setItem("iscertified", u.userIsCertified ?? false);
+      localStorage.setItem("logindate", u.date);
+      // …any other user fields…
+    }
+
+    async function logUserLogin(user, success) {
+      const ip     = await getIpAddress();
+      const stat   = success ? "successful" : "failed";
+      const descr  = `Login ${stat} for ${user.username} from ${ip} at ${new Date().toLocaleString()}`;
+      $.ajax({
+        url: "https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Userlog",
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({ descr }),
+      }).fail(xhr => console.error("Log error:", xhr.responseText));
+    }
+
+    async function getIpAddress() {
+      try {
+        const r = await fetch("https://api.ipify.org?format=json");
+        return (await r.json()).ip;
+      } catch {
+        return "Unknown IP";
+      }
+    }
+  
+       
+    
+    
+    function callcare()
+    {
+    window.open("help.html", "_self");
+    }
+    
+    async function createSession(u) {
+            //alert("calling userSession!"); //Make Sure the entire auth parameters are being passed.
+            //console.log(u);
+          var someuid = Number(u.userId);
+          if (isNaN(someuid)) {
+            someuid = 1;
+          }      
+            var someemail = u.userEmail;
+            var somerole = u.userRole;
+            var somefirstname = u.userFirstname;
+            var somelastname = u.userLastname;
+            var somefullname = u.userFullName;
+            var someusername = u.userUsername;
+            var sometoken = u.token;
+            // alert("userSession! VariablesSet"); 
+            
+            if (!u.token) {
+            sometoken = 'defaulttoken';
+            }
+            var currentDate = new Date();
+            const utcOffset = currentDate.getTimezoneOffset() * 60000;
+            const estOffset = -5 * 3600000; // EST is UTC-5
+            const estDate = new Date(currentDate.getTime() + utcOffset + estOffset);
+            const estTime = estDate.toISOString().slice(11, 19); // Extracting HH:MM:SS
+            var somestartdate = estDate;
+            var somesessiondescription = "User:" + localStorage.getItem("fullname") + " is on LOGIN as a " + somerole + " On Date: " + somestartdate;
+
+             const somedata = {
+                userid: someuid,
+                token:  sometoken,
+                sessionusername: someusername,
+                sessionfirstname: somefirstname,
+                sessionlastname: somelastname,
+                sessionemail: someemail
+                };
+      console.log(somedata);
+      $.ajax({
+        url: 'https://yellow-cliff-04c6b2d10.7.azurestaticapps.net/api/Usersession',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(somedata),
+        success: function(response) {
+            console.log('Record posted successfully:', response);
+            //alert('RecordPosted');
+        },
+        error: function(error) {
+            //alert('Error posting record:', error);
+            console.log('Record details on error:', somedata);
+        }
+    });
+          }
+
+    document.getElementById("cancelButton").addEventListener("click", () => {
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      if (window.grecaptcha) grecaptcha.reset();
+      localStorage.setItem("uid", "901");
+      localStorage.setItem("fullname", "590 Visitor");
+      localStorage.setItem("role", "guest");
+      localStorage.setItem("status", "loggedout");
+    });
+  </script>
+<a href="help.html" class="help-button">
+  <img src="https://png.pngtree.com/element_our/png/20181205/question-mark-vector-icon-png_256683.jpg" alt="Help" />
+</a>
+  <!-- Footer -->
+  <footer class="footer"> &copy;Capitol Technology Solutions, Raleigh, NC. <br> All rights reserved.<br>  <span align="center"><a href="sitemap.html" class="sitelink">SiteMap</a></span></footer>
+    
+</body>
+</html>

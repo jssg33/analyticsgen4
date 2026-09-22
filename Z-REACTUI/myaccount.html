@@ -59,39 +59,6 @@
     }
     html {   max-height: 900px;  }
     body {background-color: darkgrey; max-height:900px; height: 900px; width: 100%; scroll-behavior   : none;}
-    * {
-  box-sizing: border-box;
-}
-
-/* Create two equal columns that floats next to each other */
-.column {
-  float: left;
-  width: 80%;
-  padding: 10px;
-  }
-
-  .column2 {
-  float: left;
-  width: 20%;
-  padding: 10px;
-  }
-
-
-/* Clear floats after the columns */
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-.buttonclass
-{
-  width: 90%;
-  height: 120px;
-  color: coral;
-  background-color: black;
-}
-
   </style>
 
   <script>
@@ -101,7 +68,7 @@
     }
   </script>
 </head>
-<body onload="checkUserStatus(); displayProfilePicture();">
+<body onload="checkpll(); checkUserStatus(); displayProfilePicture();">
 <!-- NAV BAR -->
 <div class="navbar">
   <div class="nav-left">
@@ -122,14 +89,13 @@
         <a href="register.html">Register</a>
       </div>
     </div>
-    <div class="logo">&nbsp;&nbsp;CockyAnalytics<font size="6pt">[G.4 Build 09/22]</font></div>
+    <div class="logo">&nbsp;&nbsp;CockyAnalytics</div>
   </div>
 
   <div class="nav-right">
     <img src="./images/blackcircle.png" id="profilephototarget" alt="User"
          style="cursor:pointer;" onclick="window.location.href='profile.html'" />
     <span id="H3UserBanner"></span>
-    <a href="login.html" id="loginBtn" class="btn secondary-btn" onclick="loginUser(event)">Login</a>
     <a href="login.html" id="logoutBtn" class="btn secondary-btn" onclick="logoutUser(event)">Logout</a>
     <a href="cartreview.html" id="cartBtn3"><img src="./images/cart5.png" width="40px" height="40px"></a>
     </div>
@@ -139,51 +105,13 @@
 
 
   <!-- CENTERCOURT IFRAME -->
-  <div class="row">
-    <div class="column" align="center"><span align="center"><img src="./images/moore.jpg" width="90%" height="650px"></span></div>
-    <div class="column2">
-      <button class="buttonclass" onclick="callplotter()">StockPlotter</button>
-      <button class="buttonclass" onclick="callsummaries()">SectorSummaries</button>
-      <button class="buttonclass" onclick="callepoch()">EpochViews</button>
-      <button class="buttonclass" onclick="callportfolio()">PortfolioViews</button>
-      <button class="buttonclass" onclick="callshiny()">ShinyTools</button>
-    </div>
-  </div>
-  
+  <div align="center"><span align="center"><img src="./images/cocky542.png" width="90%" height="650px"></span></div>
 
   <!-- FOOTER -->
   <footer>
     &copy; Cocky Investments, Inc - The University of South Carolina Spring 2026<br>
     John S. Stritzinger - All rights reserved.
   </footer>
-<script>
 
-function callplotter()
-{
-window.open("twocolumn.html", "_self")
-}
-
-function callsummaries()
-{
-window.open("sectorsummaries.html", "_self")
-}
-
-function callepoch()
-{
-window.open("epoch.html", "_self")
-}
-
-function callportfolio()
-{
-window.open("portfolio.html", "_self")
-}
-
-function callshiny()
-{
-window.open("shiny.html", "_self")
-}
-
-
-</script>
 </body>
 </html>

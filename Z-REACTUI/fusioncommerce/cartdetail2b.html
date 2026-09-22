@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="login.css" />
+<link rel="stylesheet" href="dropmenu.css" />
+<script src="./js/bikes.js"></script>
+    <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>  
+  <title>Your Cart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    .highlight {
+      background-color: #e0f3ff !important;
+    }
+    .selected {
+      border: 2px solid #198754;
+    }
+    .park-logo {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+  
+
+<body onload="checkUserStatus()">
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">CockyAnalyticsv25 - Cart Detail</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="menuDropdown" role="button" data-bs-toggle="dropdown">
+              <img src="./images/jsmenu5.png" alt="Menu" style="height:24px;">
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="index.html">Site Home</a></li>
+              <li><a class="dropdown-item" href="cart5.html">MyCart</a></li>
+              <li><a class="dropdown-item" href="mybookings5.html">MyReservations</a></li>
+              <li><a class="dropdown-item" href="manager.html">Manager Utilities</a></li>
+            </ul>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center">
+          <img src="./images/blackcircle.png" id="profilephototarget" alt="User" class="rounded-circle me-2" style="height:32px; cursor:pointer;" onclick="window.location.href='profile.html'" />
+          <span id="H3UserBanner" class="text-white me-3">User</span>
+          <a href="login.html" id="loginBtn" class="btn btn-outline-light me-2" onclick="loginUser(event)">Login</a>
+          <a href="login.html" id="logoutBtn" class="btn btn-outline-light me-2" onclick="logoutUser(event)">Logout</a>
+          <a href="cartreview.html" id="cartBtn" class="btn btn-outline-light" onclick="checkUser(event)">Cart</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Cart Summary and Items -->
+  <div class="container mt-5">
+    <div id="cart-summary" class="mb-4"></div>
+
+    <h4 class="mb-3">Cart Items</h4>
+    <div class="row fw-bold border-bottom pb-2 mb-2">
+      <div class="col-md-2">Date</div>
+      <div class="col-md-2">Vendor</div>
+      <div class="col-md-3">Description</div>
+      <div class="col-md-1">Qty</div>
+      <div class="col-md-2">Price</div>
+      <div class="col-md-2">Total</div>
+    </div>
+    <div id="cart-items"></div>
+  </div>
+
+<script>
+  const baseUrl = "https://yellow-cliff-04c6b2d10.7.azurestaticapps.net";
+  const urlParams = new URLSearchParams(window.location.search);
+  const cartId = urlParams.get("cartid");
+
+  async function loadCartSummary() {
+    const response = await fetch(`${baseUrl}/api/Cart/${cartId}`);
+    const cartData = await response.json();
+    const cart = cartData[0]; // get the first cart object
+    console.log(cart);
+
+  const summaryHtml = `
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      Cart Summary
+    </div>
+    <div class="card-body">
+      <p><strong>Cart ID:</strong> ${cart.cartId}</p>
+      <p><strong>User ID:</strong> ${cart.uid}</p>
+      <p><strong>Status:</strong> ${cart.isCheckedOut === 1 ? "Checked Out" : "Pending"}</p>
+      <p><strong>Payment ID:</strong> ${cart.paymentid || "N/A"}</p>
+      <p><strong>Item Type:</strong> ${cart.itemType || "N/A"}</p>
+      <p><strong>Description:</strong> ${cart.itemDescription || "N/A"}</p>
+      <p><strong>Quantity:</strong> ${cart.quantity}</p>
+      <p><strong>Unit Price:</strong> $${typeof cart.unitPrice === "number" ? cart.unitPrice.toFixed(2) : "0.00"}</p>
+      <p><strong>Total Price:</strong> $${typeof cart.totalPrice === "number" ? cart.totalPrice.toFixed(2) : "0.00"}</p>
+      <p><strong>Date Added:</strong> ${new Date(cart.dateAdded).toLocaleDateString()}</p>
+    </div>
+  </div>
+`;
+  document.getElementById("cart-summary").innerHTML = summaryHtml;
+  }
+
+  async function loadCartItems() {
+    const response = await fetch(`${baseUrl}/api/Cartitem/cart/${cartId}`);
+    const items = await response.json();
+
+    const container = document.getElementById("cart-items");
+    container.innerHTML = "";
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info text-center" role="alert">
+          No items found in this cart.
+        </div>
+      `;
+      return;
+    }
+
+    items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "row mb-2";
+      row.innerHTML = `
+        <div class="col-md-2">${new Date(item.cartitemdate).toLocaleDateString()}</div>
+        <div class="col-md-2">${item.itemvendor}</div>
+        <div class="col-md-3">${item.itemdescription}</div>
+        <div class="col-md-1">${item.itemqty}</div>
+        <div class="col-md-2">$${item.itemextendedprice.toFixed(2)}</div>
+        <div class="col-md-2">$${item.itemtotals.toFixed(2)}</div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  loadCartSummary();
+  loadCartItems();
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+async function getEndpoint(n){if(!CONFIG) await loadConfig(); return CONFIG.apiBaseUrl+CONFIG.endpoints[n];}
