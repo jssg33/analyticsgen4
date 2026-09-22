@@ -25,6 +25,10 @@ namespace Enterprise.Models
 
         public string? Notes { get; set; }
 
+        public string? ApiRootUrl { get; set; }
+
+        public string? ApiEndpointPath { get; set; }
+
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     }
 }

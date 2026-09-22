@@ -1,6 +1,7 @@
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\statsback798.exe
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\appsettings.json
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\dotnet-tools.json
+C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\Z-HTMLUI\auditor\config.json
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\statsback798.dll
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\statsback798.runtimeconfig.json
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\publish\statsback798.pdb

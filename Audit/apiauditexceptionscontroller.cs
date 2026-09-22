@@ -118,6 +118,8 @@ public static class AuditExceptionEndpoints
                 exception.ExpirationDate = input.ExpirationDate;
                 exception.Active = input.Active;
                 exception.Notes = input.Notes;
+                exception.ApiRootUrl = input.ApiRootUrl;
+                exception.ApiEndpointPath = input.ApiEndpointPath;
 
                 await context.SaveChangesAsync();
 
