@@ -29,6 +29,7 @@ GEN3
 
 GEN4 
     NEW UI TO NEW BACKOFFICE ON SQL SERVER - PORT + UPGRADES
+    NEW REPO https://github.com/jssg33/analyticsgen4
     https://cockyanalyticsg4-cqfrgacteud3c2h3.westus3-01.azurewebsites.net -> API ON SQLAZURE
     https://cockyanalyticsg4-cqfrgacteud3c2h3.westus3-01.azurewebsites.net/swagger/ -> API ON SQLAZURE username admin password: spirit
     https://g4.capitoltechnology.net GENUI ON REACT
