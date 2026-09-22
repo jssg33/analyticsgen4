@@ -100,5 +100,6 @@ app.MapUserlogEndpoints();
 app.MapUserNoticeEndpoints();
 app.MapUserprofileEndpoints();
 app.MapUsersessionEndpoints();
+app.MapApiHostExceptionEndpoints();
 
 app.Run();

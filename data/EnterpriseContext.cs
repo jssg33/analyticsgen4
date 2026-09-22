@@ -21,6 +21,7 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<Apihost> Apihosts { get; set; }
     public virtual DbSet<AuditResult> AuditResults { get; set; }
     public virtual DbSet<AuditException> AuditExceptions { get; set; }
+    public virtual DbSet<ApiHostException> ApiHostExceptions { get; set; }
     
     public virtual DbSet<Allstock> Allstocks { get; set; }
 
@@ -340,6 +341,16 @@ public partial class EnterpriseContext : DbContext
 
             entity.Property(e => e.role).HasColumnName("role");
             entity.Property(e => e.uid).HasColumnName("uid");
+        });
+
+        modelBuilder.Entity<ApiHostException>(entity =>
+        {
+        entity.ToTable("ApiHostException");
+        entity.HasKey(e => e.Id);
+        entity.Property(e => e.ExceptionType).HasMaxLength(100);
+        entity.Property(e => e.ApprovedBy).HasMaxLength(255);
+        entity.Property(e => e.Active).HasDefaultValue(true);
+        entity.Property(e => e.CreatedDate).HasDefaultValueSql("SYSUTCDATETIME()");
         });
 
         modelBuilder.Entity<Usernotice>(entity =>
