@@ -29,8 +29,9 @@ GEN3
 
 GEN4 
     NEW UI TO NEW BACKOFFICE ON SQL SERVER - PORT + UPGRADES
-    cockyanalyticsg4-cqfrgacteud3c2h3.westus3-01.azurewebsites.net -> API ON SQLAZURE
-    g4.capitoltechnology.net GENUI ON REACT
-    analytics.capitoltechnology.net GEN3UI POINTING TO GEN4 BACKOFFICE
+    https://cockyanalyticsg4-cqfrgacteud3c2h3.westus3-01.azurewebsites.net -> API ON SQLAZURE
+    https://cockyanalyticsg4-cqfrgacteud3c2h3.westus3-01.azurewebsites.net/swagger/ -> API ON SQLAZURE username admin password: spirit
+    https://g4.capitoltechnology.net GENUI ON REACT
+    https://analytics.capitoltechnology.net GEN3UI POINTING TO GEN4 BACKOFFICE
 
 
