@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run Audit · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Run Audit</h2>
+  <div class="page-sub">Endpoints covered by an active exception are left unticked. Checks each selected endpoint from this browser: reachability, status code, response time, HTTPS and CORS, plus config consistency. Then save the run as one audit record in History.</div>
+
+  <div class="card"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <select class="form-select form-select-sm" id="hostFilter" style="max-width:240px"><option value="">All hosts</option></select>
+      <input class="form-control form-control-sm" id="search" style="max-width:200px" placeholder="Filter endpoints…">
+      <button class="btn btn-success btn-sm" id="walk" type="button" disabled title="Pick a host first">Walk Swagger &amp; audit host</button>
+      <button class="btn btn-primary btn-sm" id="run" type="button">Run selected</button>
+      <span class="ms-auto small text-muted" id="summary"></span>
+    </div>
+    <div id="walkMsg"></div>
+    <div id="list"></div>
+  </div></div>
+
+  <div class="card mt-3 d-none" id="saveCard"><div class="card-body">
+    <h5 class="mb-3">Save this audit</h5>
+    <div class="row g-3">
+      <div class="col-md-5"><label class="form-label small mb-1" for="auditorName">Auditor name</label>
+        <input class="form-control form-control-sm" id="auditorName"></div>
+      <div class="col-md-2"><label class="form-label small mb-1" for="auditorId">Auditor ID</label>
+        <input class="form-control form-control-sm" id="auditorId" type="number"></div>
+      <div class="col-md-5 small" id="totals"></div>
+      <div class="col-12"><label class="form-label small mb-1" for="notes">Notes</label>
+        <input class="form-control form-control-sm" id="notes" placeholder="e.g. Weekly audit">
+        <div class="form-text">A per-endpoint summary (verdict, status, response time, warnings and failures) is added after your notes.</div></div>
+      <div class="col-12 d-flex flex-wrap gap-3 align-items-center">
+        <button class="btn btn-success btn-sm" id="saveRun" type="button">Save audit to History</button>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="touch" checked>
+          <label class="form-check-label small" for="touch">Also stamp the audited endpoints and hosts with this audit (Last Audit Date + result ID)</label>
+        </div>
+      </div>
+      <div class="col-12" id="saveMsg"></div>
+    </div>
+  </div></div>
+
+  <div class="small text-muted mt-3">
+    Browsers only let a page read a response when the target API allows this page's origin (CORS). When it doesn't,
+    the audit can still tell whether the endpoint is up, but not its status code.
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="swagger-import.js"></script>
+<script>
+Cocky.layout("audit");
+const { esc } = Cocky;
+const list = document.getElementById("list");
+const qs = new URLSearchParams(location.search);
+const preselect = qs.get("id");
+const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+const methodOf = e => { const m = String(e.type || String(e.description || "").split(" ")[0] || "").toUpperCase(); return METHODS.includes(m) ? m : "GET"; };
+let endpoints = [];
+let hosts = [];
+let exceptions = [];
+let hostExceptions = [];
+// Whole-host exception covering this endpoint's host (locks the endpoint out of every run)
+const hostExcFor = e => Cocky.hostException(hostExceptions, e.apiHostId);
+// ---- Exceptions ----
+// An exception can be scoped by any combination of (every field that is set must match):
+//   apiAuditId      - one endpoint record
+//   apiRootUrl      - every endpoint whose URL starts with this root, e.g. https://api3.capitoltechnology.net
+//   apiEndpointPath - a path, * = wildcard, e.g. /api/Student/*  (relative to apiRootUrl when that is set)
+// An exception with none of them set matches nothing.
+const isLive = x => x.active !== false && (!x.expirationDate || Cocky.parseDate(x.expirationDate) > new Date());
+// Swagger's placeholder "string" counts as empty, same as null
+const has = v => v !== null && v !== undefined && !["", "string"].includes(String(v).trim().toLowerCase());
+const norm = s => String(s).trim().toLowerCase().replace(/\/+$/, "");
+function rootMatches(root, url) {
+  if (!url) return false;
+  const r = norm(root), u = url.toLowerCase();
+  return u === r || u.startsWith(r + "/") || u.startsWith(r + "?");
+}
+function pathMatches(pattern, url, root) {
+  if (!url) return false;
+  let path;
+  try {
+    const u = new URL(url);
+    path = u.pathname;
+    if (has(root)) {
+      const rp = new URL(norm(root)).pathname.replace(/\/+$/, "");   // root may include a base path
+      if (rp && path.toLowerCase().startsWith(rp.toLowerCase())) path = path.slice(rp.length) || "/";
+    }
+  } catch { return false; }
+  const pat = "/" + String(pattern).trim().replace(/^\/+/, "");
+  const re = new RegExp("^" + pat.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "/?$", "i");
+  return re.test(path);
+}
+function exceptionCovers(x, e) {
+  if (!has(x.apiAuditId) && !has(x.apiRootUrl) && !has(x.apiEndpointPath)) return false;
+  const url = urls[e.id] ?? targetUrl(e);
+  if (has(x.apiAuditId) && x.apiAuditId !== e.id) return false;
+  if (has(x.apiRootUrl) && !rootMatches(x.apiRootUrl, url)) return false;
+  if (has(x.apiEndpointPath) && !pathMatches(x.apiEndpointPath, url, x.apiRootUrl)) return false;
+  return true;
+}
+function scopeText(x) {
+  const parts = [];
+  if (has(x.apiAuditId)) parts.push("endpoint #" + x.apiAuditId);
+  if (has(x.apiRootUrl) || has(x.apiEndpointPath)) parts.push(`${has(x.apiRootUrl) ? norm(x.apiRootUrl) : "any root"}${has(x.apiEndpointPath) ? "/" + String(x.apiEndpointPath).trim().replace(/^\/+/, "") : "/*"}`);
+  return parts.join(", ");
+}
+const liveException = e => exceptions.find(x => isLive(x) && exceptionCovers(x, e));
+const expiredException = e => exceptions.find(x => x.active !== false && !isLive(x) && exceptionCovers(x, e));
+const checks = {};   // id -> check result
+
+// Swagger's example values are literally "string" - treat those as empty.
+const val = v => (v == null || v === "" || v === "string") ? "" : String(v).trim();
+
+// Join URL parts without collapsing the "//" in "https://"
+const joinUrl = (base, path) => { const b = String(base || "").replace(/\/+$/, ""), s = String(path || "").replace(/^\/+/, ""); return s ? `${b}/${s}` : b; };
+
+function targetUrl(e) {
+  const u = val(e.url), root = val(e.apiRoot);
+  if (/^https?:\/\//i.test(u)) return u;                       // url is already a full address
+  if (/^https?:\/\//i.test(root)) return joinUrl(root, u);      // apiRoot holds the full base URL
+  const h = hosts.find(x => x.id === e.apiHostId);              // host URL + apiRoot (a base path) + url
+  if (h && val(h.apiHostUrl)) return joinUrl(joinUrl(val(h.apiHostUrl), root), u);
+  const host = val(e.fqdn) || val(e.hostName) || val(e.iPv4Address);
+  if (!host) return "";
+  const scheme = e.sslSupported === false && e.httpSupported ? "http" : "https";
+  const port = e.primaryPort > 0 && ![80, 443].includes(e.primaryPort) ? ":" + e.primaryPort : "";
+  return joinUrl(joinUrl(`${scheme}://${host}${port}`, root), u);
+}
+
+async function timedFetch(url, mode, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  const start = performance.now();
+  try {
+    const res = await fetch(url, { method: "GET", mode, cache: "no-store", redirect: "follow", signal: ctrl.signal });
+    return { res, ms: performance.now() - start };
+  } finally { clearTimeout(t); }
+}
+
+async function auditOne(e, url) {
+  const f = [];
+  const add = (level, text) => f.push({ level, text });
+  const out = { url, status: null, ms: null, secure: false, findings: f, when: new Date().toISOString() };
+  const limit = Cocky.CFG.auditTimeoutMs;
+
+  // Exceptions
+  const ex = liveException(e), old = expiredException(e);
+  if (ex) add("info", `Covered by exception #${ex.id} (${scopeText(ex)})${ex.expirationDate ? " until " + Cocky.parseDate(ex.expirationDate).toLocaleDateString() : ""}: ${ex.reason || "(no reason)"}`);
+  else if (old) add("warn", `Exception #${old.id} expired on ${Cocky.parseDate(old.expirationDate).toLocaleString()}; this endpoint is back in scope.`);
+
+  // Config consistency
+  if (e.isActive === false) add("info", "Endpoint is marked inactive.");
+  const host = hosts.find(x => x.id === e.apiHostId);
+  if (e.apiHostId && !host) add("warn", `Linked host #${e.apiHostId} was not found.`);
+  if (host && (host.active === false || host.isActive === false)) add("info", `Host "${host.apiHostName}" is marked inactive.`);
+  if (e.hasAuthEnabled && !val(e.authType)) add("warn", "Auth is enabled but no Auth Type is recorded.");
+  if (!val(e.techContactEmail) && !val(e.securityEmail)) add("info", "No tech or security contact email recorded.");
+
+  if (!url) { add("fail", "No URL to test. Fill in Url (full https://… address) or FQDN/Host Name on the endpoint."); return finish(out); }
+  let parsed;
+  try { parsed = new URL(url); } catch { add("fail", `"${url}" is not a valid URL.`); return finish(out); }
+
+  // Transport
+  out.secure = parsed.protocol === "https:";
+  if (out.secure) add("pass", "Uses HTTPS.");
+  else {
+    add(e.sslSupported ? "fail" : "warn", e.sslSupported ? "Endpoint says SSL is supported but the URL is plain HTTP." : "Uses plain HTTP (unencrypted).");
+    if (location.protocol === "https:") add("info", "This page is on HTTPS, so the browser blocks HTTP requests (mixed content). Results below may show it as unreachable.");
+  }
+
+  // Reachability (CORS first so we can read the status)
+  try {
+    const { res, ms } = await timedFetch(url, "cors", limit);
+    out.status = res.status; out.ms = ms;
+    add("pass", "Reachable; CORS allows this origin to read the response.");
+    const s = res.status;
+    const method = methodOf(e);
+    const templated = /\{[^}]+\}/.test(url);
+    const auth = !!e.hasAuthEnabled;
+    if (method !== "GET") add("info", `Swagger lists this as ${method}. CockyAuditor only sends GET requests, so it checks that the route answers without calling the operation.`);
+    if (templated) add("info", "The path has parameters like {id}; they were sent as-is.");
+    if (s === 401 || s === 403) add(auth ? "pass" : "warn",
+      `HTTP ${s}: requires authentication${auth ? "" : ", but Swagger doesn't declare any security for it"}.`);
+    else if (s >= 500) add("fail", `HTTP ${s}: server error.`);
+    else if (s >= 200 && s < 300 && method !== "GET")
+      add("pass", `HTTP ${s}: route is reachable. (A GET on the same path answered; its own row covers whether that is open.)`);
+    else if (s >= 200 && s < 300) {
+      add("pass", `HTTP ${s} ${res.statusText}`.trim());
+      if (auth) add("fail", "Swagger says authentication is required, but it answered without credentials.");
+      else add("warn", "Open endpoint: it answered without any credentials.");
+    }
+    else if ((method !== "GET" && [404, 405].includes(s)) || (templated && [400, 404].includes(s)))
+      add("pass", `HTTP ${s}: route is reachable (expected for this kind of request).`);
+    else add("warn", `HTTP ${s} ${res.statusText}`.trim());
+    if (res.redirected) add("info", `Redirected to ${res.url}`);
+  } catch (err) {
+    if (err.name === "AbortError") {
+      add("fail", `No response within ${limit / 1000}s.`);
+      return finish(out);
+    }
+    // Couldn't read it - is it reachable at all?
+    try {
+      const { ms } = await timedFetch(url, "no-cors", limit);
+      out.ms = ms;
+      add("warn", "Reachable, but CORS doesn't allow this origin, so the status code can't be read.");
+    } catch (err2) {
+      add("fail", err2.name === "AbortError"
+        ? `No response within ${limit / 1000}s.`
+        : "Unreachable: DNS failure, connection refused, bad TLS certificate, or blocked by the browser.");
+    }
+  }
+  if (out.ms != null) {
+    const m = Math.round(out.ms);
+    add(m > 5000 ? "fail" : m > 2000 ? "warn" : "pass", `Response time ${m} ms.`);
+  }
+  return finish(out);
+}
+
+function finish(out) {
+  const lv = out.findings.map(x => x.level);
+  out.verdict = lv.includes("fail") ? "fail" : lv.includes("warn") ? "warn" : "pass";
+  return out;
+}
+
+const badge = v => ({
+  pass: '<span class="badge text-bg-success">Pass</span>',
+  warn: '<span class="badge text-bg-warning">Warning</span>',
+  fail: '<span class="badge text-bg-danger">Fail</span>',
+  running: '<span class="badge text-bg-info">Running…</span>',
+  saved: '<span class="badge text-bg-secondary ms-1">Saved</span>'
+}[v] || "");
+
+function render() {
+  if (!endpoints.length) {
+    list.innerHTML = '<div class="empty">No endpoints to audit yet. <a href="apihosts.html?add=1">Add an API from Swagger</a> to import its endpoints.</div>';
+    return;
+  }
+  if (!visible().length) { list.innerHTML = '<div class="empty">No endpoints match this host/filter.</div>'; return; }
+  const exceptedHosts = [...new Set(visible().map(hostExcFor).filter(Boolean))];
+  const banner = exceptedHosts.length ? `<div class="alert alert-warning small py-2">${exceptedHosts.length} host(s) excepted from auditing, so their endpoints are locked out of this run:
+    ${exceptedHosts.map(x => { const h = hosts.find(y => y.id === x.apiHostId); return `<b>${esc(val(h?.apiHostName) || "#" + x.apiHostId)}</b> (exception #${x.id}${x.reason ? ": " + esc(x.reason) : ""})`; }).join("; ")}</div>` : "";
+  list.innerHTML = banner + `<div class="table-responsive"><table class="table table-sm align-middle">
+    <thead><tr><th style="width:32px"><input class="form-check-input" type="checkbox" id="all"></th>
+      <th>Endpoint</th><th>Target URL</th><th>Result</th></tr></thead>
+    <tbody>${visible().map(e => {
+      const c = checks[e.id];
+      return `<tr data-id="${e.id}">
+        <td><input class="form-check-input pick" type="checkbox" ${isPicked(e) ? "checked" : ""} ${hostExcFor(e) ? "disabled" : ""}></td>
+        <td><div class="fw-semibold"><span class="badge method-${methodOf(e).toLowerCase()} me-1">${methodOf(e)}</span>#${e.id} ${esc(val(e.url) || val(e.description) || "(no description)")}</div>
+            <div class="small text-muted">${esc([hostName(e), val(e.environment), val(e.endpointType)].filter(Boolean).join(" · "))}</div>
+            ${hostExcFor(e) ? `<span class="badge text-bg-warning" title="${esc(hostExcFor(e).reason || "")}">Host excepted (#${hostExcFor(e).id}), can't be audited</span>` : ""}
+            ${liveException(e) ? `<span class="badge text-bg-info" title="${esc(liveException(e).reason || "")}">Excluded by exception #${liveException(e).id} · ${esc(scopeText(liveException(e)))}</span>` : ""}
+            ${!liveException(e) && expiredException(e) ? `<span class="badge text-bg-danger">Exception #${expiredException(e).id} expired</span>` : ""}</td>
+        <td style="min-width:260px"><input class="form-control form-control-sm target" value="${esc(targetUrl(e))}" placeholder="https://host/path"></td>
+        <td class="text-nowrap verdict">${c ? badge(c.running ? "running" : c.verdict) + (c.ms != null ? ` <span class="small text-muted">${Math.round(c.ms)} ms</span>` : "") : '<span class="text-muted small">Not run</span>'}</td>
+      </tr>
+      ${c && !c.running ? `<tr class="detail"><td></td><td colspan="3"><ul class="list-unstyled small mb-1 check-list">
+        ${c.findings.map(x => `<li class="lvl-${x.level}">${{ pass: "✔", warn: "⚠", fail: "✖", info: "ℹ" }[x.level]} ${esc(x.text)}</li>`).join("")}
+        </ul></td></tr>` : ""}`;
+    }).join("")}</tbody></table></div>`;
+
+  const all = document.getElementById("all");
+  const picks = [...list.querySelectorAll(".pick:not(:disabled)")];
+  all.checked = picks.length > 0 && picks.every(p => p.checked);
+  all.disabled = picks.length === 0;
+  const sync = () => picks.forEach(p => picked[p.closest("tr").dataset.id] = p.checked);
+  all.onchange = () => { picks.forEach(p => p.checked = all.checked); sync(); };
+  picks.forEach(p => p.onchange = () => { sync(); all.checked = picks.every(x => x.checked); });
+  list.querySelectorAll(".target").forEach(inp => inp.onchange = () => { urls[inp.closest("tr").dataset.id] = inp.value.trim(); setTimeout(render); });
+  // keep typed URLs across re-renders
+  list.querySelectorAll(".target").forEach(inp => { const u = urls[inp.closest("tr").dataset.id]; if (u !== undefined) inp.value = u; });
+  const done = Object.values(checks).filter(c => !c.running);
+  const n = v => done.filter(c => c.verdict === v).length;
+  document.getElementById("summary").textContent = done.length ? `${n("pass")} passed · ${n("warn")} warnings · ${n("fail")} failed` : "";
+}
+const urls = {};
+function visible() {
+  const h = document.getElementById("hostFilter").value;
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  return endpoints.filter(e => (!h || String(e.apiHostId) === h) &&
+    (!q || `${methodOf(e)} ${e.url} ${e.description} ${e.family}`.toLowerCase().includes(q)));
+}
+// Re-rendering hundreds of rows on every finished check is slow; batch to one per frame.
+let renderQueued = false;
+const scheduleRender = () => { if (!renderQueued) { renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render(); }); } };
+const picked = {};
+const isPicked = e => hostExcFor(e) ? false : e.id in picked ? picked[e.id] : (preselect ? String(e.id) === preselect : e.isActive !== false && !liveException(e));
+const hostName = e => { const h = hosts.find(x => x.id === e.apiHostId); return h ? "Host: " + val(h.apiHostName) : ""; };
+
+async function run() {
+  const rows = [...list.querySelectorAll("tr[data-id]")].filter(tr => tr.querySelector(".pick").checked &&
+    !hostExcFor(endpoints.find(e => e.id === +tr.dataset.id) || {}));
+  if (!rows.length) { Cocky.toast("Select at least one endpoint.", "warning"); return; }
+  const btn = document.getElementById("run");
+  btn.disabled = true; btn.textContent = "Running…";
+  for (const k in checks) delete checks[k];
+  document.getElementById("saveCard").classList.add("d-none");
+  document.getElementById("saveMsg").innerHTML = "";
+  const jobs = rows.map(tr => {
+    const id = +tr.dataset.id;
+    const url = tr.querySelector(".target").value.trim();
+    urls[id] = url;
+    checks[id] = { running: true };
+    return { id, url };
+  });
+  render();
+  let next = 0, finished = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const j = jobs[next++];
+      const e = endpoints.find(x => x.id === j.id);
+      checks[j.id] = await auditOne(e, j.url);
+      finished++; btn.textContent = `Running… ${finished}/${jobs.length}`;
+      scheduleRender();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, jobs.length) }, worker));
+  render();
+  btn.disabled = false; btn.textContent = "Run selected";
+  showSaveCard();
+}
+
+function auditedPairs() {
+  return Object.entries(checks).filter(([, c]) => !c.running)
+    .map(([id, c]) => ({ endpoint: endpoints.find(e => e.id === +id), check: c }));
+}
+
+function showSaveCard() {
+  const pairs = auditedPairs();
+  if (!pairs.length) return;
+  const card = document.getElementById("saveCard");
+  card.classList.remove("d-none");
+  const t = window.summarizeAudit(pairs, hosts);
+  document.getElementById("totals").innerHTML = `<div class="text-muted mb-1">Will be saved as</div>
+    Hosts: <b>${t.totalApiHosts}</b> (${t.apiHostsSecure} secure, ${t.apiHostsInsecure} insecure)<br>
+    Endpoints: <b>${t.totalApiEndpoints}</b> (${t.totalEndpointsSecure} secure, ${t.totalEndpointsInsecure} insecure)`;
+  const btn = document.getElementById("saveRun");
+  btn.disabled = false; btn.textContent = "Save audit to History";
+  // Pre-fill auditor from last time, or from the endpoint record
+  const nameEl = document.getElementById("auditorName"), idEl = document.getElementById("auditorId");
+  let remembered = {};
+  try { remembered = JSON.parse(localStorage.getItem("cocky.auditor") || "{}"); } catch {}
+  const src = pairs[0].endpoint;
+  if (!nameEl.value) nameEl.value = remembered.name || val(src.auditorName);
+  if (!idEl.value) idEl.value = remembered.id ?? (src.auditorId || "");
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+async function saveRun() {
+  const pairs = auditedPairs();
+  const btn = document.getElementById("saveRun");
+  const msg = document.getElementById("saveMsg");
+  const auditorName = document.getElementById("auditorName").value.trim();
+  const auditorIdRaw = document.getElementById("auditorId").value;
+  try { localStorage.setItem("cocky.auditor", JSON.stringify({ name: auditorName, id: auditorIdRaw === "" ? null : +auditorIdRaw })); } catch {}
+  const payload = window.buildAuditResultPayload(pairs, hosts, {
+    auditorName, auditorId: auditorIdRaw === "" ? 0 : +auditorIdRaw,
+    notes: document.getElementById("notes").value.trim()
+  });
+  btn.disabled = true; btn.textContent = "Saving…";
+  let saved;
+  try { saved = await Cocky.api.create("apiauditresults", payload); }
+  catch (err) {
+    msg.innerHTML = `<div class="alert alert-danger small mb-0">Saving the audit failed: ${esc(err.message)}</div>`;
+    btn.disabled = false; btn.textContent = "Save audit to History";
+    return;
+  }
+  const resultId = saved && typeof saved === "object" ? saved.id : null;
+  const problems = [];
+  if (document.getElementById("touch").checked) {
+    const now = new Date().toISOString();
+    for (const { endpoint: e, check: c } of pairs) {
+      const upd = { ...e, lastAuditDate: now, modifiedDate: now, endpointSecure: c.secure };
+      if (resultId != null) upd.auditResultId = resultId;
+      try { await Cocky.api.update("apiaudit", e.id, upd); Object.assign(e, upd); }
+      catch (err) { problems.push(`Endpoint #${e.id}: ${err.message}`); }
+    }
+    const hostIds = [...new Set(pairs.map(x => x.endpoint.apiHostId).filter(id => id != null))];
+    for (const hid of hostIds) {
+      const h = hosts.find(x => x.id === hid); if (!h) continue;
+      const upd = { ...h, lastAuditDate: now };
+      if (resultId != null) upd.lastAuditId = resultId;
+      try { await Cocky.api.update("apihosts", h.id, upd); Object.assign(h, upd); }
+      catch (err) { problems.push(`Host #${h.id}: ${err.message}`); }
+    }
+  }
+  btn.textContent = "Saved";
+  msg.innerHTML = `<div class="alert alert-${problems.length ? "warning" : "success"} small mb-0">
+    Audit${resultId != null ? " #" + resultId : ""} saved. <a href="apihistory.html">View in History</a>
+    ${problems.length ? `<div class="mt-1">Some records couldn't be stamped:</div><ul class="mb-0">${problems.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div>`;
+}
+
+document.getElementById("run").onclick = run;
+document.getElementById("walk").onclick = () => walkAndAudit(+document.getElementById("hostFilter").value);
+
+// One click: read the host's swagger.json, register new operations, then audit every endpoint on the host.
+async function walkAndAudit(hostId) {
+  const host = hosts.find(h => h.id === hostId);
+  const box = document.getElementById("walkMsg");
+  const walkBtn = document.getElementById("walk"), runBtn = document.getElementById("run");
+  if (!host) { box.innerHTML = `<div class="alert alert-danger small">Host #${hostId} not found.</div>`; return; }
+  const hx = Cocky.hostException(hostExceptions, host.id);
+  if (hx) {
+    document.getElementById("hostFilter").value = String(host.id); render();
+    box.innerHTML = `<div class="alert alert-warning small">${esc(val(host.apiHostName) || host.apiHostUrl)} is excepted from auditing
+      (host exception #${hx.id}${hx.reason ? ": " + esc(hx.reason) : ""}${hx.approvedBy ? ", approved by " + esc(hx.approvedBy) : ""}${hx.expirationDate ? ", until " + Cocky.parseDate(hx.expirationDate).toLocaleString() : ""}).
+      <a href="apiexceptions.html?tab=hosts">Manage host exceptions</a></div>`;
+    return;
+  }
+  if (!val(host.apiHostUrl)) { box.innerHTML = `<div class="alert alert-danger small">Host #${host.id} has no API Host Url, so there's no swagger.json to read. Edit it on the Hosts page.</div>`; return; }
+  document.getElementById("hostFilter").value = String(host.id);
+  walkBtn.disabled = runBtn.disabled = true;
+  const say = t => { box.innerHTML = `<div class="alert alert-info small py-2">${Cocky.spinner(t).replace('py-4', 'py-0')}</div>`; };
+  say(`Reading swagger.json for ${esc(val(host.apiHostName) || host.apiHostUrl)}…`);
+  let w;
+  try { w = await SwaggerImport.walkHost(host, endpoints, t => say(esc(t))); }
+  catch (e) {
+    walkBtn.disabled = runBtn.disabled = false;
+    box.innerHTML = e.kind === "cancel" ? "" : `<div class="alert alert-danger small">Couldn't read Swagger for this host: ${esc(e.message)}
+      <div class="mt-1">You can still audit the endpoints already registered: they're listed below.</div></div>`;
+    render();
+    return;
+  }
+  endpoints = w.endpoints;
+  // Tick every active endpoint on this host that isn't covered by an exception
+  for (const k in picked) delete picked[k];
+  endpoints.forEach(e => { if (e.apiHostId === host.id) picked[e.id] = e.isActive !== false && !liveException(e); });
+  box.innerHTML = `<div class="alert alert-${w.failures.length ? "warning" : "success"} small py-2">
+    <b>${esc(w.parsed.title || "API")}</b> ${esc(w.parsed.version)}: ${w.parsed.endpoints.length} operations in Swagger.
+    ${w.created.length ? `<b>${w.created.length}</b> new endpoint(s) registered${w.hostDefaultCount ? `, with ${w.hostDefaultCount} default field(s) from the host` : ""}${w.template ? ` (other details copied from #${w.template.id})` : ""}.` : "All were already registered."}
+    ${w.refreshed ? `<br>${w.refreshed} existing endpoint(s) updated with the host's details.` : ""}
+    ${w.notInSwagger.length ? `<br>${w.notInSwagger.length} registered endpoint(s) are no longer in Swagger: ${w.notInSwagger.slice(0, 6).map(e => esc(e.description || e.url)).join(", ")}${w.notInSwagger.length > 6 ? "…" : ""}. They're still audited; use <b>Sync Swagger</b> on the Hosts page to mark them inactive.` : ""}
+    ${w.failures.length ? `<br>${w.failures.length} couldn't be registered: ${w.failures.slice(0, 3).map(esc).join("; ")}` : ""}
+    ${w.filled.length ? `<br>Required fields filled with "N/A"/0: ${w.filled.map(esc).join(", ")}.` : ""}</div>`;
+  const hf = document.getElementById("hostFilter");
+  [...hf.options].forEach(o => { const h = hosts.find(x => String(x.id) === o.value); if (h) o.textContent = `#${h.id} ${val(h.apiHostName) || val(h.apiHostUrl)} (${endpoints.filter(e => e.apiHostId === h.id).length})`; });
+  document.getElementById("search").value = "";
+  runBtn.disabled = false;
+  render();
+  await run();
+  walkBtn.disabled = false;
+}
+document.getElementById("saveRun").onclick = saveRun;
+
+(async () => {
+  list.innerHTML = Cocky.spinner("Loading endpoints…");
+  // Hosts are optional here - if they fail to load, endpoints still work with their own URL fields.
+  const hostsP = Cocky.api.list("apihosts").catch(e => { Cocky.toast("Couldn't load hosts: " + e.message, "warning"); return []; });
+  // Exceptions are optional too: without them nothing is excluded
+  const excP = Cocky.api.list("auditexceptions").catch(e => { Cocky.toast("Couldn't load exceptions, so none are applied: " + e.message, "warning"); return []; });
+  try {
+    const hostExcP = Cocky.api.list("hostexceptions").catch(e => { Cocky.toast("Couldn't load host exceptions, so none are applied: " + e.message, "warning"); return []; });
+    [endpoints, hosts, exceptions, hostExceptions] = await Promise.all([Cocky.api.list("apiaudit"), hostsP, excP, hostExcP]);
+    const hf = document.getElementById("hostFilter");
+    hf.insertAdjacentHTML("beforeend", hosts.map(h => `<option value="${h.id}">#${h.id} ${esc(val(h.apiHostName) || val(h.apiHostUrl))} (${endpoints.filter(e => e.apiHostId === h.id).length})${Cocky.hostException(hostExceptions, h.id) ? " (excepted)" : ""}</option>`).join(""));
+    if (qs.get("host")) hf.value = qs.get("host");
+    const syncWalk = () => {
+      const w = document.getElementById("walk"), hx = hf.value && Cocky.hostException(hostExceptions, +hf.value);
+      w.disabled = !hf.value || !!hx;
+      w.title = !hf.value ? "Pick a host first" : hx ? "This host is excepted from auditing" : "Read this host's swagger.json, register any new operations, and audit every endpoint";
+    };
+    hf.onchange = () => { syncWalk(); render(); };
+    syncWalk();
+    document.getElementById("search").oninput = () => render();
+    render();
+    if (qs.get("host") && qs.has("walk")) {
+      history.replaceState(null, "", location.pathname + "?host=" + qs.get("host"));   // don't re-walk on refresh
+      walkAndAudit(+qs.get("host"));
+    }
+  }
+  catch (e) { list.innerHTML = ""; list.appendChild(Cocky.errorBox(e, () => location.reload())); }
+})();
+</script>
+</body>
+</html>
