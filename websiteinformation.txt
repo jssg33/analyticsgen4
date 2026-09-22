@@ -1,17 +1,36 @@
-Github Repo 
+
+GEN1
+    ORIGINAL CLASS WEBSITES & REPO
+    Github Repo 
     https://github.com/jssg33/statsback542 
     (This is a Private Repo with invite sent to your cse/usc emails).
-OriginalTeam542
+    
+    OriginalTeam542
     https://cyrusjones159.github.io/Cockey-Investments/
-Front-End(Azure Static Web Server(Kestrel))
-    https://yellow-cliff-04c6b2d10.7.azurestaticapps.net
-Back-End(App API in C#)
+    
+    Back-End(App API in C#)
     https://cockyinvestments-ghehe0a8a7cge7fk.westus3-01.azurewebsites.net
     This is an API running on Windows Server(Custom) which spins up and down with usage(cheap student plan). First access can be slow.
     Swagger -> Username: admin  Password:spirit
 
+GEN2 
+    UI WITH NO MODS TO THE BACKOFFICE INITIALLY
 
-08/28-> NEW REACT CLIENT SITE WITH PORTED D3 GRAPHICS, AND USING THE SAME APIS.
-(ITS BEAUTIFUL)...
+    Front-End(Azure Static Web Server(Kestrel))
+    https://yellow-cliff-04c6b2d10.7.azurestaticapps.net
 
-https://pause-box-46401898.figma.site
+
+GEN3
+    08/28-> NEW REACT CLIENT SITE WITH PORTED D3 GRAPHICS, AND USING THE SAME APIS.
+    (ITS BEAUTIFUL)...
+    https://pause-box-46401898.figma.site
+
+    THE ORIGINAL BACKOFFICE WAS UPGRADED TO GEN3 SPECS WTIH LOGGING, AND AUDITING
+
+GEN4 
+    NEW UI TO NEW BACKOFFICE ON SQL SERVER - PORT + UPGRADES
+    cockyanalyticsg4-cqfrgacteud3c2h3.westus3-01.azurewebsites.net -> API ON SQLAZURE
+    g4.capitoltechnology.net GENUI ON REACT
+    analytics.capitoltechnology.net GEN3UI POINTING TO GEN4 BACKOFFICE
+
+
