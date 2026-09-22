@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Dashboard</h2>
+  <div class="page-sub">Overview of everything CockyAuditor is tracking.</div>
+
+  <div class="row g-3 mb-4" id="stats">
+    <div class="col-6 col-lg-3"><div class="card stat"><div class="card-body"><a href="apihosts.html"><div class="lbl">Hosts</div><div class="num" data-stat="hosts">…</div></a></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat"><div class="card-body"><a href="apiendpoints.html"><div class="lbl">Endpoints</div><div class="num" data-stat="endpoints">…</div></a></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat"><div class="card-body"><a href="apihistory.html"><div class="lbl">Audits</div><div class="num" data-stat="results">…</div></a></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat"><div class="card-body"><a href="apiexceptions.html"><div class="lbl">Active exceptions</div><div class="num" data-stat="exceptions">…</div></a></div></div></div>
+  </div>
+
+  <div id="problems"></div>
+
+  <div class="row g-3">
+    <div class="col-xl-7">
+      <div class="card h-100"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Endpoints</h5><a class="btn btn-sm btn-primary" href="apiaudit.html">Run audit</a>
+        </div>
+        <div class="small text-muted mb-2" id="due"></div>
+        <div id="endpoints"></div>
+      </div></div>
+    </div>
+    <div class="col-xl-5">
+      <div class="card h-100"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Recent results</h5><a class="small" href="apihistory.html">View all</a>
+        </div>
+        <div id="results"></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+Cocky.layout("dashboard");
+const $ = s => document.querySelector(s);
+const problems = [];
+
+function stat(name, value, err) {
+  const el = document.querySelector(`[data-stat="${name}"]`);
+  if (err) { el.innerHTML = '<span class="text-danger fs-6">Error</span>'; el.title = err.message; }
+  else el.textContent = value;
+}
+
+async function load(resource, statName, suffix = "") {
+  try {
+    const rows = await Cocky.api.list(resource, suffix);
+    stat(statName, rows.length);
+    return rows;
+  } catch (e) {
+    stat(statName, null, e);
+    problems.push(e);
+    return null;
+  }
+}
+
+(async () => {
+  $("#endpoints").innerHTML = Cocky.spinner();
+  $("#results").innerHTML = Cocky.spinner();
+
+  const [hosts, endpoints, results, exceptions] = await Promise.all([
+    load("apihosts", "hosts"),
+    load("apiaudit", "endpoints"),
+    load("apiauditresults", "results"),
+    load("auditexceptions", "exceptions", "/active")
+  ]);
+
+  // Count only exceptions that haven't expired
+  if (exceptions) {
+    const now = new Date();
+    const live = exceptions.filter(x => x.active !== false && (!x.expirationDate || Cocky.parseDate(x.expirationDate) > now));
+    stat("exceptions", live.length);
+    if (live.length !== exceptions.length) document.querySelector('[data-stat="exceptions"]').insertAdjacentHTML("beforeend",
+      ` <span class="fs-6 text-danger fw-normal">+${exceptions.length - live.length} expired</span>`);
+  }
+
+  if (problems.length) {
+    const box = document.createElement("div");
+    box.className = "alert alert-warning";
+    box.innerHTML = `<strong>Some API calls failed</strong><ul class="mb-0 small mt-1">${
+      problems.map(p => `<li>${Cocky.esc(p.message)}</li>`).join("")}</ul>`;
+    $("#problems").appendChild(box);
+  }
+
+  // Endpoints
+  if (endpoints === null) $("#endpoints").innerHTML = '<div class="empty">Couldn\'t load endpoints.</div>';
+  else {
+    const sorted = endpoints.slice().sort((a, b) => Cocky.dateMs(a.lastAuditDate) - Cocky.dateMs(b.lastAuditDate));
+    const week = Date.now() - 7 * 864e5;
+    const due = endpoints.filter(e => e.isActive !== false && (Cocky.dateMs(e.lastAuditDate) < week)).length;
+    $("#due").textContent = endpoints.length
+      ? `${due} active endpoint${due === 1 ? "" : "s"} not audited in the last 7 days. Oldest audits are listed first.`
+      : "";
+    Cocky.renderTable($("#endpoints"), "apiaudit", sorted.slice(0, 10), {
+      columns: ["id", "description", "url", "environment", "isActive", "lastAuditDate"],
+      emptyText: "No endpoints yet. Add one on the Endpoints page.",
+      onRowClick: r => location.href = "apiaudit.html?id=" + r.id
+    });
+  }
+
+  // Recent results
+  if (results === null) $("#results").innerHTML = '<div class="empty">Couldn\'t load results.</div>';
+  else {
+    const dk = r => Object.keys(r).find(k => /auditdate|rundate|createddate|date$/i.test(k));
+    const recent = results.slice().sort((a, b) => {
+      const ka = dk(a), kb = dk(b);
+      return Cocky.dateMs(kb && b[kb]) - Cocky.dateMs(ka && a[ka]) || (b.id ?? 0) - (a.id ?? 0);
+    }).slice(0, 8);
+    Cocky.renderTable($("#results"), "apiauditresults", recent, {
+      columns: ["id", "auditDate", "auditorName", "totalApiEndpoints", "totalEndpointsInsecure"],
+      onRowClick: () => location.href = "apihistory.html",
+      emptyText: "No audits have been run yet."
+    });
+  }
+})();
+</script>
+</body>
+</html>
