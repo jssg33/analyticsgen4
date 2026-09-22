@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "kCHKhwiY7rw=",
+  "dgSpecHash": "MPrnrDlkxXU=",
   "success": true,
-  "projectFilePath": "C:\\Users\\stritzj\\Github\\analyticsgen4\\statsback798.csproj",
+  "projectFilePath": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\stritzj\\.nuget\\packages\\azure.ai.formrecognizer\\4.1.0\\azure.ai.formrecognizer.4.1.0.nupkg.sha512",
     "C:\\Users\\stritzj\\.nuget\\packages\\azure.ai.openai\\2.1.0\\azure.ai.openai.2.1.0.nupkg.sha512",
