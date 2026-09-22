@@ -79,14 +79,68 @@ public static class ApihostEndpoints
 
                 context.Apihosts.Attach(host);
 
-                host.ApiHostName = input!.ApiHostName;
-                host.ApiHostUrl = input.ApiHostUrl;
-                host.SwaggerUsername = input.SwaggerUsername;
-                host.SwaggerPassword = input.SwaggerPassword;
-                host.IsSecure = input.IsSecure;
-                host.LastAuditDate = input.LastAuditDate;
-                host.LastAuditId = input.LastAuditId;
-                host.Active = input.Active;
+host.ApiHostName = input!.ApiHostName;
+host.ApiHostUrl = input.ApiHostUrl;
+host.SwaggerUsername = input.SwaggerUsername;
+host.SwaggerPassword = input.SwaggerPassword;
+host.IsSecure = input.IsSecure;
+host.LastAuditDate = input.LastAuditDate;
+host.LastAuditId = input.LastAuditId;
+host.Active = input.Active;
+
+// New fields
+host.AuditorId = input.AuditorId;
+host.Family = input.Family;
+host.IPv4Address = input.IPv4Address;
+host.IPv6Address = input.IPv6Address;
+host.HostName = input.HostName;
+host.HasProxy = input.HasProxy;
+host.ProxyEntranceV4 = input.ProxyEntranceV4;
+host.ProxyEntranceV6 = input.ProxyEntranceV6;
+host.ProxyType = input.ProxyType;
+host.DatabaseFramework = input.DatabaseFramework;
+host.DatabaseConnectionString = input.DatabaseConnectionString;
+host.DatabaseType = input.DatabaseType;
+host.AuditorName = input.AuditorName;
+host.AuditorEmail = input.AuditorEmail;
+host.AuditorEmployeeId = input.AuditorEmployeeId;
+host.AuditorDepartment = input.AuditorDepartment;
+host.BusinessUnitName = input.BusinessUnitName;
+host.BusinessUnitOwnerId = input.BusinessUnitOwnerId;
+host.PrimaryPort = input.PrimaryPort;
+host.SecondaryPort = input.SecondaryPort;
+host.SecondaryV4 = input.SecondaryV4;
+host.SecondaryV6 = input.SecondaryV6;
+host.FQDN = input.FQDN;
+host.OSType = input.OSType;
+host.FrameworkVersion = input.FrameworkVersion;
+host.GroupId = input.GroupId;
+host.GroupDescription = input.GroupDescription;
+host.BuildingId = input.BuildingId;
+host.BuildingName = input.BuildingName;
+host.TechContactName = input.TechContactName;
+host.TechContactEmail = input.TechContactEmail;
+host.TechContactFax = input.TechContactFax;
+host.TechContactPhone = input.TechContactPhone;
+host.SecurityEmail = input.SecurityEmail;
+host.SecurityPhone = input.SecurityPhone;
+host.DBAId = input.DBAId;
+host.DBAName = input.DBAName;
+host.HashType = input.HashType;
+host.SslSupported = input.SslSupported;
+host.HttpSupported = input.HttpSupported;
+host.HttpPortV4 = input.HttpPortV4;
+host.HttpPortV6 = input.HttpPortV6;
+host.CorsPath = input.CorsPath;
+host.AllowedRanges = input.AllowedRanges;
+host.DeniedRanges = input.DeniedRanges;
+host.IsActive = input.IsActive;
+host.Environment = input.Environment;
+host.ApplicationName = input.ApplicationName;
+host.SourceRepository = input.SourceRepository;
+host.AzureSubscriptionId = input.AzureSubscriptionId;
+host.AzureResourceGroup = input.AzureResourceGroup;
+host.SecurityClassification = input.SecurityClassification;
 
                 await context.SaveChangesAsync();
 
