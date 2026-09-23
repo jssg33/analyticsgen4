@@ -101,5 +101,7 @@ app.MapUserNoticeEndpoints();
 app.MapUserprofileEndpoints();
 app.MapUsersessionEndpoints();
 app.MapApiHostExceptionEndpoints();
+app.MapApplicationEndpoints();
+app.MapApplicationApiEndpoints();
 
 app.Run();
