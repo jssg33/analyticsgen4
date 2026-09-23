@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apps · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Applications</h2>
+  <div class="page-sub">An application uses one or more of your host APIs. <b>Link hosts</b> chooses which hosts it uses; a host can belong to more than one application. <b>Endpoints</b> is the total across all of an application's hosts.</div>
+  <div id="setup"></div>
+</section>
+
+<!-- Link hosts dialog -->
+<div class="modal fade" id="linkModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <input class="form-control form-control-sm mb-2 link-search" placeholder="Search hosts…">
+    <div class="link-list"></div>
+    <div class="link-error alert alert-danger small mt-3 d-none"></div>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <div class="small text-muted link-summary"></div>
+    <div><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+      <button class="btn btn-primary link-save" type="button">Save</button></div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("apps");
+const esc = Cocky.esc;
+
+// Lookup data used by the computed columns; reloaded on every refresh
+let hosts = [], endpoints = [], links = [], hostExc = [];
+let rollup = new Map();   // appId -> { hosts, total, active, ... }
+async function loadLookups() {
+  const [h, e, l, x] = await Promise.all([
+    Cocky.api.list("apihosts"),
+    Cocky.api.list("apiaudit"),
+    Cocky.api.list("apphosts"),
+    Cocky.api.list("hostexceptions").catch(() => [])
+  ]);
+  hosts = h; endpoints = e; links = l; hostExc = x;
+}
+const hostLabel = h => h.apiHostName || h.apiHostUrl || "#" + h.id;
+const epCountByHost = id => endpoints.filter(e => e.apiHostId === id).length;
+
+Cocky.SCHEMA.apps.format = {
+  hostApis: (v, r) => {
+    const x = rollup.get(r.id);
+    if (!x || !x.hosts.length) return '<span class="text-muted small">No hosts linked</span>';
+    return x.hosts.map(h => {
+      const exc = Cocky.hostException(hostExc, h.id);
+      return `<span class="badge ${exc ? "text-bg-warning" : "text-bg-light border"} me-1 mb-1 fw-normal" title="${esc(h.apiHostUrl || "")}${exc ? " · excepted from auditing" : ""}">${esc(hostLabel(h))}</span>`;
+    }).join("");
+  },
+  endpointTotal: (v, r) => {
+    const x = rollup.get(r.id);
+    if (!x) return "0";
+    return `<b>${x.total}</b>${x.total !== x.active ? ` <span class="small text-muted">(${x.active} active)</span>` : ""}`;
+  }
+};
+
+// Show a setup note instead of a raw error if the API doesn't have the Apps tables yet
+function showSetupNote(e) {
+  document.getElementById("setup").innerHTML = `<div class="alert alert-warning">
+    <strong>The API didn't answer on the Application routes.</strong> CockyAuditor expects
+    <code>${esc(Cocky.CFG.endpoints.apps)}</code> and <code>${esc(Cocky.CFG.endpoints.apphosts)}</code>
+    (set in <code>config.js</code>). Check the API has been deployed with <code>MapApplicationEndpoints()</code> and <code>MapApplicationApiEndpoints()</code>.
+    <div class="small mt-2 text-muted">${esc(e.message)}</div></div>`;
+}
+
+let page;
+(async () => {
+  try { await Cocky.api.list("apps"); }
+  catch (e) { if (e.status === 404) { showSetupNote(e); return; } }
+  page = Cocky.crudPage("apps", {
+    mount: main,
+    columns: Cocky.SCHEMA.apps.columns,
+    beforeLoad: loadLookups,
+    sort: rows => {
+      rollup = new Map(Cocky.appRollup(rows, links, hosts, endpoints).map(x => [x.app.id, x]));
+      return rows.slice().sort((a, b) => String(a.applicationName || "").localeCompare(String(b.applicationName || "")));
+    },
+    // Remove the application's ApplicationApi links first, so the delete works whether or not the database cascades
+    beforeDelete: app => Cocky.removeAppLinks(l => l.applicationId === app.id),
+    rowActions: [
+      { label: "Link hosts", onClick: openLinks },
+      { label: "Endpoints", onClick: a => location.href = "apiendpoints.html?app=" + a.id }
+    ],
+    // After adding an app, go straight to choosing its hosts
+    onCreated: saved => {
+      const app = saved.id ? page.rows().find(r => r.id === saved.id)
+        : page.rows().filter(r => r.applicationName === saved.applicationName).sort((a, b) => b.id - a.id)[0];
+      if (app) openLinks(app);
+    }
+  });
+})();
+
+// ---- Link hosts dialog ----
+const lm = document.getElementById("linkModal");
+const lmBs = bootstrap.Modal.getOrCreateInstance(lm);
+function openLinks(app) {
+  const current = links.filter(l => l.applicationId === app.id);
+  const picked = new Set(current.map(l => l.apiHostId));
+  lm.querySelector(".modal-title").textContent = `Hosts used by ${app.applicationName || "app #" + app.id}`;
+  const err = lm.querySelector(".link-error"); err.classList.add("d-none");
+  const search = lm.querySelector(".link-search"); search.value = "";
+  const list = lm.querySelector(".link-list");
+  const sorted = hosts.slice().sort((a, b) => hostLabel(a).localeCompare(hostLabel(b)));
+
+  const summary = () => {
+    const n = [...picked].reduce((s, id) => s + epCountByHost(id), 0);
+    lm.querySelector(".link-summary").textContent = `${picked.size} host${picked.size === 1 ? "" : "s"} selected · ${n} endpoint${n === 1 ? "" : "s"} in total`;
+  };
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    const shown = sorted.filter(h => !q || [h.apiHostName, h.apiHostUrl, h.environment, h.id].some(v => String(v ?? "").toLowerCase().includes(q)));
+    list.innerHTML = shown.length ? `<div class="list-group">${shown.map(h => {
+      const exc = Cocky.hostException(hostExc, h.id);
+      const others = links.filter(l => l.apiHostId === h.id && l.applicationId !== app.id).length;
+      return `<label class="list-group-item d-flex gap-3 align-items-start">
+        <input class="form-check-input mt-1" type="checkbox" value="${h.id}" ${picked.has(h.id) ? "checked" : ""}>
+        <span class="flex-grow-1"><span class="fw-semibold">${esc(hostLabel(h))}</span>
+          ${exc ? '<span class="badge text-bg-warning ms-1">Excepted</span>' : ""}
+          ${h.environment ? `<span class="badge text-bg-light border ms-1 fw-normal">${esc(h.environment)}</span>` : ""}
+          <br><span class="small text-muted">${esc(h.apiHostUrl || "")}${others ? ` · also used by ${others} other app${others === 1 ? "" : "s"}` : ""}</span></span>
+        <span class="text-nowrap small"><b>${epCountByHost(h.id)}</b> endpoints</span></label>`;
+    }).join("")}</div>` : `<div class="empty">${hosts.length ? "No hosts match your search." : "No hosts yet. Add one on the Hosts page first."}</div>`;
+    list.querySelectorAll("input[type=checkbox]").forEach(cb => cb.onchange = () => {
+      cb.checked ? picked.add(+cb.value) : picked.delete(+cb.value); summary();
+    });
+  };
+  search.oninput = draw;
+  draw(); summary();
+
+  const save = lm.querySelector(".link-save");
+  save.onclick = async () => {
+    const before = new Set(current.map(l => l.apiHostId));
+    const toAdd = [...picked].filter(id => !before.has(id));
+    const toRemove = current.filter(l => !picked.has(l.apiHostId));
+    if (!toAdd.length && !toRemove.length) { lmBs.hide(); return; }
+    save.disabled = true; save.textContent = "Saving…";
+    const failures = [];
+    await Promise.all([
+      ...toAdd.map(id => Cocky.api.create("apphosts", { applicationId: app.id, apiHostId: id, createdDate: new Date().toISOString() })
+        .catch(e => failures.push(e.message))),
+      ...toRemove.map(l => Cocky.api.remove("apphosts", l.id).catch(e => failures.push(e.message)))
+    ]);
+    save.disabled = false; save.textContent = "Save";
+    if (failures.length) {
+      err.textContent = `${failures.length} change(s) failed: ${failures[0]}`; err.classList.remove("d-none");
+      page.reload(); return;
+    }
+    lmBs.hide();
+    Cocky.toast(`${app.applicationName || "App"}: ${toAdd.length ? `${toAdd.length} host(s) linked` : ""}${toAdd.length && toRemove.length ? ", " : ""}${toRemove.length ? `${toRemove.length} unlinked` : ""}.`);
+    page.reload();
+  };
+  lmBs.show();
+}
+</script>
+</body>
+</html>
