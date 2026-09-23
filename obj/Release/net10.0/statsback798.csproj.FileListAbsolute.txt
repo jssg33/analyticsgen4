@@ -1017,3 +1017,4 @@ C:\Users\stritzj\Github\analyticsgen4\obj\Release\net10.0\statsback798.pdb
 C:\Users\stritzj\Github\analyticsgen4\obj\Release\net10.0\statsback798.genruntimeconfig.cache
 C:\Users\stritzj\Github\analyticsgen4\obj\Release\net10.0\ref\statsback798.dll
 C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\Z-HTMLUI\auditor\config.json
+C:\Users\stritzj\GitHub\analyticsgen4\bin\Release\net10.0\Z-REACTUI\auditor\config.json
