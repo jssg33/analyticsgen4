@@ -1,116 +1,183 @@
 using System;
-using System.Linq;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Enterprise.Models;
 
 namespace somecontrollers.Controllers;
 
 public static class ApplicationApiController
 {
-    public static void MapApplicationApiEndpoints(this WebApplication app)
+    public static void MapApplicationApiEndpoints(
+        this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/ApplicationApi",
-            async ([FromServices] EnterpriseContext db) =>
+        var group =
+            app.MapGroup("/api/ApplicationApi")
+               .WithTags("ApplicationApi");
+
+        // =====================================================
+        // GET ALL
+        // =====================================================
+
+        group.MapGet("/",
+            async () =>
             {
-                return await db.ApplicationApis
-                    .OrderBy(x => x.ApplicationId)
-                    .ToListAsync();
+                using var context = new EnterpriseContext();
+
+                return Results.Ok(
+                    await context.ApplicationApis
+                        .OrderBy(x => x.ApplicationId)
+                        .ToListAsync());
             })
-            .WithTags("ApplicationApi");
+            .WithName("GetApplicationApis")
+            .WithOpenApi();
 
-        app.MapGet("/api/ApplicationApi/{id:int}",
-            async (
-                int id,
-                [FromServices] EnterpriseContext db) =>
+        // =====================================================
+        // GET BY ID
+        // =====================================================
+
+        group.MapGet("/{id}",
+            async (int id) =>
             {
-                var item = await db.ApplicationApis.FindAsync(id);
+                using var context = new EnterpriseContext();
 
-                return item == null
-                    ? Results.NotFound()
-                    : Results.Ok(item);
-            })
-            .WithTags("ApplicationApi");
-
-        app.MapGet("/api/ApplicationApi/Application/{applicationId:int}",
-            async (
-                int applicationId,
-                [FromServices] EnterpriseContext db) =>
-            {
-                var items = await db.ApplicationApis
-                    .Where(x => x.ApplicationId == applicationId)
-                    .ToListAsync();
-
-                return Results.Ok(items);
-            })
-            .WithTags("ApplicationApi");
-
-        app.MapGet("/api/ApplicationApi/ApiHost/{apiHostId:int}",
-            async (
-                int apiHostId,
-                [FromServices] EnterpriseContext db) =>
-            {
-                var items = await db.ApplicationApis
-                    .Where(x => x.ApiHostId == apiHostId)
-                    .ToListAsync();
-
-                return Results.Ok(items);
-            })
-            .WithTags("ApplicationApi");
-
-        app.MapPost("/api/ApplicationApi",
-            async (
-                ApplicationApi item,
-                [FromServices] EnterpriseContext db) =>
-            {
-                item.CreatedDate = DateTime.UtcNow;
-
-                db.ApplicationApis.Add(item);
-
-                await db.SaveChangesAsync();
-
-                return Results.Created(
-                    $"/api/ApplicationApi/{item.Id}",
-                    item);
-            })
-            .WithTags("ApplicationApi");
-
-        app.MapPut("/api/ApplicationApi/{id:int}",
-            async (
-                int id,
-                ApplicationApi update,
-                [FromServices] EnterpriseContext db) =>
-            {
-                var item = await db.ApplicationApis.FindAsync(id);
+                var item =
+                    await context.ApplicationApis
+                        .FirstOrDefaultAsync(x => x.Id == id);
 
                 if (item == null)
                     return Results.NotFound();
-
-                item.ApplicationId = update.ApplicationId;
-                item.ApiHostId = update.ApiHostId;
-
-                await db.SaveChangesAsync();
 
                 return Results.Ok(item);
             })
-            .WithTags("ApplicationApi");
+            .WithName("GetApplicationApi")
+            .WithOpenApi();
 
-        app.MapDelete("/api/ApplicationApi/{id:int}",
-            async (
-                int id,
-                [FromServices] EnterpriseContext db) =>
+        // =====================================================
+        // GET BY APPLICATION
+        // =====================================================
+
+        group.MapGet("/application/{applicationId}",
+            async (int applicationId) =>
             {
-                var item = await db.ApplicationApis.FindAsync(id);
+                using var context = new EnterpriseContext();
+
+                var items =
+                    await context.ApplicationApis
+                        .Where(x => x.ApplicationId == applicationId)
+                        .OrderBy(x => x.Id)
+                        .ToListAsync();
+
+                return Results.Ok(items);
+            })
+            .WithName("GetApplicationApisByApplication")
+            .WithOpenApi();
+
+        // =====================================================
+        // GET BY HOST
+        // =====================================================
+
+        group.MapGet("/host/{apiHostId}",
+            async (int apiHostId) =>
+            {
+                using var context = new EnterpriseContext();
+
+                var items =
+                    await context.ApplicationApis
+                        .Where(x => x.ApiHostId == apiHostId)
+                        .OrderBy(x => x.Id)
+                        .ToListAsync();
+
+                return Results.Ok(items);
+            })
+            .WithName("GetApplicationApisByHost")
+            .WithOpenApi();
+
+        // =====================================================
+        // CREATE
+        // =====================================================
+
+        group.MapPost("/",
+            async (ApplicationApi input) =>
+            {
+                using var context = new EnterpriseContext();
+
+                if (input.CreatedDate == default)
+                {
+                    input.CreatedDate = DateTime.UtcNow;
+                }
+
+                context.ApplicationApis.Add(input);
+
+                await context.SaveChangesAsync();
+
+                return Results.Created(
+                    $"/api/ApplicationApi/{input.Id}",
+                    input);
+            })
+            .WithName("CreateApplicationApi")
+            .WithOpenApi();
+
+        // =====================================================
+        // UPDATE
+        // =====================================================
+
+        group.MapPut("/{id}",
+            async (HttpContext httpContext) =>
+            {
+                var idObj =
+                    httpContext.Request.RouteValues["id"] ??
+                    httpContext.Request.RouteValues["Id"];
+
+                var id = Convert.ToInt32(idObj);
+
+                var input =
+                    await httpContext.Request
+                        .ReadFromJsonAsync<ApplicationApi>();
+
+                using var context = new EnterpriseContext();
+
+                var item =
+                    context.ApplicationApis
+                        .FirstOrDefault(x => x.Id == id);
 
                 if (item == null)
                     return Results.NotFound();
 
-                db.ApplicationApis.Remove(item);
+                item.ApplicationId = input!.ApplicationId;
+                item.ApiHostId = input.ApiHostId;
 
-                await db.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
-                return Results.NoContent();
+                return Results.Accepted(
+                    $"Updated ID:{item.Id}");
             })
-            .WithTags("ApplicationApi");
+            .WithName("UpdateApplicationApi")
+            .WithOpenApi();
+
+        // =====================================================
+        // DELETE
+        // =====================================================
+
+        group.MapDelete("/{id}",
+            async (int id) =>
+            {
+                using var context = new EnterpriseContext();
+
+                var item =
+                    await context.ApplicationApis
+                        .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (item == null)
+                    return Results.NotFound();
+
+                context.ApplicationApis.Remove(item);
+
+                await context.SaveChangesAsync();
+
+                return Results.Accepted(
+                    $"Deleted ID:{id}");
+            })
+            .WithName("DeleteApplicationApi")
+            .WithOpenApi();
     }
 }
