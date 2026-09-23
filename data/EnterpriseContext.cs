@@ -19,6 +19,8 @@ public partial class EnterpriseContext : DbContext
     //API AUDIT ADDED 09/21/2026 - 4 NEW TABLES
     public virtual DbSet<Apiaudit> Apiaudits { get; set; }
     public virtual DbSet<Apihost> Apihosts { get; set; }
+    public virtual DbSet<Application> Applications { get; set; }
+    public virtual DbSet<ApplicationApi> ApplicationApis { get; set; }
     public virtual DbSet<AuditResult> AuditResults { get; set; }
     public virtual DbSet<AuditException> AuditExceptions { get; set; }
     public virtual DbSet<ApiHostException> ApiHostExceptions { get; set; }
