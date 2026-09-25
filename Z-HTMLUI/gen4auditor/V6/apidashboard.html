@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Dashboard</h2>
+  <div class="page-sub">Overview of everything CockyAuditor is tracking.</div>
+
+  <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4" id="stats">
+    <div class="col"><div class="card stat h-100"><div class="card-body"><a href="apiapps.html"><div class="lbl">Apps</div><div class="num" data-stat="apps">…</div><div class="small text-muted" data-sub="apps"></div></a></div></div></div>
+    <div class="col"><div class="card stat h-100"><div class="card-body"><a href="apihosts.html"><div class="lbl">Hosts</div><div class="num" data-stat="hosts">…</div></a></div></div></div>
+    <div class="col"><div class="card stat h-100"><div class="card-body"><a href="apiendpoints.html"><div class="lbl">Endpoints</div><div class="num" data-stat="endpoints">…</div></a></div></div></div>
+    <div class="col"><div class="card stat h-100"><div class="card-body"><a href="apihistory.html"><div class="lbl">Audits</div><div class="num" data-stat="results">…</div></a></div></div></div>
+    <div class="col"><div class="card stat h-100"><div class="card-body"><a href="apiexceptions.html"><div class="lbl">Endpoint exceptions</div><div class="num" data-stat="exceptions">…</div><div class="small text-muted" data-sub="exceptions"></div></a></div></div></div>
+    <div class="col"><div class="card stat h-100"><div class="card-body"><a href="apiexceptions.html?tab=hosts"><div class="lbl">Host exceptions</div><div class="num" data-stat="hostexceptions">…</div><div class="small text-muted" data-sub="hostexceptions"></div></a></div></div></div>
+  </div>
+
+  <div id="problems"></div>
+
+  <div class="card mb-3"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Apps</h5><a class="small" href="apiapps.html">Manage apps</a>
+    </div>
+    <div class="small text-muted mb-2" id="appsNote"></div>
+    <div id="apps"></div>
+  </div></div>
+
+  <div class="row g-3">
+    <div class="col-xl-7">
+      <div class="card h-100"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Endpoints</h5><a class="btn btn-sm btn-primary" href="apiaudit.html">Run audit</a>
+        </div>
+        <div class="small text-muted mb-2" id="due"></div>
+        <div id="endpoints"></div>
+      </div></div>
+    </div>
+    <div class="col-xl-5">
+      <div class="card h-100"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">Recent results</h5><a class="small" href="apihistory.html">View all</a>
+        </div>
+        <div id="results"></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="card mt-3"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Active exceptions</h5><a class="small" href="apiexceptions.html">Manage exceptions</a>
+    </div>
+    <div class="row g-4">
+      <div class="col-xl-6"><h6 class="text-muted">Host exceptions <span class="fw-normal small">(whole host can't be audited)</span></h6><div id="hostExcList"></div></div>
+      <div class="col-xl-6"><h6 class="text-muted">Endpoint exceptions</h6><div id="epExcList"></div></div>
+    </div>
+  </div></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+Cocky.layout("dashboard");
+const $ = s => document.querySelector(s);
+const problems = [];
+
+function stat(name, value, err) {
+  const el = document.querySelector(`[data-stat="${name}"]`);
+  if (err) { el.innerHTML = '<span class="text-danger fs-6">Error</span>'; el.title = err.message; }
+  else el.textContent = value;
+}
+
+async function load(resource, statName, suffix = "") {
+  try {
+    const rows = await Cocky.api.list(resource, suffix);
+    stat(statName, rows.length);
+    return rows;
+  } catch (e) {
+    stat(statName, null, e);
+    problems.push(e);
+    return null;
+  }
+}
+
+(async () => {
+  $("#endpoints").innerHTML = Cocky.spinner();
+  $("#results").innerHTML = Cocky.spinner();
+
+  $("#apps").innerHTML = Cocky.spinner();
+  let hostExc = null, apps = null, appLinks = null, appsMissing = false;
+  const [hosts, endpoints, results, exceptions] = await Promise.all([
+    load("apihosts", "hosts"),
+    load("apiaudit", "endpoints"),
+    load("apiauditresults", "results"),
+    load("auditexceptions", "exceptions"),
+    load("hostexceptions", "hostexceptions"),
+    // Apps: a 404 means the Apps tables haven't been added to the API yet, which isn't an error worth a banner
+    Promise.all([Cocky.api.list("apps"), Cocky.api.list("apphosts")])
+      .then(([a, l]) => { apps = a; appLinks = l; stat("apps", a.length); })
+      .catch(e => { if (e.status === 404) { appsMissing = true; stat("apps", "–"); } else { stat("apps", null, e); problems.push(e); } })
+  ]).then(r => { hostExc = r[4]; return r; });
+
+  // Exceptions: counts show only live ones (active and not expired); expired ones are noted underneath
+  const summarize = (rows, key) => {
+    if (!rows) return [];
+    const live = rows.filter(Cocky.isLiveException);
+    const expired = rows.filter(x => x.active !== false && !Cocky.isLiveException(x)).length;
+    stat(key, live.length);
+    document.querySelector(`[data-sub="${key}"]`).innerHTML = expired ? `<span class="text-danger">${expired} expired</span>` : "active, not expired";
+    return live;
+  };
+  const liveEp = summarize(exceptions, "exceptions");
+  const liveHost = summarize(hostExc, "hostexceptions");
+  const soon = x => x.expirationDate && Cocky.parseDate(x.expirationDate) - Date.now() < 14 * 864e5;
+  const until = x => x.expirationDate
+    ? Cocky.parseDate(x.expirationDate).toLocaleDateString() + (soon(x) ? '<br><span class="badge text-bg-warning">expires soon</span>' : "")
+    : '<span class="badge text-bg-info">No expiry</span>';
+  const hostName = id => { const h = (hosts || []).find(x => x.id === id); return h ? h.apiHostName || h.apiHostUrl : "#" + id; };
+  const epName = id => { const e = (endpoints || []).find(x => x.id === id); return e ? e.description || e.url : "#" + id; };
+  const table = (head, rows) => rows.length
+    ? `<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`
+    : "";
+  document.getElementById("hostExcList").innerHTML = hostExc === null
+    ? '<div class="empty">Couldn\'t load host exceptions.</div>'
+    : table(["Host", "Type", "Reason", "Approved by", "Until"], liveHost.map(x => `<tr>
+        <td><a href="apihosts.html">${Cocky.esc(hostName(x.apiHostId))}</a></td><td>${Cocky.esc(x.exceptionType || "")}</td>
+        <td class="small">${Cocky.esc(x.reason || "")}</td><td class="small">${Cocky.esc(x.approvedBy || "")}</td><td class="small text-nowrap">${until(x)}</td></tr>`))
+      || '<div class="empty">No hosts are excepted. Every host can be audited.</div>';
+  const scope = x => [x.apiAuditId ? Cocky.esc(epName(x.apiAuditId)) : "", x.apiRootUrl && x.apiRootUrl !== "string" ? Cocky.esc(x.apiRootUrl) : "",
+    x.apiEndpointPath && x.apiEndpointPath !== "string" ? `<code>${Cocky.esc(x.apiEndpointPath)}</code>` : ""].filter(Boolean).join(" · ") || "(no scope)";
+  document.getElementById("epExcList").innerHTML = exceptions === null
+    ? '<div class="empty">Couldn\'t load endpoint exceptions.</div>'
+    : table(["Covers", "Reason", "Approved by", "Until"], liveEp.map(x => `<tr>
+        <td class="small">${scope(x)}</td><td class="small">${Cocky.esc(x.reason || "")}</td>
+        <td class="small">${Cocky.esc(x.approvedBy || "")}</td><td class="small text-nowrap">${until(x)}</td></tr>`))
+      || '<div class="empty">No endpoint exceptions in force.</div>';
+
+  if (problems.length) {
+    const box = document.createElement("div");
+    box.className = "alert alert-warning";
+    box.innerHTML = `<strong>Some API calls failed</strong><ul class="mb-0 small mt-1">${
+      problems.map(p => `<li>${Cocky.esc(p.message)}</li>`).join("")}</ul>`;
+    $("#problems").appendChild(box);
+  }
+
+  // Apps: each app's total endpoints across every host it's linked to
+  if (appsMissing) {
+    $("#apps").innerHTML = '<div class="empty">The API didn\'t answer on <code>${Cocky.esc(Cocky.CFG.endpoints.apps)}</code>. Check the Application endpoints are deployed.</div>';
+    document.querySelector('[data-sub="apps"]').textContent = "not set up";
+  } else if (apps === null) $("#apps").innerHTML = '<div class="empty">Couldn\'t load apps.</div>';
+  else {
+    const roll = Cocky.appRollup(apps, appLinks, hosts, endpoints).sort((a, b) => b.total - a.total || String(a.app.applicationName || "").localeCompare(String(b.app.applicationName || "")));
+    const linkedEps = new Set(roll.flatMap(x => x.endpoints.map(e => e.id))).size;
+    document.querySelector('[data-sub="apps"]').textContent = `${linkedEps} endpoint${linkedEps === 1 ? "" : "s"} covered`;
+    const loose = Cocky.unlinkedHosts(hosts, appLinks, apps);
+    const looseEps = (endpoints || []).filter(e => loose.some(h => h.id === e.apiHostId)).length;
+    $("#appsNote").innerHTML = apps.length && loose.length
+      ? `${loose.length} host${loose.length === 1 ? " isn't" : "s aren't"} linked to any app (${looseEps} endpoint${looseEps === 1 ? "" : "s"}): ${loose.slice(0, 6).map(h => Cocky.esc(h.apiHostName || h.apiHostUrl || "#" + h.id)).join(", ")}${loose.length > 6 ? ", …" : ""}`
+      : "";
+    const bar = (n, max) => `<div class="progress" style="height:6px;min-width:80px" title="${n} endpoints"><div class="progress-bar" style="width:${max ? Math.round(n / max * 100) : 0}%"></div></div>`;
+    const max = roll.reduce((m, x) => Math.max(m, x.total), 0);
+    $("#apps").innerHTML = roll.length ? `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+      <thead><tr><th>App</th><th>Host APIs</th><th class="text-end">Endpoints</th><th style="width:22%"></th><th class="text-end">Active</th><th>Last audited</th></tr></thead>
+      <tbody>${roll.map(x => `<tr class="clickable" data-app="${x.app.id}">
+        <td class="fw-semibold">${Cocky.esc(x.app.applicationName || "#" + x.app.id)}${x.app.applicationCode ? ` <span class="small text-muted fw-normal">${Cocky.esc(x.app.applicationCode)}</span>` : ""}${x.app.isActive === false ? ' <span class="badge text-bg-secondary">Inactive</span>' : ""}</td>
+        <td>${x.hosts.length ? x.hosts.map(h => `<span class="badge ${Cocky.hostException(hostExc, h.id) ? "text-bg-warning" : "text-bg-light border"} fw-normal me-1">${Cocky.esc(h.apiHostName || h.apiHostUrl || "#" + h.id)}</span>`).join("") : '<span class="text-muted small">No hosts linked</span>'}</td>
+        <td class="text-end fs-5 fw-bold">${x.total}</td><td>${bar(x.total, max)}</td>
+        <td class="text-end">${x.active}</td>
+        <td class="small text-nowrap">${x.lastAudit ? new Date(x.lastAudit).toLocaleDateString() : '<span class="text-muted">never</span>'}</td></tr>`).join("")}</tbody>
+      </table></div>` : '<div class="empty">No apps yet. Add one on the Apps page and link it to its host APIs.</div>';
+    $("#apps").querySelectorAll("tr[data-app]").forEach(tr => tr.onclick = () => location.href = "apiendpoints.html?app=" + tr.dataset.app);
+  }
+
+  // Endpoints
+  if (endpoints === null) $("#endpoints").innerHTML = '<div class="empty">Couldn\'t load endpoints.</div>';
+  else {
+    const sorted = endpoints.slice().sort((a, b) => Cocky.dateMs(a.lastAuditDate) - Cocky.dateMs(b.lastAuditDate));
+    const week = Date.now() - 7 * 864e5;
+    const due = endpoints.filter(e => e.isActive !== false && (Cocky.dateMs(e.lastAuditDate) < week)).length;
+    $("#due").textContent = endpoints.length
+      ? `${due} active endpoint${due === 1 ? "" : "s"} not audited in the last 7 days. Oldest audits are listed first.`
+      : "";
+    Cocky.renderTable($("#endpoints"), "apiaudit", sorted.slice(0, 10), {
+      columns: ["id", "description", "url", "environment", "isActive", "lastAuditDate"],
+      emptyText: "No endpoints yet. Add one on the Endpoints page.",
+      onRowClick: r => location.href = "apiaudit.html?id=" + r.id
+    });
+  }
+
+  // Recent results
+  if (results === null) $("#results").innerHTML = '<div class="empty">Couldn\'t load results.</div>';
+  else {
+    const dk = r => Object.keys(r).find(k => /auditdate|rundate|createddate|date$/i.test(k));
+    const recent = results.slice().sort((a, b) => {
+      const ka = dk(a), kb = dk(b);
+      return Cocky.dateMs(kb && b[kb]) - Cocky.dateMs(ka && a[ka]) || (b.id ?? 0) - (a.id ?? 0);
+    }).slice(0, 8);
+    Cocky.renderTable($("#results"), "apiauditresults", recent, {
+      columns: ["id", "auditDate", "auditorName", "totalApiEndpoints", "totalEndpointsInsecure"],
+      onRowClick: () => location.href = "apihistory.html",
+      emptyText: "No audits have been run yet."
+    });
+  }
+})();
+</script>
+</body>
+</html>

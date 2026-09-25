@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>History · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>History</h2>
+  <div class="page-sub">Every saved audit run, newest first. Click View to read the full notes.</div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("history");
+const dateKey = r => Object.keys(r).find(k => /auditdate|rundate|createddate|date$/i.test(k));
+document.body.insertAdjacentHTML("beforeend", `
+  <div class="modal fade" id="viewModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><div class="row g-2 mb-3 small" id="viewStats"></div><pre class="bg-light p-3 rounded small mb-0" style="white-space:pre-wrap" id="viewNotes"></pre></div>
+  </div></div></div>`);
+function view(r) {
+  const m = document.getElementById("viewModal");
+  m.querySelector(".modal-title").textContent = `Audit #${r.id} · ${r.auditDate ? Cocky.parseDate(r.auditDate).toLocaleString() : ""}`;
+  const stat = (l, v) => `<div class="col-6 col-md-4"><span class="text-muted">${l}:</span> <b>${Cocky.esc(v ?? "—")}</b></div>`;
+  document.getElementById("viewStats").innerHTML =
+    stat("Auditor", [r.auditorName, r.auditorId ? "#" + r.auditorId : ""].filter(Boolean).join(" ")) +
+    stat("Hosts", `${r.totalApiHosts ?? 0} (${r.apiHostsSecure ?? 0} secure / ${r.apiHostsInsecure ?? 0} insecure)`) +
+    stat("Endpoints", `${r.totalApiEndpoints ?? 0} (${r.totalEndpointsSecure ?? 0} secure / ${r.totalEndpointsInsecure ?? 0} insecure)`);
+  document.getElementById("viewNotes").textContent = r.notes || "(no notes)";
+  bootstrap.Modal.getOrCreateInstance(m).show();
+}
+Cocky.crudPage("apiauditresults", {
+  mount: main,
+  rowActions: [{ label: "View", onClick: view }],
+  sort: rows => rows.slice().sort((a, b) => {
+    const ka = dateKey(a), kb = dateKey(b);
+    return Cocky.dateMs(kb && b[kb]) - Cocky.dateMs(ka && a[ka]) || (b.id ?? 0) - (a.id ?? 0);
+  })
+});
+</script>
+</body>
+</html>
