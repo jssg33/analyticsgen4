@@ -20,6 +20,7 @@ namespace Enterprise.Models
         public string? ServiceLifetime { get; set; }
 
         public bool IsRegistered { get; set; }
+        public string? MethodName { get; set; } 
 
         public DateTime DiscoveredDate { get; set; }
     }

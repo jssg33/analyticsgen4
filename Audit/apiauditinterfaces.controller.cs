@@ -123,6 +123,7 @@ public static class ApiInterfacesAuditEndpoints
                 record.ImplementationName = input.ImplementationName;
                 record.ServiceLifetime = input.ServiceLifetime;
                 record.IsRegistered = input.IsRegistered;
+                record.MethodName = input.MethodName;
 
                 await context.SaveChangesAsync();
 
