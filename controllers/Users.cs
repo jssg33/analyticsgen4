@@ -62,6 +62,8 @@ public static class UserEndpoints
         if (input.Jid != null) existing.Jid = input.Jid;
         if (input.Profileurl != null) existing.Profileurl = input.Profileurl;
         if (input.Role != null) existing.Role = input.Role;
+        if (input.Role != null) existing.Role2 = input.Role2;
+        if (input.Role != null) existing.Role3 = input.Role3;
         if (input.Fullname != null) existing.Fullname = input.Fullname;
         await context.SaveChangesAsync();
 

@@ -22,6 +22,8 @@ public partial class User
     public int? Jid { get; set; }
     public string? Profileurl { get; set; }
     public string? Role { get; set; }
+    public string? Role2 { get; set; }
+    public string? Role3 { get; set; }
     public string? Fullname { get; set; }
     public string? Companyid { get; set; }
     public string? Resettoken { get; set; }
