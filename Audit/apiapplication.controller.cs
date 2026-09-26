@@ -112,6 +112,7 @@ public static class ApplicationController
                 item.BusinessUnit = input.BusinessUnit;
                 item.Environment = input.Environment;
                 item.IsActive = input.IsActive;
+                item.InventoryId = input.InventoryId;
                 item.ModifiedDate = DateTime.UtcNow;
 
                 await context.SaveChangesAsync();

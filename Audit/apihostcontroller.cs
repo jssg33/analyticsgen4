@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Enterprise.Models;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace somecontrollers.Controllers;
 
@@ -141,6 +142,11 @@ host.SourceRepository = input.SourceRepository;
 host.AzureSubscriptionId = input.AzureSubscriptionId;
 host.AzureResourceGroup = input.AzureResourceGroup;
 host.SecurityClassification = input.SecurityClassification;
+//New Fields to Allow Audit Information to Be Injected Into Inventory
+host.InventoryId = input.InventoryId;
+host.ServicePath = input.ServicePath;
+host.ServiceId = input.ServiceId;
+host.ServiceName = input.ServiceName;
 
                 await context.SaveChangesAsync();
 

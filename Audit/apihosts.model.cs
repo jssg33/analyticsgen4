@@ -84,6 +84,9 @@ namespace Enterprise.Models
         public Guid? AzureSubscriptionId { get; set; }
         public string? AzureResourceGroup { get; set; }
         public string? SecurityClassification { get; set; }
-
+        public string? InventoryId { get; set; }
+        public string? ServicePath {get; set;}
+        public int? ServiceId {get; set;} //The Service ID can be used to stop a service on Linux Machines
+        public string? ServiceName {get; set;} //The Service Name can be used to stop a service on Windows Machines
     }
 }

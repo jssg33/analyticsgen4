@@ -19,6 +19,7 @@ public string? SupportGroup { get; set; }
 public string? BusinessUnit { get; set; }
  
 public string? Environment { get; set; }
+public string? InventoryId { get; set; }
  
 public bool IsActive { get; set; } = true;
  
