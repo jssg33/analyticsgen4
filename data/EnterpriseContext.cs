@@ -82,6 +82,14 @@ public partial class EnterpriseContext : DbContext
 
     public virtual DbSet<Lunalog> LunaLogs { get; set; }
 
+    public virtual DbSet<WebServer> WebServers { get; set; }
+
+    public virtual DbSet<WebFarm> WebFarms { get; set; }
+
+    public virtual  DbSet<WebFarmServer> WebFarmServers { get; set; }
+    public virtual DbSet<DatabaseServer> DatabaseServers { get; set; }
+    public virtual DbSet<Database> Databases { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=tcp:cockysql.database.windows.net,1433;Initial Catalog=CockyAnalytics;Persist Security Info=False;User ID=cockysa;Password=!test123456;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;");

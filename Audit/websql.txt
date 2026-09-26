@@ -1,0 +1,186 @@
+CREATE TABLE WebFarms
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    InventoryId VARCHAR(255) NULL,
+
+    FarmName VARCHAR(255) NOT NULL,
+
+    Description VARCHAR(MAX) NULL,
+
+    LoadBalancerName VARCHAR(255) NULL,
+    LoadBalancerType VARCHAR(100) NULL,
+
+    VirtualIpAddress VARCHAR(50) NULL,
+
+    Url VARCHAR(500) NULL,
+
+    AzureURL VARCHAR(255) NULL,
+    AzureIP VARCHAR(255) NULL,
+
+    CName1 VARCHAR(255) NULL,
+    CName2 VARCHAR(255) NULL,
+    CName3 VARCHAR(255) NULL,
+
+    ApplicationURL VARCHAR(500) NULL,
+
+    Environment VARCHAR(50) NULL,
+    Location VARCHAR(255) NULL,
+
+    AzureSubscription VARCHAR(255) NULL,
+    ResourceGroup VARCHAR(255) NULL,
+    Region VARCHAR(100) NULL,
+
+    Owner VARCHAR(255) NULL,
+    SupportTeam VARCHAR(255) NULL,
+
+    TLSVersion VARCHAR(50) NULL,
+
+    BackendPoolCount INT NULL,
+
+    HealthProbeUrl VARCHAR(500) NULL,
+
+    PublicFacing BIT NOT NULL DEFAULT(0),
+
+    Enabled BIT NOT NULL DEFAULT(1),
+
+    Notes VARCHAR(MAX) NULL,
+
+    CreatedDate DATETIME2 NOT NULL DEFAULT(GETUTCDATE())
+);
+GO
+CREATE TABLE WebFarmServers
+(
+Id INT IDENTITY(1,1) PRIMARY KEY,
+ 
+WebFarmId INT NOT NULL,
+ 
+WebServerId INT NOT NULL,
+ 
+CONSTRAINT FK_WebFarmServers_WebFarm
+FOREIGN KEY (WebFarmId)
+REFERENCES WebFarms(Id),
+ 
+CONSTRAINT FK_WebFarmServers_WebServer
+FOREIGN KEY (WebServerId)
+REFERENCES WebServers(Id)
+);
+GO
+CREATE TABLE WebServers
+(
+Id INT IDENTITY(1,1) PRIMARY KEY,
+InventoryId VARCHAR(255) NULL,
+ServerName VARCHAR(255) NULL,
+Hostname VARCHAR(255) NULL,
+IpAddress VARCHAR(50) NULL,
+OperatingSystem VARCHAR(255) NULL,
+WebServerType VARCHAR(100) NULL,
+Version VARCHAR(100) NULL,
+AzureURL VARCHAR(255) NULL,
+AzureIP VARCHAR(255) NULL,
+CName1 VARCHAR(255) NULL,
+CName2 VARCHAR(255) NULL,
+CName3 VARCHAR(255) NULL,
+ApplicationURL VARCHAR(500) NULL,
+Environment VARCHAR(50) NULL,
+Location VARCHAR(255) NULL,
+AzureSubscription VARCHAR(255) NULL,
+ResourceGroup VARCHAR(255) NULL,
+Region VARCHAR(100) NULL,
+Owner VARCHAR(255) NULL,
+SupportTeam VARCHAR(255) NULL,
+TLSVersion VARCHAR(50) NULL,
+PublicFacing BIT NOT NULL DEFAULT(0),
+Active BIT NOT NULL DEFAULT(1),
+Notes VARCHAR(MAX) NULL,
+CreatedDate DATETIME2 NOT NULL DEFAULT(GETUTCDATE())
+);
+GO
+CREATE TABLE DatabaseServers
+(
+Id INT IDENTITY(1,1) PRIMARY KEY,
+ 
+InventoryId VARCHAR(255) NULL,
+ 
+ServerName VARCHAR(255) NULL,
+Hostname VARCHAR(255) NULL,
+IpAddress VARCHAR(50) NULL,
+ 
+DatabasePlatform VARCHAR(100) NULL,
+Version VARCHAR(100) NULL,
+ 
+DatabaseInstance VARCHAR(255) NULL,
+ 
+AzureURL VARCHAR(255) NULL,
+AzureIP VARCHAR(255) NULL,
+ 
+CName1 VARCHAR(255) NULL,
+CName2 VARCHAR(255) NULL,
+CName3 VARCHAR(255) NULL,
+ 
+Environment VARCHAR(50) NULL,
+Location VARCHAR(255) NULL,
+ 
+AzureSubscription VARCHAR(255) NULL,
+ResourceGroup VARCHAR(255) NULL,
+Region VARCHAR(100) NULL,
+ 
+Owner VARCHAR(255) NULL,
+SupportTeam VARCHAR(255) NULL,
+ 
+BackupSolution VARCHAR(255) NULL,
+RecoveryModel VARCHAR(100) NULL,
+ 
+PublicFacing BIT NOT NULL DEFAULT(0),
+ 
+Active BIT NOT NULL DEFAULT(1),
+ 
+Notes VARCHAR(MAX) NULL,
+ 
+CreatedDate DATETIME2 NOT NULL DEFAULT(GETUTCDATE())
+);
+GO
+
+CREATE TABLE Databases
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    InventoryId VARCHAR(255) NULL,
+
+    DatabaseServerId INT NOT NULL,
+
+    DatabaseName VARCHAR(255) NOT NULL,
+
+    Description VARCHAR(MAX) NULL,
+
+    DatabaseType VARCHAR(100) NULL,
+
+    Version VARCHAR(100) NULL,
+
+    Classification VARCHAR(100) NULL,
+
+    Owner VARCHAR(255) NULL,
+
+    SupportTeam VARCHAR(255) NULL,
+
+    BackupRequired BIT NOT NULL DEFAULT(1),
+
+    EncryptionEnabled BIT NOT NULL DEFAULT(0),
+
+    ContainsPII BIT NOT NULL DEFAULT(0),
+
+    ContainsPHI BIT NOT NULL DEFAULT(0),
+
+    ContainsPCI BIT NOT NULL DEFAULT(0),
+
+    Active BIT NOT NULL DEFAULT(1),
+
+    Notes VARCHAR(MAX) NULL,
+
+    CreatedDate DATETIME2 NOT NULL DEFAULT(GETUTCDATE()),
+
+    CONSTRAINT FK_Databases_DatabaseServers
+        FOREIGN KEY (DatabaseServerId)
+        REFERENCES DatabaseServers(Id)
+);
+GO

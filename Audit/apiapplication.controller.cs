@@ -113,6 +113,8 @@ public static class ApplicationController
                 item.Environment = input.Environment;
                 item.IsActive = input.IsActive;
                 item.InventoryId = input.InventoryId;
+                item.WebServerId = input.WebServerId;
+                item.WebFarmId = input.WebFarmId;
                 item.ModifiedDate = DateTime.UtcNow;
 
                 await context.SaveChangesAsync();

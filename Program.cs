@@ -103,6 +103,12 @@ app.MapUsersessionEndpoints();
 app.MapApiHostExceptionEndpoints();
 app.MapApplicationEndpoints();
 app.MapApplicationApiEndpoints();
+//New WebServices Auditor
+app.MapWebServerEndpoints();
+app.MapWebFarmEndpoints();
+app.MapDatabaseServerEndpoints();
+app.MapDatabaseEndpoints();
+app.MapWebFarmServerEndpoints();
 
 //CONVERSIONS TO MAP REDUCED FORM
 app.MapLunaLogEndpoints();

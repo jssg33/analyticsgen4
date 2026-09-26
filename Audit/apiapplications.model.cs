@@ -20,6 +20,8 @@ public string? BusinessUnit { get; set; }
  
 public string? Environment { get; set; }
 public string? InventoryId { get; set; }
+public int? WebServerId { get; set; }
+public int? WebFarmId { get; set; }
  
 public bool IsActive { get; set; } = true;
  
