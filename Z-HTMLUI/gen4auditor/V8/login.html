@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<script src="auth.js"></script>
+<style>
+  :root { --ink: #1f2328; --amber: #f0a020; --muted: #9aa4ae; }
+  body.login { background: radial-gradient(1200px 600px at 75% 30%, #2d333b 0%, var(--ink) 60%); color: #e9ecef; min-height: 100vh;
+               display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+  .login-card { width: 100%; max-width: 380px; background: rgba(255,255,255,.04); border: 1px solid #343a40; border-radius: 14px; padding: 28px 26px; }
+  .eyebrow { color: var(--amber); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: .75rem; }
+  .brand-title { font-size: 2.2rem; font-weight: 800; letter-spacing: -.02em; margin: 6px 0 4px; line-height: 1; }
+  .brand-title span { color: var(--amber); }
+  .sub { color: var(--muted); font-size: .9rem; margin-bottom: 22px; }
+  .login-card label { color: #c5ccd3; font-size: .85rem; }
+  .login-card .form-control { background: #16191d; border-color: #495057; color: #fff; }
+  .login-card .form-control:focus { border-color: var(--amber); box-shadow: 0 0 0 .2rem rgba(240,160,32,.25); }
+  .btn-amber { background: var(--amber); border-color: var(--amber); color: #1f2328; font-weight: 600; padding: 10px; }
+  .btn-amber:hover { background: #ffb534; border-color: #ffb534; color: #1f2328; }
+  .err { color: #ff6b6b; font-size: .88rem; min-height: 1.3em; margin-top: 10px; }
+  .foot { color: #6c757d; font-size: .75rem; text-align: center; margin-top: 18px; }
+</style>
+</head>
+<body class="login">
+
+<main class="login-card">
+  <div class="eyebrow">REST API security auditing</div>
+  <h1 class="brand-title">Cocky<span>Auditor</span></h1>
+  <div class="sub">Sign in to continue.</div>
+
+  <form id="loginForm" novalidate autocomplete="off">
+    <div class="mb-3">
+      <label class="form-label" for="login">Username</label>
+      <input class="form-control" id="login" autocomplete="username" autocapitalize="off" spellcheck="false" required autofocus>
+    </div>
+    <div class="mb-2">
+      <label class="form-label" for="password">Password</label>
+      <input class="form-control" id="password" type="password" autocomplete="current-password" required>
+    </div>
+    <div class="err" id="err" role="alert"></div>
+    <button class="btn btn-amber w-100 mt-2" type="submit">Sign in</button>
+  </form>
+
+  <div class="foot" id="foot"></div>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const next = CockyAuth.safeNext(params.get("next"));
+  const CFG = window.COCKY_CONFIG || {};
+  document.getElementById("foot").innerHTML = `Build ${CFG.version || ""}<br>${(CFG.copyright || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")}`;
+
+  // Already signed in: skip the form
+  if (CockyAuth.isSignedIn()) { location.replace(next); return; }
+
+  const form = document.getElementById("loginForm"), err = document.getElementById("err");
+  const loginEl = document.getElementById("login"), pwEl = document.getElementById("password");
+
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const login = loginEl.value.trim(), password = pwEl.value;
+    if (!login || !password) { err.textContent = "Enter your username and password."; return; }
+    if (CockyAuth.signIn(login, password)) {
+      location.replace(next);
+    } else {
+      err.textContent = "Username or password is incorrect.";
+      pwEl.value = ""; pwEl.focus();
+    }
+  });
+  [loginEl, pwEl].forEach(el => el.addEventListener("input", () => { err.textContent = ""; }));
+})();
+</script>
+</body>
+</html>

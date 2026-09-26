@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interfaces · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Back-end Interfaces</h2>
+  <div class="page-sub">The services and interfaces registered behind an API's back-end, as reported by the Service Controller's
+    <code>SystemConsole</code> enumeration. Use <b>Import from Console</b> to paste that JSON and save one row per interface method.
+    CockyAuditor records what's exposed &mdash; it never calls these services.</div>
+  <div id="setup"></div>
+</section>
+
+<!-- Import from Console dialog -->
+<div class="modal fade" id="importModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Import interfaces from Console</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <label class="form-label small mb-1">Endpoint these interfaces belong to</label>
+    <select class="form-select form-select-sm mb-3 imp-endpoint"></select>
+    <label class="form-label small mb-1">SystemConsole response (JSON)</label>
+    <textarea class="form-control font-monospace imp-json" rows="12" spellcheck="false"
+      placeholder='Paste the array returned by GET /SystemConsole/{id}, e.g.
+[
+  { "interfaceName": "IApilogService02", "methodCount": 5, "methods": ["Create02","Delete02","GetAll02","GetById02","Update02"] }
+]'></textarea>
+    <div class="form-text">One row is saved per interface method. Paste the exact output of your Service Controller call.</div>
+    <div class="imp-preview small mt-2"></div>
+    <div class="imp-progress small text-muted mt-2 d-none"></div>
+    <div class="imp-error alert alert-danger small mt-3 d-none"></div>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <div class="small text-muted imp-summary"></div>
+    <div><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+      <button class="btn btn-primary imp-save" type="button" disabled>Save interfaces</button></div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("interfaces");
+const esc = Cocky.esc;
+
+// Endpoints are the parent records (apiAuditId -> ApiAudit). Loaded for the filter and the import dialog.
+let endpoints = [];
+const epLabel = e => `#${e.id} ${e.description || e.url || ""}`.trim();
+
+// Show a setup note instead of a raw error if the API doesn't have the interfaces table yet
+function showSetupNote(e) {
+  document.getElementById("setup").innerHTML = `<div class="alert alert-warning">
+    <strong>The API didn't answer on the interfaces route.</strong> CockyAuditor expects
+    <code>${esc(Cocky.CFG.endpoints.apiinterfaces)}</code> (set in <code>config.js</code>).
+    Check the <code>ApiInterfacesAudit</code> controller has been deployed.
+    <div class="small mt-2 text-muted">${esc(e.message)}</div></div>`;
+}
+
+let page;
+(async () => {
+  try { await Cocky.api.list("apiinterfaces"); }
+  catch (e) { if (e.status === 404) { showSetupNote(e); return; } }
+
+  let pickersFilled = false;
+  // Populate the endpoint filter + import picker once, after endpoints have loaded (via beforeLoad)
+  const fillEndpointPickers = () => {
+    if (pickersFilled) return;
+    pickersFilled = true;
+    const opts = endpoints.slice().sort((a, b) => a.id - b.id).map(e => `<option value="${e.id}">${esc(epLabel(e))}</option>`).join("");
+    const ef = main.querySelector(".ep-filter");
+    if (ef) ef.insertAdjacentHTML("beforeend", opts);
+    const ie = document.querySelector(".imp-endpoint");
+    ie.innerHTML = endpoints.length ? opts : `<option value="">No endpoints yet — add one on the Endpoints page first</option>`;
+    const qs = new URLSearchParams(location.search);
+    if (ef && qs.get("endpoint")) { ef.value = qs.get("endpoint"); page.reload(); }
+  };
+
+  page = Cocky.crudPage("apiinterfaces", {
+    mount: main,
+    toolbarExtra: `<select class="form-select form-select-sm ep-filter" style="max-width:280px"><option value="">All endpoints</option></select>
+      <button class="btn btn-sm btn-success" id="importBtn" type="button">+ Import from Console</button>`,
+    beforeLoad: async () => { endpoints = await Cocky.api.list("apiaudit").catch(() => []); },
+    onLoaded: fillEndpointPickers,
+    // Filter the list to one endpoint (apiAuditId)
+    sort: rows => {
+      const v = main.querySelector(".ep-filter")?.value;
+      const filtered = v ? rows.filter(r => String(r.apiAuditId) === v) : rows;
+      return filtered.slice().sort((a, b) =>
+        String(a.interfaceName || "").localeCompare(String(b.interfaceName || "")) ||
+        String(a.methodName || "").localeCompare(String(b.methodName || "")));
+    }
+  });
+
+  main.querySelector(".ep-filter").onchange = () => page.reload();
+  document.getElementById("importBtn").onclick = openImport;
+})();
+
+// ---- Import from Console dialog ----
+const im = document.getElementById("importModal");
+const imBs = bootstrap.Modal.getOrCreateInstance(im);
+const jsonEl = im.querySelector(".imp-json");
+const previewEl = im.querySelector(".imp-preview");
+const saveBtn = im.querySelector(".imp-save");
+const errEl = im.querySelector(".imp-error");
+
+// Parse the pasted JSON into method-grain rows. Accepts the array shape from SystemConsole,
+// or a single object, and tolerates interfaces with no methods listed.
+function parsePaste(text) {
+  const data = JSON.parse(text);
+  const list = Array.isArray(data) ? data : [data];
+  const rows = [];
+  for (const iface of list) {
+    if (!iface || typeof iface !== "object") continue;
+    const name = iface.interfaceName || iface.name || iface.InterfaceName;
+    const methods = iface.methods || iface.Methods || [];
+    if (Array.isArray(methods) && methods.length) {
+      methods.forEach(mth => rows.push({ interfaceName: name, methodName: typeof mth === "string" ? mth : (mth?.name || mth?.methodName || String(mth)) }));
+    } else {
+      rows.push({ interfaceName: name, methodName: null });
+    }
+  }
+  return rows;
+}
+
+function refreshPreview() {
+  errEl.classList.add("d-none");
+  const text = jsonEl.value.trim();
+  if (!text) { previewEl.innerHTML = ""; saveBtn.disabled = true; im.querySelector(".imp-summary").textContent = ""; return; }
+  let rows;
+  try { rows = parsePaste(text); }
+  catch (e) { previewEl.innerHTML = `<span class="text-danger">Not valid JSON: ${esc(e.message)}</span>`; saveBtn.disabled = true; return; }
+  const ifaces = new Set(rows.map(r => r.interfaceName));
+  const mutating = rows.filter(r => /^(create|add|insert|update|put|patch|edit|delete|remove)/i.test(r.methodName || "")).length;
+  previewEl.innerHTML = `Found <b>${ifaces.size}</b> interface(s), <b>${rows.length}</b> method(s)`
+    + (mutating ? ` &middot; <span class="badge text-bg-warning">${mutating} mutating (create/update/delete)</span>` : "");
+  im.querySelector(".imp-summary").textContent = `${rows.length} row(s) will be saved`;
+  saveBtn.disabled = !rows.length || !im.querySelector(".imp-endpoint").value;
+}
+
+function openImport() {
+  jsonEl.value = ""; previewEl.innerHTML = ""; errEl.classList.add("d-none");
+  im.querySelector(".imp-progress").classList.add("d-none");
+  im.querySelector(".imp-summary").textContent = "";
+  saveBtn.disabled = true;
+  // Default the import endpoint to whatever the list is filtered to
+  const ef = main.querySelector(".ep-filter");
+  const ie = im.querySelector(".imp-endpoint");
+  if (ef && ef.value) ie.value = ef.value;
+  imBs.show();
+}
+
+jsonEl.addEventListener("input", refreshPreview);
+im.querySelector(".imp-endpoint").addEventListener("change", refreshPreview);
+
+saveBtn.onclick = async () => {
+  const apiAuditId = Number(im.querySelector(".imp-endpoint").value);
+  if (!apiAuditId) { errEl.textContent = "Choose the endpoint these interfaces belong to."; errEl.classList.remove("d-none"); return; }
+  let rows;
+  try { rows = parsePaste(jsonEl.value); } catch (e) { errEl.textContent = "Not valid JSON: " + e.message; errEl.classList.remove("d-none"); return; }
+  if (!rows.length) return;
+
+  const now = new Date().toISOString();
+  const payloads = rows.map(r => ({
+    apiAuditId,
+    interfaceName: r.interfaceName || null,
+    methodName: r.methodName,
+    implementationName: null,
+    serviceLifetime: null,
+    controllerName: null,
+    route: null,
+    httpMethod: null,
+    isRegistered: true,
+    discoveredDate: now
+  }));
+
+  saveBtn.disabled = true;
+  const prog = im.querySelector(".imp-progress");
+  prog.classList.remove("d-none");
+  const failures = [];
+  let done = 0;
+  // Save sequentially so a slow API doesn't get hammered, and so progress is meaningful
+  for (const p of payloads) {
+    prog.textContent = `Saving ${done + 1} of ${payloads.length}…`;
+    try { await Cocky.api.create("apiinterfaces", p); }
+    catch (e) { failures.push(e.message); }
+    done++;
+  }
+  prog.classList.add("d-none");
+  saveBtn.disabled = false;
+
+  if (failures.length) {
+    errEl.textContent = `${failures.length} of ${payloads.length} row(s) failed. First error: ${failures[0]}`;
+    errEl.classList.remove("d-none");
+  } else {
+    imBs.hide();
+    Cocky.toast(`Imported ${payloads.length} interface method(s).`);
+  }
+  page.reload();
+};
+</script>
+</body>
+</html>
