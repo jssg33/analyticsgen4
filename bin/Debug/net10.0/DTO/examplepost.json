@@ -1,0 +1,59 @@
+//This is a real cart JSON
+
+{
+  "userId": 123,
+  "uid": "ABC123",
+  "transactionTotal": 250.00,
+  "paymentId": "PAY-98765",
+  "items": [
+    {
+      "park": {
+        "id": "71878491-3806-A273-A8B3-05325199D194",
+        "parkName": "Skyline MX Park",
+        "location": "20620 S Pleasant Valley Rd, Kuna, ID 83634",
+        "description": "Modern motocross facility just south of Boise...",
+        "adultPrice": 23,
+        "childPrice": 8,
+        "imageUrl": "https://home.547bikes.info/images/number9.jpg",
+        "reviews": []   // ✅ Allowed in payload, ignored by server
+      },
+      "numAdults": 1,
+      "numChildren": 1,
+      "numDays": 1,
+      "resStart": "2025-09-12T00:00:00Z",
+      "resEnd": "2025-09-13T00:00:00Z",
+      "totalPrice": 31.00
+    },
+    {
+      "park": {
+        "id": "fc099512-96d4-497a-a42f-d7b3967abc03",
+        "parkName": "Crossbar Parkway",
+        "location": "Springwood, CO",
+        "description": "This park boasts extreme hills and fun drops...",
+        "adultPrice": 25,
+        "childPrice": 15,
+        "imageUrl": "https://placehold.co/600x400/3321a5/FFF?text=Crossbar+Parkway",
+        "reviews": [
+          {
+            "author": {
+              "id": "17fa0861-d120-4cd8-a24b-f9a579ecbf17",
+              "displayName": "Moto R. Bike",
+              "fullName": "James Sheldon",
+              "dateOfBirth": "1987-04-23T00:00:00Z"
+            },
+            "rating": 5,
+            "dateWritten": "2025-09-12T12:30:32Z",
+            "dateVisited": "2025-09-11T00:00:00Z",
+            "review": "Phenomenal park!"
+          }
+        ]
+      },
+      "numAdults": 2,
+      "numChildren": 2,
+      "numDays": 1,
+      "resStart": "2025-09-18T00:00:00Z",
+      "resEnd": "2025-09-19T00:00:00Z",
+      "totalPrice": 80.00
+    }
+  ]
+}

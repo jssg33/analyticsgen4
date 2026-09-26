@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 using Enterprise.Models;
 
-namespace Enterpriseservices
+namespace EnterpriseServices
 {
     /// <summary>
     /// Provides a session logging utility that writes to file/console and persists to Sessionlog table.

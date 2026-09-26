@@ -8,7 +8,7 @@
 
 using Enterprise.Models;
 using Microsoft.EntityFrameworkCore;
-namespace Enterpriseservices;
+namespace EnterpriseServices;
 
 public class MyPasswords
 {

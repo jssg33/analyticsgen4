@@ -1,4 +1,4 @@
-namespace Enterpriseservices
+namespace EnterpriseServices
 {
 
     public class Authlogger

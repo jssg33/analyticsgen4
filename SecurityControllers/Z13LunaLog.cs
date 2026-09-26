@@ -1,94 +1,96 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Enterprise.Models;
 
-namespace somecontrollers.Controllers
+namespace somecontrollers.Controllers;
+
+public static class LunaLogEndpoints
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class LunaLogController : ControllerBase
+    public static void MapLunaLogEndpoints(this WebApplication app)
     {
-        private readonly EnterpriseContext _context;
+        var group = app.MapGroup("/api/lunalog")
+            .WithTags("LunaLog");
 
-        public LunaLogController(EnterpriseContext context)
+        group.MapGet("/", async (
+            int skip = 0,
+            int take = 100) =>
         {
-            _context = context;
-        }
+            using var context = new EnterpriseContext();
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Lunalog>>> Get()
-        {
-            return await _context.LunaLogs
+            return await context.LunaLogs
                 .OrderByDescending(x => x.AccessTime)
+                .Skip(skip)
+                .Take(take)
                 .ToListAsync();
-        }
+        });
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Lunalog>> Get(int id)
+        group.MapGet("/{id:int}", async (int id) =>
         {
-            var log = await _context.LunaLogs.FindAsync(id);
+            using var context = new EnterpriseContext();
 
-            if (log == null)
-                return NotFound();
+            var log = await context.LunaLogs.FindAsync(id);
 
-            return log;
-        }
+            return log is not null
+                ? Results.Ok(log)
+                : Results.NotFound();
+        });
 
-        [HttpPost]
-        public async Task<ActionResult<Lunalog>> Post(Lunalog lunaLog)
+        group.MapPost("/", async (Lunalog lunaLog) =>
         {
+            using var context = new EnterpriseContext();
+
             if (lunaLog.AccessTime == null)
                 lunaLog.AccessTime = DateTime.UtcNow;
 
-            _context.LunaLogs.Add(lunaLog);
-            await _context.SaveChangesAsync();
+            context.LunaLogs.Add(lunaLog);
+            await context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(Get),
-                new { id = lunaLog.Id },
+            return Results.Created(
+                $"/api/lunalog/{lunaLog.Id}",
                 lunaLog);
-        }
+        });
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, Lunalog lunaLog)
+        group.MapPut("/{id:int}", async (
+            int id,
+            Lunalog lunaLog) =>
         {
-            if (id != lunaLog.Id)
-                return BadRequest();
+            using var context = new EnterpriseContext();
 
-            _context.Entry(lunaLog).State = EntityState.Modified;
+            if (id != lunaLog.Id)
+                return Results.BadRequest();
+
+            context.Entry(lunaLog).State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!LunaLogExists(id))
-                    return NotFound();
+                var exists = await context.LunaLogs
+                    .AnyAsync(e => e.Id == id);
+
+                if (!exists)
+                    return Results.NotFound();
 
                 throw;
             }
 
-            return NoContent();
-        }
+            return Results.NoContent();
+        });
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        group.MapDelete("/{id:int}", async (int id) =>
         {
-            var log = await _context.LunaLogs.FindAsync(id);
+            using var context = new EnterpriseContext();
 
-            if (log == null)
-                return NotFound();
+            var log = await context.LunaLogs.FindAsync(id);
 
-            _context.LunaLogs.Remove(log);
-            await _context.SaveChangesAsync();
+            if (log is null)
+                return Results.NotFound();
 
-            return NoContent();
-        }
+            context.LunaLogs.Remove(log);
+            await context.SaveChangesAsync();
 
-        private bool LunaLogExists(int id)
-        {
-            return _context.LunaLogs.Any(e => e.Id == id);
-        }
+            return Results.NoContent();
+        });
     }
 }

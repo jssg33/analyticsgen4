@@ -1,109 +1,96 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Enterprise.Models;
 
-namespace somecontrollers.Controllers
+namespace somecontrollers.Controllers;
+
+public static class SysLogEndpoints
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class SysLogController : ControllerBase
+    public static void MapSysLogEndpoints(this WebApplication app)
     {
-        private readonly EnterpriseContext _context;
+        var group = app.MapGroup("/api/syslog")
+            .WithTags("SysLog");
 
-        public SysLogController(EnterpriseContext context)
+        group.MapGet("/", async (
+            int skip = 0,
+            int take = 100) =>
         {
-            _context = context;
-        }
+            using var context = new EnterpriseContext();
 
-        // GET: api/SysLog
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Syslog>>> Get()
-        {
-            return await _context.Syslogs
+            return await context.Syslogs
                 .OrderByDescending(x => x.LogDate)
+                .Skip(skip)
+                .Take(take)
                 .ToListAsync();
-        }
+        });
 
-        // GET: api/SysLog/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Syslog>> Get(int id)
+        group.MapGet("/{id:int}", async (int id) =>
         {
-            var sysLog = await _context.Syslogs.FindAsync(id);
+            using var context = new EnterpriseContext();
 
-            if (sysLog == null)
-            {
-                return NotFound();
-            }
+            var sysLog = await context.Syslogs.FindAsync(id);
 
-            return sysLog;
-        }
+            return sysLog is not null
+                ? Results.Ok(sysLog)
+                : Results.NotFound();
+        });
 
-        // POST: api/SysLog
-        [HttpPost]
-        public async Task<ActionResult<Syslog>> Post(Syslog sysLog)
+        group.MapPost("/", async (Syslog sysLog) =>
         {
+            using var context = new EnterpriseContext();
+
             if (sysLog.LogDate == default)
-            {
                 sysLog.LogDate = DateTime.UtcNow;
-            }
 
-            _context.Syslogs.Add(sysLog);
-            await _context.SaveChangesAsync();
+            context.Syslogs.Add(sysLog);
+            await context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(Get),
-                new { id = sysLog.Id },
+            return Results.Created(
+                $"/api/syslog/{sysLog.Id}",
                 sysLog);
-        }
+        });
 
-        // PUT: api/SysLog/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, Syslog sysLog)
+        group.MapPut("/{id:int}", async (
+            int id,
+            Syslog sysLog) =>
         {
-            if (id != sysLog.Id)
-            {
-                return BadRequest();
-            }
+            using var context = new EnterpriseContext();
 
-            _context.Entry(sysLog).State = EntityState.Modified;
+            if (id != sysLog.Id)
+                return Results.BadRequest();
+
+            context.Entry(sysLog).State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!SysLogExists(id))
-                {
-                    return NotFound();
-                }
+                var exists = await context.Syslogs
+                    .AnyAsync(e => e.Id == id);
+
+                if (!exists)
+                    return Results.NotFound();
 
                 throw;
             }
 
-            return NoContent();
-        }
+            return Results.NoContent();
+        });
 
-        // DELETE: api/SysLog/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        group.MapDelete("/{id:int}", async (int id) =>
         {
-            var sysLog = await _context.Syslogs.FindAsync(id);
+            using var context = new EnterpriseContext();
 
-            if (sysLog == null)
-            {
-                return NotFound();
-            }
+            var sysLog = await context.Syslogs.FindAsync(id);
 
-            _context.Syslogs.Remove(sysLog);
-            await _context.SaveChangesAsync();
+            if (sysLog is null)
+                return Results.NotFound();
 
-            return NoContent();
-        }
+            context.Syslogs.Remove(sysLog);
+            await context.SaveChangesAsync();
 
-        private bool SysLogExists(int id)
-        {
-            return _context.Syslogs.Any(e => e.Id == id);
-        }
+            return Results.NoContent();
+        });
     }
 }

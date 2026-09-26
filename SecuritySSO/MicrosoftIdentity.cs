@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+/*using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace Enterprise.Controllers;
 [Authorize]
@@ -17,3 +17,4 @@ Email = User.FindFirst("preferred_username")?.Value
 });
 }
 }
+*/
