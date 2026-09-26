@@ -109,6 +109,7 @@ app.MapLunaLogEndpoints();
 app.MapSysLogEndpoints();
 app.MapUserProfileLogEndpoints();
 app.MapApiInterfacesAuditEndpoints();
+app.MapUserDownloadLogEndpoints();
 
 //app.Run();
 //app.Run();
