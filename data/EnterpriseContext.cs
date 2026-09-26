@@ -24,7 +24,7 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<AuditResult> AuditResults { get; set; }
     public virtual DbSet<AuditException> AuditExceptions { get; set; }
     public virtual DbSet<ApiHostException> ApiHostExceptions { get; set; }
-    
+    public virtual DbSet<ApiInterfacesAudit> ApiInterfacesAudit { get; set; }
     public virtual DbSet<Allstock> Allstocks { get; set; }
 
     public virtual DbSet<Apilog> Apilogs { get; set; }

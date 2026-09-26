@@ -107,8 +107,8 @@ app.MapApplicationApiEndpoints();
 //CONVERSIONS TO MAP REDUCED FORM
 app.MapLunaLogEndpoints();
 app.MapSysLogEndpoints();
-app.MapUserLocationEndpoints();
 app.MapUserProfileLogEndpoints();
+app.MapApiInterfacesAuditEndpoints();
 
 //app.Run();
 //app.Run();

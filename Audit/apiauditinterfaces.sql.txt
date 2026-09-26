@@ -1,0 +1,50 @@
+CREATE TABLE dbo.ApiInterfacesAudit
+(
+Id INT IDENTITY(1,1) NOT NULL,
+ 
+ApiAuditId INT NOT NULL,
+ 
+ControllerName NVARCHAR(255) NULL,
+ 
+Route NVARCHAR(1000) NULL,
+ 
+HttpMethod NVARCHAR(20) NULL,
+ 
+InterfaceName NVARCHAR(255) NULL,
+ 
+ImplementationName NVARCHAR(255) NULL,
+ 
+ServiceLifetime NVARCHAR(50) NULL,
+ 
+IsRegistered BIT NOT NULL
+CONSTRAINT DF_ApiInterfacesAudit_IsRegistered
+DEFAULT (1),
+ 
+DiscoveredDate DATETIME2 NOT NULL
+CONSTRAINT DF_ApiInterfacesAudit_DiscoveredDate
+DEFAULT (SYSUTCDATETIME()),
+ 
+CONSTRAINT PK_ApiInterfacesAudit
+PRIMARY KEY CLUSTERED (Id),
+ 
+CONSTRAINT FK_ApiInterfacesAudit_ApiAudit
+FOREIGN KEY (ApiAuditId)
+REFERENCES dbo.ApiAudit(Id)
+);
+GO
+
+CREATE NONCLUSTERED INDEX IX_ApiInterfacesAudit_ApiAuditId
+ON dbo.ApiInterfacesAudit(ApiAuditId);
+GO
+ 
+CREATE NONCLUSTERED INDEX IX_ApiInterfacesAudit_InterfaceName
+ON dbo.ApiInterfacesAudit(InterfaceName);
+GO
+ 
+CREATE NONCLUSTERED INDEX IX_ApiInterfacesAudit_ControllerName
+ON dbo.ApiInterfacesAudit(ControllerName);
+GO
+ 
+CREATE NONCLUSTERED INDEX IX_ApiInterfacesAudit_IsRegistered
+ON dbo.ApiInterfacesAudit(IsRegistered);
+GO
