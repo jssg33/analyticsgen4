@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Enterprise.Models;
-
 namespace somecontrollers.Controllers;
 
     public static class DatabaseController
@@ -15,7 +14,7 @@ namespace somecontrollers.Controllers;
                 using var db = new EnterpriseContext();
                 return Results.Ok(db.Databases.ToList());
             })
-            .WithGroupName("Databases")
+            .WithName("GetDatabases")
             .WithOpenApi();
 
             app.MapGet("/api/databases/{id}", (int id) =>
@@ -28,7 +27,7 @@ namespace somecontrollers.Controllers;
                     ? Results.NotFound()
                     : Results.Ok(item);
             })
-            .WithGroupName("Databases")
+            .WithName("GetDatabasesById")
             .WithOpenApi();
 
             app.MapPost("/api/databases", (Database item) =>
@@ -40,7 +39,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Databases")
+            .WithName("PostDatabases")
             .WithOpenApi();
 
             app.MapPut("/api/databases/{id}", (int id, Database updated) =>
@@ -73,7 +72,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Databases")
+            .WithName("PutDatabases")
             .WithOpenApi();
 
             app.MapDelete("/api/databases/{id}", (int id) =>
@@ -90,7 +89,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok();
             })
-            .WithGroupName("Databases")
+            .WithName("DeleteDatabases")
             .WithOpenApi();
         }
     }

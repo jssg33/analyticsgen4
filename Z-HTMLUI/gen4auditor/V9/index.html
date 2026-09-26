@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Public page: anyone can see Welcome; the top bar shows Sign in, or who is signed in -->
+<script src="auth.js" data-public></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  :root { --ink: #1f2328; --ink-2: #2b3137; --amber: #f0a020; --green: #2fb36b; --muted: #9aa4ae; }
+  body.welcome { background: radial-gradient(1200px 600px at 75% 30%, #2d333b 0%, var(--ink) 60%); color: #e9ecef; min-height: 100vh; }
+  .hero { min-height: 100vh; display: flex; align-items: center; padding: 48px 24px; }
+  .hero .wrap { max-width: 1180px; margin: 0 auto; width: 100%; display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+  .eyebrow { color: var(--amber); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; }
+  h1.brand-title { font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 800; line-height: 1; margin: 10px 0 18px; letter-spacing: -.02em; }
+  h1.brand-title span { color: var(--amber); }
+  .lead-text { color: #c5ccd3; font-size: 1.15rem; max-width: 34em; }
+  .cta .btn { padding: 10px 20px; font-weight: 600; }
+  .btn-amber { background: var(--amber); border-color: var(--amber); color: #1f2328; }
+  .btn-amber:hover { background: #ffb534; border-color: #ffb534; color: #1f2328; }
+  .btn-ghost { border: 1px solid #495057; color: #e9ecef; }
+  .btn-ghost:hover { background: #343a40; color: #fff; }
+  .quick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 36px; max-width: 720px; }
+  .quick .sub { font-size: .7rem; color: #e5484d; min-height: 1em; }
+  .version { display: inline-flex; gap: 8px; align-items: center; margin: 4px 0 18px; font-size: .8rem; color: var(--muted); }
+  .version b { color: #1f2328; background: var(--amber); border-radius: 999px; padding: 2px 10px; font-weight: 700; }
+  .builds { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; }
+  .builds h2 { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); font-weight: 600; margin-bottom: 12px; }
+  .builds ol { list-style: none; padding: 0; margin: 0; border-left: 2px solid #343a40; }
+  .builds li { position: relative; padding: 0 0 14px 18px; }
+  .builds li::before { content: ""; position: absolute; left: -6px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: #495057; }
+  .builds li.current::before { background: var(--amber); box-shadow: 0 0 0 3px rgba(240,160,32,.25); }
+  .builds .t { color: #fff; font-weight: 600; } .builds .n { color: #aeb6be; font-size: .88rem; }
+  .quick a { display: block; background: rgba(255,255,255,.04); border: 1px solid #343a40; border-radius: 10px; padding: 12px 14px; color: inherit; text-decoration: none; transition: border-color .15s, background .15s; }
+  .quick a:hover { border-color: var(--amber); background: rgba(240,160,32,.06); }
+  .quick .n { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+  .quick .l { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+  .status-line { color: var(--muted); font-size: .85rem; margin-top: 14px; min-height: 1.3em; }
+  .art { width: 100%; max-width: 540px; justify-self: center; }
+  .art svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .features { max-width: 1180px; margin: 0 auto; padding: 0 24px 56px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feature { background: rgba(255,255,255,.03); border: 1px solid #343a40; border-radius: 12px; padding: 18px 20px; }
+  .feature h3 { font-size: 1rem; font-weight: 700; margin: 0 0 6px; color: #fff; }
+  .feature p { margin: 0; color: #aeb6be; font-size: .92rem; }
+  .feature .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; margin-bottom: 10px; background: rgba(240,160,32,.12); color: var(--amber); }
+  .signed-in { color: var(--muted); font-size: .82rem; white-space: nowrap; }
+  .signed-in a { color: var(--amber); text-decoration: none; margin-left: 8px; }
+  /* top bar */
+  .topbar { position: sticky; top: 0; z-index: 20; background: rgba(22,25,29,.92); backdrop-filter: blur(6px); border-bottom: 1px solid #343a40; }
+  .topbar .inner { max-width: 1180px; margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .topbar .tb-brand { color: #fff; font-weight: 800; font-size: 1.1rem; text-decoration: none; letter-spacing: -.01em; margin-right: 12px; }
+  .topbar .tb-brand span { color: var(--amber); }
+  .topbar .tb-link { background: none; border: 1px solid transparent; color: #cfd4da; font-size: .9rem; padding: 6px 12px; border-radius: 8px; }
+  .topbar .tb-link:hover, .topbar .tb-link:focus-visible { color: #fff; border-color: #495057; background: rgba(255,255,255,.04); }
+  .topbar .tb-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .topbar .who { color: var(--muted); font-size: .85rem; }
+  .topbar .who b { color: #fff; }
+  .topbar .btn-sm { padding: 5px 14px; font-weight: 600; }
+  .topbar #loginNeeded:empty { display: none; }
+  .topbar #loginNeeded { padding-bottom: 10px; }
+  .topbar #loginNeeded .alert { width: 100%; }
+  .hero { min-height: calc(100vh - 57px); }
+  /* Help / Notices / Profile viewer */
+  #viewModal .modal-content { color: #212529; }
+  #viewModal .detail-grid { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 4px 16px; font-size: .88rem; }
+  #viewModal .detail-grid .k { color: #6c757d; word-break: break-word; }
+  #viewModal .detail-grid .v { word-break: break-word; white-space: pre-wrap; }
+  #viewModal tr.clickable { cursor: pointer; }
+  @media (max-width: 600px) { .topbar .inner { padding: 8px 16px; } .topbar .tb-brand { width: 100%; } .topbar .tb-right { margin-left: 0; width: 100%; justify-content: space-between; } }
+  footer.foot { text-align: center; color: #6c757d; font-size: .8rem; padding: 0 24px 28px; }
+
+  /* graphic animation */
+  .sweep { transform-origin: 250px 250px; animation: spin 6s linear infinite; }
+  .lens { animation: hunt 9s ease-in-out infinite; }
+  .node { animation: pulse 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .node:nth-of-type(2n) { animation-delay: .6s; } .node:nth-of-type(3n) { animation-delay: 1.3s; }
+  .ping { animation: ping 3s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .check { stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 1s .6s ease-out forwards; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes hunt { 0%,100% { transform: translate(0,0); } 33% { transform: translate(-70px,40px); } 66% { transform: translate(30px,-50px); } }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.25); opacity: 1; } }
+  @keyframes ping { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(2.4); opacity: 0; } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { .sweep, .lens, .node, .ping { animation: none; } .check { animation: none; stroke-dashoffset: 0; } }
+
+  @media (max-width: 900px) {
+    .hero { min-height: auto; padding: 36px 16px 24px; }
+    .hero .wrap { grid-template-columns: 1fr; gap: 24px; }
+    .art { max-width: 360px; order: -1; }
+    .quick { grid-template-columns: repeat(3, 1fr); }
+    .builds { padding: 0 16px 32px; }
+    .features { grid-template-columns: 1fr; padding: 0 16px 40px; }
+  }
+</style>
+</head>
+<body class="welcome">
+
+<header class="topbar">
+  <nav class="inner" aria-label="Top">
+    <a class="tb-brand" href="index.html">Cocky<span>Auditor</span></a>
+    <button class="tb-link" type="button" data-view="userhelp">Help</button>
+    <button class="tb-link" type="button" data-view="usernotices">Notices</button>
+    <button class="tb-link" type="button" data-view="userprofile">Profile</button>
+    <div class="tb-right" id="tbRight"></div>
+  </nav>
+  <div class="inner pt-0" id="loginNeeded"></div>
+</header>
+
+<!-- Help / Notices / Profile viewer -->
+<div class="modal fade" id="viewModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"></div>
+</div></div></div>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">REST API security auditing</div>
+      <h1 class="brand-title">Cocky<span>Auditor</span></h1>
+      <div class="version" id="version"></div>
+      <p class="lead-text">Keep track of every host and endpoint you run, check them for reachability, HTTPS, response time and CORS, and keep a record of every audit and every approved exception.</p>
+      <div class="cta d-flex flex-wrap gap-2 mt-4">
+        <a class="btn btn-amber" href="apiaudit.html">Run an audit</a>
+        <a class="btn btn-ghost" href="apihosts.html?add=1">+ Add an API</a>
+        <a class="btn btn-ghost" href="apidashboard.html">Open dashboard</a>
+      </div>
+      <div class="quick">
+        <a href="apiapps.html"><div class="n" data-q="apps">–</div><div class="l">Apps</div><div class="sub"></div></a>
+        <a href="apihosts.html"><div class="n" data-q="apihosts">–</div><div class="l">Hosts</div><div class="sub"></div></a>
+        <a href="apiendpoints.html"><div class="n" data-q="apiaudit">–</div><div class="l">Endpoints</div><div class="sub"></div></a>
+        <a href="apihistory.html"><div class="n" data-q="apiauditresults">–</div><div class="l">Audits</div><div class="sub"></div></a>
+        <a href="apiexceptions.html"><div class="n" data-q="auditexceptions">–</div><div class="l">Endpoint exc.</div><div class="sub" data-sub="auditexceptions"></div></a>
+        <a href="apiexceptions.html?tab=hosts"><div class="n" data-q="hostexceptions">–</div><div class="l">Host exc.</div><div class="sub" data-sub="hostexceptions"></div></a>
+      </div>
+      <div class="status-line" id="status">Connecting to the API…</div>
+    </div>
+
+    <div class="art" aria-hidden="true">
+      <!-- Original illustration: a radar sweep over a network of API endpoints, a magnifying glass inspecting them, and a verified check -->
+      <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#f0a020" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#f0a020" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#f0a020" stop-opacity="0"/>
+            <stop offset="100%" stop-color="#f0a020" stop-opacity=".35"/>
+          </linearGradient>
+          <radialGradient id="glass" cx="40%" cy="35%" r="70%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity=".22"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity=".04"/>
+          </radialGradient>
+          <clipPath id="radar"><circle cx="250" cy="250" r="200"/></clipPath>
+        </defs>
+
+        <!-- radar field -->
+        <circle cx="250" cy="250" r="230" fill="url(#glow)"/>
+        <circle cx="250" cy="250" r="200" fill="#1a1e23" stroke="#3a4149" stroke-width="2"/>
+        <g stroke="#2f363d" stroke-width="1.5" fill="none">
+          <circle cx="250" cy="250" r="150"/><circle cx="250" cy="250" r="100"/><circle cx="250" cy="250" r="50"/>
+          <line x1="50" y1="250" x2="450" y2="250"/><line x1="250" y1="50" x2="250" y2="450"/>
+        </g>
+        <g clip-path="url(#radar)"><path class="sweep" d="M250 250 L450 250 A200 200 0 0 0 391 109 Z" fill="url(#beam)"/></g>
+
+        <!-- endpoint network -->
+        <g stroke="#56606b" stroke-width="2" stroke-linecap="round">
+          <line x1="250" y1="250" x2="170" y2="170"/><line x1="250" y1="250" x2="340" y2="180"/>
+          <line x1="250" y1="250" x2="330" y2="330"/><line x1="250" y1="250" x2="160" y2="320"/>
+          <line x1="170" y1="170" x2="120" y2="230"/><line x1="340" y1="180" x2="390" y2="250"/>
+          <line x1="330" y1="330" x2="270" y2="390"/><line x1="170" y1="170" x2="230" y2="110"/>
+        </g>
+        <!-- central host -->
+        <rect x="222" y="226" width="56" height="48" rx="8" fill="#2b3137" stroke="#f0a020" stroke-width="2.5"/>
+        <g fill="#f0a020"><rect x="231" y="236" width="38" height="5" rx="2"/><rect x="231" y="246" width="38" height="5" rx="2"/><rect x="231" y="256" width="24" height="5" rx="2"/></g>
+        <!-- endpoints: green = passed, amber = warning, red = failed -->
+        <circle class="ping" cx="390" cy="250" r="10" fill="none" stroke="#e5484d" stroke-width="2"/>
+        <g>
+          <circle class="node" cx="170" cy="170" r="10" fill="#2fb36b"/>
+          <circle class="node" cx="340" cy="180" r="10" fill="#2fb36b"/>
+          <circle class="node" cx="330" cy="330" r="10" fill="#f0a020"/>
+          <circle class="node" cx="160" cy="320" r="10" fill="#2fb36b"/>
+          <circle class="node" cx="120" cy="230" r="8" fill="#2fb36b"/>
+          <circle class="node" cx="390" cy="250" r="8" fill="#e5484d"/>
+          <circle class="node" cx="270" cy="390" r="8" fill="#2fb36b"/>
+          <circle class="node" cx="230" cy="110" r="8" fill="#f0a020"/>
+        </g>
+
+        <!-- magnifying glass -->
+        <g class="lens">
+          <line x1="352" y1="352" x2="420" y2="420" stroke="#c9ced4" stroke-width="16" stroke-linecap="round"/>
+          <line x1="352" y1="352" x2="420" y2="420" stroke="#8a939c" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="310" cy="310" r="58" fill="url(#glass)" stroke="#e9ecef" stroke-width="10"/>
+          <path d="M280 290 a38 38 0 0 1 26 -18" stroke="#fff" stroke-opacity=".6" stroke-width="5" fill="none" stroke-linecap="round"/>
+        </g>
+
+        <!-- verified badge -->
+        <g transform="translate(372 92)">
+          <circle r="36" fill="#1f2328" stroke="#2fb36b" stroke-width="4"/>
+          <path class="check" d="M-16 1 L-4 13 L18 -11" fill="none" stroke="#2fb36b" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="feature">
+    <div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v3H2zm0 4.5h12v3H2zM2 12h12v2H2z"/></svg></div>
+    <h3>Inventory</h3>
+    <p>Register hosts and every endpoint they serve, with owners, environments and security details.</p>
+  </div>
+  <div class="feature">
+    <div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1a5.5 5.5 0 0 1 4.4 8.8l3.6 3.6-1.1 1.1-3.6-3.6A5.5 5.5 0 1 1 6.5 1zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg></div>
+    <h3>Audit</h3>
+    <p>Check reachability, status codes, HTTPS, response times and CORS, then save each run to History.</p>
+  </div>
+  <div class="feature">
+    <div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l6 2.5v4C14 11 11.4 14 8 15 4.6 14 2 11 2 7.5v-4z"/></svg></div>
+    <h3>Exceptions</h3>
+    <p>Record approved exclusions by endpoint, API root or path pattern, with who approved them and when they expire.</p>
+  </div>
+</section>
+
+<section class="builds"><h2>Build history</h2><ol id="builds"></ol></section>
+
+<footer class="foot">CockyAuditor · connected to <span id="apiHost"></span><br><span id="copyright"></span></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+// ---- Top bar: Sign in, or who is signed in; Help / Notices / Profile ----
+// All three need a signed-in user. Signed out, clicking one only shows a login error and then takes you to the
+// sign-in form; after signing in, the one you clicked opens automatically (index.html?open=userhelp).
+(function () {
+  const { esc } = Cocky;
+  const signedIn = CockyAuth.isSignedIn(), me = CockyAuth.current();
+  const right = document.getElementById("tbRight");
+  right.innerHTML = signedIn
+    ? `<span class="who">Signed in as <b>${esc(me.username)}</b></span>
+       <a class="btn btn-sm btn-amber" href="apidashboard.html">Open app</a>
+       <button class="btn btn-sm btn-ghost" type="button" id="signOut">Sign out</button>`
+    : `<a class="btn btn-sm btn-amber" id="signIn" href="login.html?next=index.html">Sign in</a>`;
+  document.getElementById("signOut")?.addEventListener("click", () => CockyAuth.signOut("index.html"));
+
+  const VIEWS = {
+    usernotices: { title: "Notices", empty: "No notices right now." },
+    userhelp: { title: "Help · trouble tickets", empty: "No trouble tickets." },
+    userprofile: { title: "Profile", profile: true }
+  };
+  const TAKE = 25;
+  const m = document.getElementById("viewModal"), body = m.querySelector(".modal-body");
+  const bs = () => bootstrap.Modal.getOrCreateInstance(m);
+
+  // Helpers (same ideas as the Enterprise(9) page): newest first, a few telling columns, full detail on click
+  const rowsFrom = d => Array.isArray(d) ? d : d && typeof d === "object" ? (["items", "data", "value", "results", "records", "rows"].map(k => d[k]).find(Array.isArray) || [d]) : [];
+  const dateKeyOf = rows => {
+    const keys = [...new Set(rows.slice(0, 20).flatMap(r => Object.keys(r)))];
+    const dated = keys.filter(k => rows.some(r => typeof r[k] === "string" && /^\d{4}-\d{2}-\d{2}/.test(r[k]) && Cocky.parseDate(r[k])));
+    return dated.find(k => /(posted|created|opened|logged|date|time)/i.test(k)) || dated[0] || null;
+  };
+  const idKeyOf = rows => Object.keys(rows[0] || {}).find(k => /^id$/i.test(k)) || Object.keys(rows[0] || {}).find(k => /id$/i.test(k) && typeof rows[0][k] === "number") || null;
+  const PREFER = /^(title|subject|summary|message|notice|description|status|priority|severity|category|type|user|username|useremail|email|name|firstname|lastname|phone)$/i;
+  const cols = (rows, dk, ik) => {
+    const keys = [...new Set(rows.flatMap(r => Object.keys(r)))].filter(k => k !== dk && k !== ik && rows.every(r => r[k] == null || typeof r[k] !== "object") && rows.some(r => r[k] != null && r[k] !== ""));
+    const pick = keys.filter(k => PREFER.test(k)).slice(0, 5);
+    keys.forEach(k => { if (pick.length < 5 && !pick.includes(k)) pick.push(k); });
+    return [ik, dk, ...pick].filter(Boolean);
+  };
+  const fmt = v => v == null || v === "" ? '<span class="text-muted">—</span>'
+    : typeof v === "object" ? `<pre class="mb-0 small">${esc(JSON.stringify(v, null, 2))}</pre>`
+    : typeof v === "boolean" ? (v ? "Yes" : "No")
+    : typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v) && Cocky.parseDate(v) ? esc(Cocky.parseDate(v).toLocaleString())
+    : esc(v);
+  const detail = r => `<div class="detail-grid">${Object.entries(r).map(([k, v]) => `<div class="k">${esc(Cocky.titleCase(k))}</div><div class="v">${fmt(v)}</div>`).join("")}</div>`;
+  const fail = (e, key) => `<div class="alert alert-${e.status === 401 || e.status === 403 ? "warning" : "danger"} mb-0">
+    Couldn't load ${esc(VIEWS[key].title.toLowerCase())}: ${esc(e.message)}${e.status === 404 ? `<div class="small mt-1">The API didn't answer on <code>${esc(Cocky.CFG.endpoints[key])}</code> (set in config.js).</div>` : ""}</div>`;
+
+  // Signed out: show the login error, then go to the sign-in form
+  let redirectTimer = 0;
+  function loginNeeded(key) {
+    const to = "login.html?next=" + encodeURIComponent("index.html?open=" + key);
+    const box = document.getElementById("loginNeeded");
+    box.innerHTML = `<div class="alert alert-danger d-flex flex-wrap align-items-center gap-2 mb-0" role="alert">
+      <b>Please sign in to view ${esc(VIEWS[key].title.split(" ·")[0])}.</b>
+      <span>Taking you to the sign-in form…</span>
+      <a class="alert-link ms-auto" href="${to}">Sign in now</a></div>`;
+    clearTimeout(redirectTimer);
+    redirectTimer = setTimeout(() => { location.href = to; }, 1800);
+  }
+
+  async function open(key) {
+    const v = VIEWS[key];
+    if (!CockyAuth.isSignedIn()) { loginNeeded(key); return; }
+    m.querySelector(".modal-title").textContent = v.title;
+    body.innerHTML = Cocky.spinner();
+    bs().show();
+    let rows;
+    try { rows = rowsFrom(await Cocky.api.list(key)).filter(r => r && typeof r === "object"); }
+    catch (e) { body.innerHTML = fail(e, key); return; }
+
+    if (v.profile) {
+      // The signed-in user's own profile: matched on user id, email or user name
+      const u = CockyAuth.current();
+      const want = [u.userid, u.email, u.username].filter(Boolean).map(x => String(x).toLowerCase());
+      const mine = rows.find(r => Object.entries(r).some(([k, val]) => /^(user_?id|id|email|useremail|username|user_?name|login)$/i.test(k) && val != null && want.includes(String(val).toLowerCase())));
+      m.querySelector(".modal-title").textContent = `Profile · ${u.username || ""}`;
+      body.innerHTML = mine ? detail(mine)
+        : `<div class="empty">No profile found for <b>${esc(u.username || "")}</b> (${esc(u.email || "")}, user id ${esc(u.userid || "")}).</div>`;
+      return;
+    }
+
+    if (!rows.length) { body.innerHTML = `<div class="empty">${esc(v.empty)}</div>`; return; }
+    const dk = dateKeyOf(rows), ik = idKeyOf(rows);
+    rows.sort((a, b) => (dk ? Cocky.dateMs(b[dk]) - Cocky.dateMs(a[dk]) : 0) || (ik ? (+b[ik] || 0) - (+a[ik] || 0) : 0));
+    const latest = rows.slice(0, TAKE), c = cols(latest, dk, ik);
+    body.innerHTML = `<div class="small text-muted mb-2">Newest <b>${latest.length}</b> of <b>${rows.length}</b>${dk ? `, by ${esc(Cocky.titleCase(dk))}` : ""}. Click a row for every field.</div>
+      <div class="table-responsive"><table class="table table-sm table-striped table-bordered table-hover align-middle mb-0">
+        <thead class="table-light"><tr>${c.map(k => `<th class="small text-uppercase text-muted">${esc(Cocky.titleCase(k))}</th>`).join("")}</tr></thead>
+        <tbody>${latest.map((r, i) => `<tr class="clickable" data-i="${i}">${c.map(k => `<td class="small">${k === dk ? fmt(r[k]) : r[k] == null || r[k] === "" ? '<span class="text-muted">—</span>' : esc(String(r[k]).slice(0, 160))}</td>`).join("")}</tr>
+          <tr class="d-none" data-d="${i}"><td colspan="${c.length}" class="bg-light">${detail(r)}</td></tr>`).join("")}</tbody></table></div>`;
+    body.querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = () => body.querySelector(`tr[data-d="${tr.dataset.i}"]`).classList.toggle("d-none"));
+  }
+  document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => open(b.dataset.view));
+
+  // Click-throughs to the inside pages (Run an audit, Add an API, the counts, Open app...) check the login first:
+  // signed out, they go to Sign in and then on to the page that was clicked. (Each inside page also checks for itself.)
+  const PUBLIC_PAGES = /^(index|login)\.html$/i;
+  document.addEventListener("click", e => {
+    const a = e.target.closest("a[href]");
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const url = new URL(a.getAttribute("href"), location.href);
+    if (url.origin !== location.origin) return;
+    const page = url.pathname.split("/").pop() || "index.html";
+    if (!/\.html$/i.test(page) || PUBLIC_PAGES.test(page) || CockyAuth.isSignedIn()) return;
+    e.preventDefault();
+    location.href = "login.html?next=" + encodeURIComponent(page + url.search + url.hash);
+  });
+  // Came back from Sign in to open Help or Profile
+  const want = new URLSearchParams(location.search).get("open");
+  if (want && VIEWS[want]) { history.replaceState(null, "", "index.html"); if (signedIn) open(want); }
+})();
+
+(async () => {
+  const CFG = Cocky.CFG;
+  document.getElementById("apiHost").textContent = new URL(CFG.apiBaseUrl).host;
+  document.getElementById("copyright").textContent = CFG.copyright || "";
+  const status = document.getElementById("status");
+  // Version + build history from config.js
+  document.getElementById("version").innerHTML = `<b>Build ${Cocky.esc(CFG.version)}</b> ${Cocky.esc(CFG.builds?.[0]?.title || "")}`;
+  document.getElementById("builds").innerHTML = (CFG.builds || []).map((b, i) =>
+    `<li class="${i === 0 ? "current" : ""}"><div class="t">Build ${Cocky.esc(b.build)}: ${Cocky.esc(b.title)}${i === 0 ? ' <span class="badge text-bg-warning">current</span>' : ""}</div>${b.notes ? `<div class="n">${Cocky.esc(b.notes)}</div>` : ""}</li>`).join("");
+
+  const resources = ["apps", "apihosts", "apiaudit", "apiauditresults", "auditexceptions", "hostexceptions"];
+  const results = await Promise.allSettled(resources.map(r => Cocky.api.list(r)));
+  let ok = 0, lastAudit = null;
+  results.forEach((res, i) => {
+    const el = document.querySelector(`[data-q="${resources[i]}"]`);
+    if (res.status === "fulfilled") {
+      ok++;
+      el.textContent = res.value.length;
+      // Exceptions: count only live ones, note expired underneath
+      if (/exceptions$/.test(resources[i])) {
+        const live = res.value.filter(Cocky.isLiveException).length, expired = res.value.filter(x => x.active !== false).length - live;
+        el.textContent = live;
+        document.querySelector(`[data-sub="${resources[i]}"]`).textContent = expired ? `+${expired} expired` : "";
+      }
+      if (resources[i] === "apiauditresults")
+        res.value.forEach(a => { const d = Cocky.parseDate(a.auditDate); if (d && (!lastAudit || d > lastAudit)) lastAudit = d; });
+    } else if (resources[i] === "apps" && res.reason.status === 404) {
+      // Apps tables not added to the API yet; not a connection problem
+      ok++; el.textContent = "–"; el.title = "The API didn't answer on the Application route";
+    } else {
+      el.textContent = "!"; el.title = res.reason.message; el.style.color = "#e5484d";
+    }
+  });
+  if (ok === 0) status.innerHTML = '<span style="color:#e5484d">●</span> Can\'t reach the API right now. Check that it\'s running and allows this page in CORS.';
+  else {
+    const dot = ok === resources.length ? '<span style="color:#2fb36b">●</span>' : '<span style="color:#f0a020">●</span>';
+    status.innerHTML = `${dot} API connected${ok < resources.length ? ` (${resources.length - ok} of ${resources.length} lists failed)` : ""}` +
+      (lastAudit ? ` · Last audit ${lastAudit.toLocaleString()}` : " · No audits yet");
+  }
+})();
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(db.WebFarmServers.ToList());
             })
-            .WithGroupName("Web Farm Servers")
+            .WithName("GetWebFarmServers")
             .WithOpenApi();
 
             app.MapGet("/api/webfarmservers/{id}", (int id) =>
@@ -29,7 +29,7 @@ namespace somecontrollers.Controllers;
                     ? Results.NotFound()
                     : Results.Ok(item);
             })
-            .WithGroupName("Web Farm Servers")
+            .WithName("GetWebFarmServersById")
             .WithOpenApi();
 
             app.MapPost("/api/webfarmservers", (WebFarmServer item) =>
@@ -41,7 +41,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Web Farm Servers")
+            .WithName("PostWebFarmServers")
             .WithOpenApi();
 
             app.MapDelete("/api/webfarmservers/{id}", (int id) =>
@@ -58,7 +58,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok();
             })
-            .WithGroupName("Web Farm Servers")
+            .WithName("DeleteWebFarmServersbyId")
             .WithOpenApi();
         }
     }

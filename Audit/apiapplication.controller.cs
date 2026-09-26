@@ -116,6 +116,7 @@ public static class ApplicationController
                 item.WebServerId = input.WebServerId;
                 item.WebFarmId = input.WebFarmId;
                 item.ModifiedDate = DateTime.UtcNow;
+                item.DatabaseId = input.DatabaseId;
 
                 await context.SaveChangesAsync();
 

@@ -15,7 +15,7 @@ namespace somecontrollers.Controllers;
                 using var db = new EnterpriseContext();
                 return Results.Ok(db.WebFarms.ToList());
             })
-            .WithGroupName("Web Farms")
+            .WithName("GetWebFarms")
             .WithOpenApi();
 
             app.MapGet("/api/webfarms/{id}", (int id) =>
@@ -28,7 +28,7 @@ namespace somecontrollers.Controllers;
                     ? Results.NotFound()
                     : Results.Ok(item);
             })
-            .WithGroupName("Web Farms")
+            .WithName("GetWebFarmsByID")
             .WithOpenApi();
 
             app.MapPost("/api/webfarms", (WebFarm item) =>
@@ -40,7 +40,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Web Farms")
+            .WithName("PostWebFarms")
             .WithOpenApi();
 
             app.MapPut("/api/webfarms/{id}", (int id, WebFarm updated) =>
@@ -95,7 +95,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Web Farms")
+            .WithName("PutWebFarms")
             .WithOpenApi();
 
             app.MapDelete("/api/webfarms/{id}", (int id) =>
@@ -112,7 +112,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok();
             })
-            .WithGroupName("Web Farms")
+            .WithName("DeleteWebFarms")
             .WithOpenApi();
         }
     }

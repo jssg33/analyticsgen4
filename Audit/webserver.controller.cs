@@ -15,7 +15,7 @@ namespace somecontrollers.Controllers;
                 using var db = new EnterpriseContext();
                 return Results.Ok(db.WebServers.ToList());
             })
-            .WithGroupName("Web Servers")
+            .WithName("GetWebServers")
             .WithOpenApi();
 
             app.MapGet("/api/webservers/{id}", (int id) =>
@@ -28,7 +28,7 @@ namespace somecontrollers.Controllers;
                     ? Results.NotFound()
                     : Results.Ok(item);
             })
-            .WithGroupName("Web Servers")
+            .WithName("GetWebServersById")
             .WithOpenApi();
 
             app.MapPost("/api/webservers", (WebServer item) =>
@@ -40,7 +40,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Web Servers")
+            .WithName("PostWebServers")
             .WithOpenApi();
 
             app.MapPut("/api/webservers/{id}", (int id, WebServer updated) =>
@@ -90,7 +90,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok(item);
             })
-            .WithGroupName("Web Servers")
+            .WithName("PutWebServers")
             .WithOpenApi();
 
             app.MapDelete("/api/webservers/{id}", (int id) =>
@@ -107,7 +107,7 @@ namespace somecontrollers.Controllers;
 
                 return Results.Ok();
             })
-            .WithGroupName("Web Servers")
+            .WithName("DeleteWebServers")
             .WithOpenApi();
         }
     }
