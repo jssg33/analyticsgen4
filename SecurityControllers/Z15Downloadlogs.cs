@@ -118,6 +118,7 @@ public static class UserDownloadLogEndpoints
             }
 
             item.Username = input.Username;
+            item.Uid = input.Uid;
             item.UserEmail = input.UserEmail;
             item.FileName = input.FileName;
             item.FilePath = input.FilePath;

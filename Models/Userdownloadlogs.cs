@@ -3,6 +3,7 @@ namespace Enterprise.Models
     public class UserDownloadLog
     {
         public int Id { get; set; }
+        public int Uid { get; set; }
 
         public string? Username { get; set; }
 
