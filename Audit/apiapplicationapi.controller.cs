@@ -145,6 +145,7 @@ public static class ApplicationApiController
 
                 item.ApplicationId = input!.ApplicationId;
                 item.ApiHostId = input.ApiHostId;
+                item.DatabaseId = input.DatabaseId;
 
                 await context.SaveChangesAsync();
 
