@@ -1,0 +1,30 @@
+{
+  "name": "John S. Stritzinger",
+  "subtitle": "Global Tech Executive",
+  "position": "Graduate Assistant - University of South Carolina",
+  "address1": "1800 Washington Street",
+  "address2": "Columbia, South Carolina 29201",
+  "description": "This section highlights my professional certifications and credentials. These certifications demonstrate my expertise in various technology domains and commitment to continuous professional development.",
+  "certifications": [
+    {
+      "id": "1",
+      "title": "AWS Certified Solutions Architect",
+      "organization": "Amazon Web Services",
+      "issueDate": "2024",
+      "expiryDate": "2027",
+      "credentialId": "",
+      "credentialUrl": "",
+      "imageUrl": ""
+    },
+    {
+      "id": "2",
+      "title": "PMP - Project Management Professional",
+      "organization": "Project Management Institute",
+      "issueDate": "2023",
+      "expiryDate": "2026",
+      "credentialId": "",
+      "credentialUrl": "",
+      "imageUrl": ""
+    }
+  ]
+}

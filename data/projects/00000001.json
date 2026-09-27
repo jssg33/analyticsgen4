@@ -1,0 +1,21 @@
+{
+  "projectid": "00000001",
+  "projectname": "Sample Project - Marketing Campaign",
+  "projectdescription": "Digital marketing campaign for spring product launch",
+  "userid": 2,
+  "username": "portia",
+  "groupid": null,
+  "companyid": null,
+  "status": "active",
+  "created_date": "2025-01-15",
+  "due_date": "2025-04-30",
+  "completion_percentage": 35,
+  "total_assignments": 5,
+  "completed_assignments": 2,
+  "total_phases": 3,
+  "completed_phases": 1,
+  "tags": ["marketing", "digital", "campaign"],
+  "priority": "high",
+  "budget": 50000,
+  "category": "Marketing"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "John S. Stritzinger",
+  "subtitle": "Global Tech Executive",
+  "position": "Graduate Assistant - University of South Carolina",
+  "address1": "1800 Washington Street",
+  "address2": "Columbia, South Carolina 29201",
+  "description": "A collection of competitive achievements and trophies earned throughout my career in technology competitions, hackathons, and professional challenges.",
+  "trophies": [
+    {
+      "id": "1",
+      "title": "First Place - Tech Innovation Challenge",
+      "competition": "National Technology Conference",
+      "year": "2024",
+      "placement": "1st Place",
+      "description": "Won first place for innovative enterprise architecture solution",
+      "imageUrl": ""
+    },
+    {
+      "id": "2",
+      "title": "Hackathon Winner",
+      "competition": "USC Code Sprint 2023",
+      "year": "2023",
+      "placement": "Winner",
+      "description": "Built winning solution in 24-hour coding competition",
+      "imageUrl": ""
+    }
+  ]
+}
