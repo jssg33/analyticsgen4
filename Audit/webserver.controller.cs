@@ -77,6 +77,8 @@ namespace somecontrollers.Controllers;
                 item.Region = updated.Region;
 
                 item.Owner = updated.Owner;
+                item.isProxy = updated.isProxy;
+                item.isProxySlave = updated.isProxySlave;
                 item.SupportTeam = updated.SupportTeam;
 
                 item.TLSVersion = updated.TLSVersion;

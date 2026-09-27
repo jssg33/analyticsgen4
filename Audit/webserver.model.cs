@@ -39,7 +39,8 @@ namespace Enterprise.Models
         public bool Active { get; set; }
 
         public string? Notes { get; set; }
-
+        public Boolean? isProxy { get; set; }
+        public Boolean? isProxySlave { get; set; }
         public DateTime CreatedDate { get; set; }
     }
 }
