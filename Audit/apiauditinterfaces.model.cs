@@ -6,6 +6,7 @@ namespace Enterprise.Models
         public int Id { get; set; }
 
         public int ApiAuditId { get; set; }
+        public int ApiHostId { get; set; }
 
         public string? ControllerName { get; set; }
 
