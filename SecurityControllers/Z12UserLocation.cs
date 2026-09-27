@@ -46,7 +46,10 @@ public static class UserLocationEndpoints
                 "Test");
 
             return Results.Ok(locations);
-        });
+        })
+        .WithName("GetAllUserLocations")
+        .WithOpenApi();
+
 
         // GET by sessionid
         group.MapGet("/session/{sessionid:int}", async (int sessionid) =>
@@ -183,7 +186,7 @@ public static class UserLocationEndpoints
                 $"/api/userlocation/{userid}",
                 existing);
         })
-        .WithName("PostUserLocation")
+        .WithName("PutUserLocationByUserId")
         .WithOpenApi();
 
 
@@ -345,7 +348,7 @@ public static class UserLocationEndpoints
                 $"/api/userlocation/{userid}",
                 newLocation);
         })
-        .WithName("PostUserLocation")
+        .WithName("PostUserLocationByUserId")
         .WithOpenApi();
 
 
@@ -417,7 +420,7 @@ public static class UserLocationEndpoints
                 $"/api/userlocation/session/{sessionid}",
                 newLocation);
         })
-        .WithName("PostUserLocationById")
+        .WithName("PostUserLocationBySessionId")
         .WithOpenApi();
 
     }
