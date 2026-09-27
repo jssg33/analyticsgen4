@@ -21,7 +21,9 @@ public static class SysLogEndpoints
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();
-        });
+        })
+        .WithName("GetSysLogs")
+        .WithOpenApi();
 
         group.MapGet("/{id:int}", async (int id) =>
         {
@@ -32,7 +34,9 @@ public static class SysLogEndpoints
             return sysLog is not null
                 ? Results.Ok(sysLog)
                 : Results.NotFound();
-        });
+        })
+        .WithName("GetSysLogsById")
+        .WithOpenApi();
 
         group.MapPost("/", async (Syslog sysLog) =>
         {
@@ -47,7 +51,9 @@ public static class SysLogEndpoints
             return Results.Created(
                 $"/api/syslog/{sysLog.Id}",
                 sysLog);
-        });
+        })
+        .WithName("PostSysLogs")
+        .WithOpenApi();
 
         group.MapPut("/{id:int}", async (
             int id,
@@ -76,7 +82,9 @@ public static class SysLogEndpoints
             }
 
             return Results.NoContent();
-        });
+        })
+        .WithName("UpdateSysLogs")
+        .WithOpenApi();
 
         group.MapDelete("/{id:int}", async (int id) =>
         {
@@ -91,6 +99,9 @@ public static class SysLogEndpoints
             await context.SaveChangesAsync();
 
             return Results.NoContent();
-        });
+        })
+        .WithName("DeleteSysLogs")
+        .WithOpenApi();
+
     }
 }

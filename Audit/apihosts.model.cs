@@ -67,7 +67,7 @@ namespace Enterprise.Models
         public string? TechContactPhone { get; set; }
         public string? SecurityEmail { get; set; }
         public string? SecurityPhone { get; set; }
-        public int DBAId { get; set; }
+        public int? DBAId { get; set; }
         public string? DBAName { get; set; }
         public string? HashType { get; set; }
         public bool SslSupported { get; set; }
@@ -77,7 +77,7 @@ namespace Enterprise.Models
         public string? CorsPath { get; set; }
         public string? AllowedRanges { get; set; }
         public string? DeniedRanges { get; set; }
-        public bool IsActive { get; set; } = true;
+        public bool? IsActive { get; set; } = true;
         public string? Environment { get; set; }         // Dev/Test/UAT/Prod
         public string? ApplicationName { get; set; }
         public string? SourceRepository { get; set; }

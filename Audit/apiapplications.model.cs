@@ -15,7 +15,7 @@ public string? InventoryId { get; set; }
 public int? WebServerId { get; set; }
 public int? WebFarmId { get; set; }
 public int? DatabaseId { get; set; }
-public bool IsActive { get; set; } = true;
+public bool? IsActive { get; set; } = true;
 public DateTime CreatedDate { get; set; }
 
 public DateTime? ModifiedDate { get; set; }

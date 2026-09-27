@@ -21,7 +21,9 @@ public static class LunaLogEndpoints
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();
-        });
+        })
+        .WithName("GetAllLunaLogs")
+        .WithOpenApi();
 
         group.MapGet("/{id:int}", async (int id) =>
         {
@@ -32,7 +34,9 @@ public static class LunaLogEndpoints
             return log is not null
                 ? Results.Ok(log)
                 : Results.NotFound();
-        });
+        })
+        .WithName("GetAllLunaLogsById")
+        .WithOpenApi();
 
         group.MapPost("/", async (Lunalog lunaLog) =>
         {
@@ -47,7 +51,10 @@ public static class LunaLogEndpoints
             return Results.Created(
                 $"/api/lunalog/{lunaLog.Id}",
                 lunaLog);
-        });
+        })
+        .WithName("PostLunaLogs")
+        .WithOpenApi();
+
 
         group.MapPut("/{id:int}", async (
             int id,
@@ -76,7 +83,10 @@ public static class LunaLogEndpoints
             }
 
             return Results.NoContent();
-        });
+        })
+        .WithName("UpdateLunaLogs")
+        .WithOpenApi();
+
 
         group.MapDelete("/{id:int}", async (int id) =>
         {
@@ -91,6 +101,9 @@ public static class LunaLogEndpoints
             await context.SaveChangesAsync();
 
             return Results.NoContent();
-        });
+        })
+        .WithName("DeleteLunaLogs")
+        .WithOpenApi();
+
     }
 }
