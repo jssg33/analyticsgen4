@@ -21,7 +21,10 @@ public static class UserProfileLogEndpoints
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();
-        });
+        })
+        .WithName("GetAllUserProfileLogs")
+        .WithOpenApi();
+
 
         group.MapGet("/{id:int}", async (int id) =>
         {
@@ -32,7 +35,10 @@ public static class UserProfileLogEndpoints
             return profileLog is not null
                 ? Results.Ok(profileLog)
                 : Results.NotFound();
-        });
+        })
+        .WithName("GetUserProfileLogById")
+        .WithOpenApi();
+
 
         group.MapGet("/user/{uid:int}", async (
             int uid,
@@ -49,7 +55,10 @@ public static class UserProfileLogEndpoints
                 .ToListAsync();
 
             return Results.Ok(logs);
-        });
+        })
+        .WithName("GetUserProfileLogByUserid")
+        .WithOpenApi();
+
 
         group.MapPost("/", async (UserProfileLog profileLog) =>
         {
@@ -64,7 +73,10 @@ public static class UserProfileLogEndpoints
             return Results.Created(
                 $"/api/userprofilelog/{profileLog.Id}",
                 profileLog);
-        });
+        })
+        .WithName("PostUserProfileLog")
+        .WithOpenApi();
+
 
         group.MapPut("/{id:int}", async (
             int id,
@@ -93,7 +105,10 @@ public static class UserProfileLogEndpoints
             }
 
             return Results.NoContent();
-        });
+        })
+        .WithName("UpdateUserProfileLogByID")
+        .WithOpenApi();
+
 
         group.MapDelete("/{id:int}", async (int id) =>
         {
@@ -108,6 +123,9 @@ public static class UserProfileLogEndpoints
             await context.SaveChangesAsync();
 
             return Results.NoContent();
-        });
+        })
+        .WithName("DeleteUserProfileLog")
+        .WithOpenApi();
+
     }
 }
