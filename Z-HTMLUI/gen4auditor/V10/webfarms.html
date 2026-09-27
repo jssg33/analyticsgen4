@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Farms · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Web Farms</h2>
+  <div class="page-sub">A web farm is a load-balanced group of <a href="webservers.html">web servers</a>. <b>Members</b> picks the servers in a farm, and a server can be in more than one farm.
+    <b>Findings</b> covers the farm and its members, for example no members, a pool count that doesn't match, members in another environment, or members allowing old TLS.</div>
+</section>
+
+<!-- Members dialog -->
+<div class="modal fade" id="memberModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="member-note alert alert-warning small d-none"></div>
+    <input class="form-control form-control-sm mb-2 member-search" placeholder="Search web servers…">
+    <div class="member-list"></div>
+    <div class="member-error alert alert-danger small mt-3 d-none"></div>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <div class="small text-muted member-summary"></div>
+    <div><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+      <button class="btn btn-primary member-save" type="button">Save</button></div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="infra.js"></script>
+<script>
+const main = Cocky.layout("webfarms");
+const esc = Cocky.esc;
+let data = {}, audit = Infra.evaluate({});
+async function refreshAudit() { data = await Infra.loadAll(); audit = Infra.evaluate(data); }
+const serverName = s => Infra.KINDS.webservers.name(s);
+
+Cocky.SCHEMA.webfarms.format = {
+  members: (v, r) => {
+    const ids = audit.index.membersOf(r.id);
+    if (!ids.length) return '<span class="small text-muted">No members</span>';
+    const pool = Infra.num(r, "backendPoolCount");
+    return ids.map(id => {
+      const s = audit.index.ws.get(id);
+      if (!s) return `<span class="badge text-bg-danger fw-normal me-1">#${id} missing</span>`;
+      const off = !Infra.isActive("webservers", s);
+      return `<span class="badge ${off ? "text-bg-secondary" : "text-bg-light border"} fw-normal me-1" title="${esc([Infra.str(s, "hostname"), Infra.str(s, "environment"), off ? "inactive" : ""].filter(Boolean).join(" · "))}">${esc(serverName(s))}</span>`;
+    }).join("") + (pool != null && pool !== ids.length ? ` <span class="small text-warning-emphasis" title="Backend pool count">pool ${pool}</span>` : "");
+  },
+  findings: (v, r) => Infra.badge(audit.get("webfarms", r.id))
+};
+
+let page;
+(async () => {
+  if (!await Infra.guard("webfarms", main)) return;
+  page = Cocky.crudPage("webfarms", {
+    mount: main,
+    columns: Cocky.SCHEMA.webfarms.columns,
+    beforeLoad: refreshAudit,
+    sort: rows => rows.slice().sort((a, b) => Infra.KINDS.webfarms.name(a).localeCompare(Infra.KINDS.webfarms.name(b))),
+    canDelete: r => {
+      const apps = audit.index.appsUsing("webFarmId", r.id);
+      if (apps.length) return `Can't delete: ${apps.length} application(s) run on this farm (${apps.map(Infra.KINDS.apps.name).join(", ")}). Change them on the Apps page first.`;
+    },
+    // WebFarmServers doesn't cascade: remove the farm's member links first (put back if the delete fails)
+    beforeDelete: r => Cocky.removeLinks("webfarmservers", l => Infra.num(l, "webFarmId") === r.id, ["webFarmId", "webServerId"]),
+    rowActions: [{ label: r => `Members <span class="badge text-bg-secondary ms-1">${audit.index.membersOf(r.id).length}</span>`, onClick: openMembers }],
+    // After adding a farm, go straight to picking its servers
+    onCreated: saved => {
+      const farm = saved.id ? page.rows().find(r => r.id === saved.id)
+        : page.rows().filter(r => Infra.str(r, "farmName") === Infra.str(saved, "farmName")).sort((a, b) => b.id - a.id)[0];
+      if (farm) openMembers(farm);
+    }
+  });
+})();
+
+// ---- Members dialog ----
+// WebFarmServers has no PUT, so saving adds the newly ticked servers and deletes the links of unticked ones.
+const mm = document.getElementById("memberModal");
+const mmBs = bootstrap.Modal.getOrCreateInstance(mm);
+function openMembers(farm) {
+  const links = (data.webfarmservers || []).filter(l => Infra.num(l, "webFarmId") === farm.id);
+  const before = new Set(links.map(l => Infra.num(l, "webServerId")));
+  const picked = new Set(before);
+  const servers = (data.webservers || []).slice().sort((a, b) => serverName(a).localeCompare(serverName(b)));
+  const farmEnv = Infra.str(farm, "environment").toLowerCase();
+  mm.querySelector(".modal-title").textContent = `Servers in ${Infra.KINDS.webfarms.name(farm)}`;
+  const err = mm.querySelector(".member-error"); err.classList.add("d-none");
+  const dups = audit.index.duplicateLinks(farm.id);
+  const note = mm.querySelector(".member-note");
+  note.classList.toggle("d-none", !dups.length && !data.missing.includes("webfarmservers"));
+  note.textContent = data.missing.includes("webfarmservers")
+    ? `The API didn't answer on ${Cocky.CFG.endpoints.webfarmservers}, so members can't be saved yet.`
+    : dups.length ? `Some servers are linked to this farm more than once. Saving keeps one link each and removes the extras.` : "";
+  const search = mm.querySelector(".member-search"); search.value = "";
+  const list = mm.querySelector(".member-list");
+  const summary = () => {
+    const pool = Infra.num(farm, "backendPoolCount");
+    mm.querySelector(".member-summary").innerHTML = `${picked.size} server${picked.size === 1 ? "" : "s"} selected` +
+      (pool != null && pool !== picked.size ? ` · <span class="text-warning-emphasis">backend pool count is ${pool}</span>` : "");
+  };
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    const shown = servers.filter(s => !q || ["serverName", "hostname", "ipAddress", "environment", "operatingSystem"].some(k => Infra.str(s, k).toLowerCase().includes(q)) || String(s.id) === q);
+    list.innerHTML = shown.length ? `<div class="list-group">${shown.map(s => {
+      const env = Infra.str(s, "environment");
+      const envOff = farmEnv && env && env.toLowerCase() !== farmEnv;
+      const others = audit.index.farmsOf(s.id).filter(id => id !== farm.id).length;
+      const res = audit.get("webservers", s.id);
+      return `<label class="list-group-item d-flex gap-3 align-items-start">
+        <input class="form-check-input mt-1" type="checkbox" value="${s.id}" ${picked.has(s.id) ? "checked" : ""}>
+        <span class="flex-grow-1"><span class="fw-semibold">${esc(serverName(s))}</span>
+          ${env ? `<span class="badge ${envOff ? "text-bg-warning" : "text-bg-light border"} ms-1 fw-normal" ${envOff ? 'title="Different environment from the farm"' : ""}>${esc(env)}</span>` : ""}
+          ${Infra.isActive("webservers", s) ? "" : '<span class="badge text-bg-secondary ms-1">Inactive</span>'}
+          <br><span class="small text-muted">${esc([Infra.str(s, "hostname"), Infra.str(s, "ipAddress"), Infra.str(s, "operatingSystem"), Infra.str(s, "tlsVersion") && Infra.str(s, "tlsVersion").replace(/^(?!tls|ssl)/i, "TLS ")].filter(Boolean).join(" · "))}${others ? ` · also in ${others} other farm${others === 1 ? "" : "s"}` : ""}</span></span>
+        <span class="text-nowrap">${Infra.badge(res)}</span></label>`;
+    }).join("")}</div>` : `<div class="empty">${servers.length ? "No servers match your search." : 'No web servers yet. Add them on the <a href="webservers.html">Web Servers</a> page first.'}</div>`;
+    list.querySelectorAll("input[type=checkbox]").forEach(cb => cb.onchange = () => { cb.checked ? picked.add(+cb.value) : picked.delete(+cb.value); summary(); });
+  };
+  search.oninput = draw;
+  draw(); summary();
+
+  const save = mm.querySelector(".member-save");
+  save.onclick = async () => {
+    const toAdd = [...picked].filter(id => !before.has(id));
+    // Unticked servers lose every link; duplicates of kept servers lose all but the first
+    const keptOnce = new Set();
+    const toRemove = links.filter(l => {
+      const sid = Infra.num(l, "webServerId");
+      if (!picked.has(sid)) return true;
+      if (keptOnce.has(sid)) return true;
+      keptOnce.add(sid); return false;
+    });
+    if (!toAdd.length && !toRemove.length) { mmBs.hide(); return; }
+    save.disabled = true; save.textContent = "Saving…";
+    const failures = [];
+    await Promise.all([
+      ...toAdd.map(id => Cocky.api.create("webfarmservers", { webFarmId: farm.id, webServerId: id }).catch(e => failures.push(e.message))),
+      ...toRemove.map(l => Cocky.api.remove("webfarmservers", l.id).catch(e => failures.push(e.message)))
+    ]);
+    save.disabled = false; save.textContent = "Save";
+    if (failures.length) { err.textContent = `${failures.length} change(s) failed: ${failures[0]}`; err.classList.remove("d-none"); page.reload(); return; }
+    mmBs.hide();
+    const added = toAdd.length, removed = toRemove.length;
+    Cocky.toast(`${Infra.KINDS.webfarms.name(farm)}: ${[added && `${added} server(s) added`, removed && `${removed} link(s) removed`].filter(Boolean).join(", ")}.`);
+    page.reload();
+  };
+  mmBs.show();
+}
+</script>
+</body>
+</html>
