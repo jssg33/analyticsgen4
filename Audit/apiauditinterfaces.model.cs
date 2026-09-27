@@ -9,6 +9,8 @@ namespace Enterprise.Models
 
         public string? ControllerName { get; set; }
 
+        public string? EndpointName { get; set; }
+
         public string? Route { get; set; }
 
         public string? HttpMethod { get; set; }
@@ -17,10 +19,13 @@ namespace Enterprise.Models
 
         public string? ImplementationName { get; set; }
 
-        public string? ServiceLifetime { get; set; }
+        public bool IsImplemented { get; set; }
 
         public bool IsRegistered { get; set; }
-        public string? MethodName { get; set; } 
+
+        public string? ServiceLifetime { get; set; }
+
+        public string? MethodName { get; set; }
 
         public DateTime DiscoveredDate { get; set; }
     }

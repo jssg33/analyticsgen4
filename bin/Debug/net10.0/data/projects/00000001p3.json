@@ -1,0 +1,43 @@
+{
+  "phaseid": "00000001p3",
+  "projectid": "00000001",
+  "phase_number": 3,
+  "title": "Launch & Optimization Phase",
+  "description": "Campaign deployment, monitoring, and ongoing optimization based on performance data",
+  "status": "pending",
+  "start_date": "2025-03-25",
+  "end_date": "2025-04-30",
+  "completion_date": null,
+  "completion_percentage": 0,
+  "phase_budget": 10000,
+  "actual_cost": 0,
+  "milestones": [
+    {
+      "milestone_name": "Campaign Launch",
+      "due_date": "2025-04-01",
+      "status": "pending",
+      "completion_date": null
+    },
+    {
+      "milestone_name": "Mid-Campaign Review",
+      "due_date": "2025-04-15",
+      "status": "pending",
+      "completion_date": null
+    },
+    {
+      "milestone_name": "Final Report & Analysis",
+      "due_date": "2025-04-30",
+      "status": "pending",
+      "completion_date": null
+    }
+  ],
+  "deliverables": [
+    "Campaign launch documentation",
+    "Performance analytics reports",
+    "Optimization recommendations",
+    "Final campaign summary"
+  ],
+  "notes": "Awaiting completion of creative phase before launch.",
+  "team_members": ["portia"],
+  "tags": ["launch", "optimization", "phase3"]
+}

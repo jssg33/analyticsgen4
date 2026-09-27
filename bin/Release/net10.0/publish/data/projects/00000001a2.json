@@ -1,0 +1,26 @@
+{
+  "assignmentid": "00000001a2",
+  "projectid": "00000001",
+  "assignment_number": 2,
+  "title": "Campaign Strategy Development",
+  "description": "Develop comprehensive campaign strategy including messaging, channels, and timeline",
+  "status": "completed",
+  "assigned_to": "portia",
+  "userid": 2,
+  "created_date": "2025-02-10",
+  "due_date": "2025-03-01",
+  "completion_date": "2025-02-28",
+  "completion_percentage": 100,
+  "priority": "high",
+  "estimated_hours": 50,
+  "actual_hours": 52,
+  "deliverables": [
+    "Campaign strategy document",
+    "Content calendar",
+    "Channel distribution plan",
+    "Budget allocation spreadsheet"
+  ],
+  "notes": "Strategy approved by leadership team. Ready to move to creative phase.",
+  "attachments": [],
+  "tags": ["strategy", "planning", "campaign"]
+}

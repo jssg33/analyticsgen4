@@ -1,0 +1,26 @@
+{
+  "name": "John S. Stritzinger",
+  "subtitle": "Global Tech Executive",
+  "position": "Graduate Assistant - University of South Carolina",
+  "address1": "1800 Washington Street",
+  "address2": "Columbia, South Carolina 29201",
+  "description": "This section showcases the professional awards and recognitions I have received throughout my career. Each award represents milestones in technology leadership, innovation, and excellence in software development.",
+  "awards": [
+    {
+      "id": "1",
+      "title": "Innovation Excellence Award",
+      "organization": "Tech Industry Association",
+      "year": "2024",
+      "description": "Recognized for groundbreaking work in enterprise system architecture",
+      "imageUrl": ""
+    },
+    {
+      "id": "2",
+      "title": "Outstanding Research Award",
+      "organization": "University of South Carolina",
+      "year": "2023",
+      "description": "Awarded for excellence in software engineering research",
+      "imageUrl": ""
+    }
+  ]
+}

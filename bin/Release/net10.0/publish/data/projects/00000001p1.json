@@ -1,0 +1,37 @@
+{
+  "phaseid": "00000001p1",
+  "projectid": "00000001",
+  "phase_number": 1,
+  "title": "Planning & Strategy Phase",
+  "description": "Initial planning, research, and strategy development for the marketing campaign",
+  "status": "completed",
+  "start_date": "2025-01-15",
+  "end_date": "2025-03-01",
+  "completion_date": "2025-02-28",
+  "completion_percentage": 100,
+  "phase_budget": 15000,
+  "actual_cost": 14500,
+  "milestones": [
+    {
+      "milestone_name": "Market Research Complete",
+      "due_date": "2025-02-15",
+      "status": "completed",
+      "completion_date": "2025-02-10"
+    },
+    {
+      "milestone_name": "Strategy Approved",
+      "due_date": "2025-03-01",
+      "status": "completed",
+      "completion_date": "2025-02-28"
+    }
+  ],
+  "deliverables": [
+    "Market research report",
+    "Competitive analysis",
+    "Campaign strategy document",
+    "Budget allocation plan"
+  ],
+  "notes": "Phase completed successfully and under budget. All stakeholders approved the strategy.",
+  "team_members": ["portia"],
+  "tags": ["planning", "strategy", "phase1"]
+}

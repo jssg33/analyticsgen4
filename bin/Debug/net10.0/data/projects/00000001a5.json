@@ -1,0 +1,26 @@
+{
+  "assignmentid": "00000001a5",
+  "projectid": "00000001",
+  "assignment_number": 5,
+  "title": "Performance Analysis & Optimization",
+  "description": "Analyze campaign performance metrics and optimize based on data insights",
+  "status": "pending",
+  "assigned_to": "portia",
+  "userid": 2,
+  "created_date": "2025-03-15",
+  "due_date": "2025-04-30",
+  "completion_date": null,
+  "completion_percentage": 0,
+  "priority": "medium",
+  "estimated_hours": 40,
+  "actual_hours": 0,
+  "deliverables": [
+    "Performance analytics report",
+    "ROI analysis",
+    "Optimization recommendations",
+    "Final campaign summary"
+  ],
+  "notes": "Will begin after campaign launch.",
+  "attachments": [],
+  "tags": ["analytics", "optimization", "reporting"]
+}

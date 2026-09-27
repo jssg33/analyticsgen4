@@ -1,0 +1,30 @@
+{
+  "name": "John S. Stritzinger",
+  "subtitle": "Global Tech Executive",
+  "position": "Graduate Assistant - University of South Carolina",
+  "address1": "1800 Washington Street",
+  "address2": "Columbia, South Carolina 29201",
+  "description": "This section highlights my published works, including books and research articles. Each publication reflects my commitment to advancing knowledge in technology, enterprise systems, and software development.",
+  "publications": [
+    {
+      "id": "1",
+      "title": "Enterprise Systems Architecture",
+      "type": "book",
+      "authors": "John S. Stritzinger",
+      "year": "2024",
+      "publisher": "Tech Publishing",
+      "url": "",
+      "description": "A comprehensive guide to modern enterprise system design"
+    },
+    {
+      "id": "2",
+      "title": "Cloud Migration Strategies",
+      "type": "article",
+      "authors": "John S. Stritzinger, et al.",
+      "year": "2023",
+      "publisher": "Journal of Software Engineering",
+      "url": "",
+      "description": "Research on effective cloud migration methodologies"
+    }
+  ]
+}

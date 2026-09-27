@@ -1,0 +1,27 @@
+{
+  "assignmentid": "00000001a3",
+  "projectid": "00000001",
+  "assignment_number": 3,
+  "title": "Creative Asset Development",
+  "description": "Create all visual and written content for campaign including ads, social media posts, and landing pages",
+  "status": "in_progress",
+  "assigned_to": "portia",
+  "userid": 2,
+  "created_date": "2025-02-28",
+  "due_date": "2025-03-25",
+  "completion_date": null,
+  "completion_percentage": 60,
+  "priority": "high",
+  "estimated_hours": 80,
+  "actual_hours": 45,
+  "deliverables": [
+    "Social media graphics (10 posts)",
+    "Banner ads (5 variations)",
+    "Landing page mockups",
+    "Email templates",
+    "Video script"
+  ],
+  "notes": "Graphics and banner ads completed. Working on landing page designs.",
+  "attachments": [],
+  "tags": ["creative", "design", "content"]
+}
