@@ -1,0 +1,25 @@
+{
+  "assignmentid": "00000001a4",
+  "projectid": "00000001",
+  "assignment_number": 4,
+  "title": "Campaign Launch & Deployment",
+  "description": "Deploy all campaign assets across channels and monitor initial performance",
+  "status": "pending",
+  "assigned_to": "portia",
+  "userid": 2,
+  "created_date": "2025-03-01",
+  "due_date": "2025-04-01",
+  "completion_date": null,
+  "completion_percentage": 0,
+  "priority": "medium",
+  "estimated_hours": 30,
+  "actual_hours": 0,
+  "deliverables": [
+    "Campaign launch checklist",
+    "Channel deployment schedule",
+    "Initial performance report"
+  ],
+  "notes": "Waiting for creative assets to be finalized.",
+  "attachments": [],
+  "tags": ["launch", "deployment", "execution"]
+}

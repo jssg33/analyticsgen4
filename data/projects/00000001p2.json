@@ -1,0 +1,38 @@
+{
+  "phaseid": "00000001p2",
+  "projectid": "00000001",
+  "phase_number": 2,
+  "title": "Creative Development Phase",
+  "description": "Development of all creative assets including graphics, copy, and multimedia content",
+  "status": "in_progress",
+  "start_date": "2025-02-28",
+  "end_date": "2025-03-25",
+  "completion_date": null,
+  "completion_percentage": 60,
+  "phase_budget": 25000,
+  "actual_cost": 12000,
+  "milestones": [
+    {
+      "milestone_name": "Design Concepts Complete",
+      "due_date": "2025-03-10",
+      "status": "completed",
+      "completion_date": "2025-03-08"
+    },
+    {
+      "milestone_name": "All Assets Finalized",
+      "due_date": "2025-03-25",
+      "status": "in_progress",
+      "completion_date": null
+    }
+  ],
+  "deliverables": [
+    "Social media graphics",
+    "Banner advertisements",
+    "Landing page designs",
+    "Email templates",
+    "Video content"
+  ],
+  "notes": "Creative work progressing well. Currently finalizing landing page mockups.",
+  "team_members": ["portia"],
+  "tags": ["creative", "design", "phase2"]
+}

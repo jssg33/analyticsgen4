@@ -1,0 +1,161 @@
+{
+  "projectid": "88888888",
+  "name": "Guest Demo Project",
+  "description": "Default project for guest users to explore Fusion Project Manager features",
+  "customerId": "99999999",
+  "status": "Active",
+  "createdDate": "2026-03-17",
+  "owner": "Guest User",
+  "logoUrl": "",
+  "category": "Demo",
+  "teamSize": 1,
+  "version": "1.0",
+  "metadata": {
+    "isGuestProject": true,
+    "readOnly": true,
+    "defaultAssignments": [
+      {
+        "id": 1,
+        "title": "Assignment 1: HTML Basics",
+        "subtitle": "Introduction to HTML structure",
+        "description": "Learn the fundamentals of HTML including tags, elements, and document structure. Create your first webpage with proper semantic markup.",
+        "imageUrl": "https://via.placeholder.com/400x300/4CBB17/ffffff?text=HTML+Basics"
+      },
+      {
+        "id": 2,
+        "title": "Assignment 2: CSS Styling",
+        "subtitle": "Style your webpages with CSS",
+        "description": "Master CSS selectors, properties, and values. Apply colors, fonts, layouts, and responsive design principles to create beautiful web interfaces.",
+        "imageUrl": "https://via.placeholder.com/400x300/2196F3/ffffff?text=CSS+Styling"
+      },
+      {
+        "id": 3,
+        "title": "Assignment 3: JavaScript Fundamentals",
+        "subtitle": "Add interactivity with JavaScript",
+        "description": "Explore JavaScript basics including variables, functions, conditionals, and loops. Make your webpages interactive and dynamic.",
+        "imageUrl": "https://via.placeholder.com/400x300/FF9800/ffffff?text=JavaScript+Basics"
+      },
+      {
+        "id": 4,
+        "title": "Assignment 4: DOM Manipulation",
+        "subtitle": "Control webpage elements",
+        "description": "Learn to select and manipulate HTML elements using JavaScript. Handle events, modify content, and create dynamic user experiences.",
+        "imageUrl": "https://via.placeholder.com/400x300/E91E63/ffffff?text=DOM+Manipulation"
+      },
+      {
+        "id": 5,
+        "title": "Assignment 5: Forms & Validation",
+        "subtitle": "Create interactive forms",
+        "description": "Build HTML forms with proper validation. Handle user input, validate data, and provide meaningful feedback to users.",
+        "imageUrl": "https://via.placeholder.com/400x300/9C27B0/ffffff?text=Forms+Validation"
+      },
+      {
+        "id": 6,
+        "title": "Assignment 6: API Integration",
+        "subtitle": "Connect to external APIs",
+        "description": "Fetch data from web APIs using JavaScript. Parse JSON responses and display dynamic content from external sources.",
+        "imageUrl": "https://via.placeholder.com/400x300/00BCD4/ffffff?text=API+Integration"
+      },
+      {
+        "id": 7,
+        "title": "Assignment 7: Local Storage",
+        "subtitle": "Store data in the browser",
+        "description": "Use localStorage and sessionStorage to persist data in the browser. Build applications that remember user preferences and state.",
+        "imageUrl": "https://via.placeholder.com/400x300/4CAF50/ffffff?text=Local+Storage"
+      },
+      {
+        "id": 8,
+        "title": "Assignment 8: Responsive Design",
+        "subtitle": "Mobile-first development",
+        "description": "Create responsive layouts that adapt to different screen sizes. Use media queries, flexbox, and grid for modern web design.",
+        "imageUrl": "https://via.placeholder.com/400x300/FF5722/ffffff?text=Responsive+Design"
+      },
+      {
+        "id": 9,
+        "title": "Assignment 9: Accessibility",
+        "subtitle": "Build inclusive websites",
+        "description": "Implement accessibility best practices. Use ARIA attributes, semantic HTML, and keyboard navigation for all users.",
+        "imageUrl": "https://via.placeholder.com/400x300/795548/ffffff?text=Accessibility"
+      },
+      {
+        "id": 10,
+        "title": "Assignment 10: Final Project",
+        "subtitle": "Showcase your skills",
+        "description": "Combine all learned concepts to build a complete web application. Demonstrate your mastery of HTML, CSS, and JavaScript.",
+        "imageUrl": "https://via.placeholder.com/400x300/607D8B/ffffff?text=Final+Project"
+      }
+    ],
+    "defaultProjectPhases": [
+      {
+        "id": 1,
+        "title": "Phase 1: Planning & Requirements",
+        "subtitle": "Define project scope and goals",
+        "description": "Gather requirements, define project scope, identify stakeholders, and create a comprehensive project plan with timelines and deliverables.",
+        "imageUrl": "https://via.placeholder.com/400x300/3F51B5/ffffff?text=Planning"
+      },
+      {
+        "id": 2,
+        "title": "Phase 2: Design & Architecture",
+        "subtitle": "Create system designs",
+        "description": "Design the system architecture, create wireframes and mockups, define database schemas, and plan the technical implementation.",
+        "imageUrl": "https://via.placeholder.com/400x300/673AB7/ffffff?text=Design"
+      },
+      {
+        "id": 3,
+        "title": "Phase 3: Development Sprint 1",
+        "subtitle": "Build core features",
+        "description": "Develop the foundational features and core functionality. Set up the development environment and implement base components.",
+        "imageUrl": "https://via.placeholder.com/400x300/009688/ffffff?text=Development+1"
+      },
+      {
+        "id": 4,
+        "title": "Phase 4: Development Sprint 2",
+        "subtitle": "Advanced features",
+        "description": "Implement advanced features, integrate third-party services, and build out the complete feature set for the application.",
+        "imageUrl": "https://via.placeholder.com/400x300/8BC34A/ffffff?text=Development+2"
+      },
+      {
+        "id": 5,
+        "title": "Phase 5: Testing & QA",
+        "subtitle": "Quality assurance",
+        "description": "Conduct thorough testing including unit tests, integration tests, and user acceptance testing. Fix bugs and optimize performance.",
+        "imageUrl": "https://via.placeholder.com/400x300/CDDC39/ffffff?text=Testing+QA"
+      },
+      {
+        "id": 6,
+        "title": "Phase 6: Deployment",
+        "subtitle": "Launch to production",
+        "description": "Deploy the application to production servers, configure hosting, set up monitoring, and ensure everything runs smoothly in the live environment.",
+        "imageUrl": "https://via.placeholder.com/400x300/FFC107/ffffff?text=Deployment"
+      },
+      {
+        "id": 7,
+        "title": "Phase 7: Documentation",
+        "subtitle": "Create comprehensive docs",
+        "description": "Write user documentation, API documentation, and technical guides. Create tutorials and help resources for end users.",
+        "imageUrl": "https://via.placeholder.com/400x300/FF6F00/ffffff?text=Documentation"
+      },
+      {
+        "id": 8,
+        "title": "Phase 8: User Training",
+        "subtitle": "Onboard users",
+        "description": "Conduct training sessions, create training materials, and ensure users understand how to effectively use the application.",
+        "imageUrl": "https://via.placeholder.com/400x300/E64A19/ffffff?text=Training"
+      },
+      {
+        "id": 9,
+        "title": "Phase 9: Monitoring & Support",
+        "subtitle": "Ongoing maintenance",
+        "description": "Monitor application performance, provide user support, address issues, and maintain system stability post-launch.",
+        "imageUrl": "https://via.placeholder.com/400x300/5D4037/ffffff?text=Monitoring"
+      },
+      {
+        "id": 10,
+        "title": "Phase 10: Iteration & Enhancement",
+        "subtitle": "Continuous improvement",
+        "description": "Gather user feedback, plan enhancements, implement new features, and continuously improve the application based on real-world usage.",
+        "imageUrl": "https://via.placeholder.com/400x300/455A64/ffffff?text=Enhancement"
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "projects": [
+    {
+      "projectid": "00000001",
+      "projectname": "Sample Project - Marketing Campaign",
+      "userid": 2,
+      "username": "portia",
+      "status": "active",
+      "created_date": "2025-01-15",
+      "due_date": "2025-04-30",
+      "completion_percentage": 35,
+      "has_assignments": true,
+      "has_phases": true,
+      "assignment_files": [
+        "00000001a1.json",
+        "00000001a2.json",
+        "00000001a3.json",
+        "00000001a4.json",
+        "00000001a5.json"
+      ],
+      "phase_files": [
+        "00000001p1.json",
+        "00000001p2.json",
+        "00000001p3.json"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "userid": 2,
+      "username": "portia",
+      "project_count": 1,
+      "projects": ["00000001"]
+    }
+  ],
+  "metadata": {
+    "total_projects": 1,
+    "last_updated": "2026-04-09",
+    "version": "1.0"
+  }
+}

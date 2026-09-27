@@ -1,0 +1,28 @@
+{
+  "name": "John S. Stritzinger",
+  "subtitle": "Global Tech Executive",
+  "position": "Graduate Assistant - University of South Carolina",
+  "address1": "1800 Washington Street",
+  "address2": "Columbia, South Carolina 29201",
+  "description": "This portfolio highlights my work across web development, research, and enterprise systems. It includes links to my professional sites, academic assignments, and ongoing research interests. Each section reflects my commitment to technology leadership, innovation, and continuous learning.",
+  "items": [
+    {
+      "id": "1",
+      "title": "CG2 React Tools",
+      "imageUrl": "",
+      "description": "Motocross park booking platform"
+    },
+    {
+      "id": "2",
+      "title": "Webmaster Links",
+      "imageUrl": "",
+      "description": "GBK Castries web platform"
+    },
+    {
+      "id": "3",
+      "title": "MyLinkV3",
+      "imageUrl": "",
+      "description": "Motocross camping and outdoor recreation platform"
+    }
+  ]
+}

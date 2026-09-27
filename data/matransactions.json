@@ -1,0 +1,32 @@
+{
+  "name": "John S. Stritzinger",
+  "subtitle": "Global Tech Executive",
+  "position": "Graduate Assistant - University of South Carolina",
+  "address1": "1800 Washington Street",
+  "address2": "Columbia, South Carolina 29201",
+  "description": "A record of mergers and acquisitions I have been involved with throughout my career, including advisory roles, due diligence, and integration projects.",
+  "transactions": [
+    {
+      "id": "1",
+      "dealName": "Tech Innovations Acquisition",
+      "acquirer": "Global Tech Corp",
+      "target": "Innovation Labs Inc",
+      "year": "2024",
+      "value": "$50M",
+      "type": "Acquisition",
+      "status": "Completed",
+      "description": "Led technical due diligence and post-merger integration"
+    },
+    {
+      "id": "2",
+      "dealName": "Strategic Software Merger",
+      "acquirer": "Enterprise Solutions",
+      "target": "Cloud Systems LLC",
+      "year": "2023",
+      "value": "$25M",
+      "type": "Merger",
+      "status": "Completed",
+      "description": "Advised on technology stack consolidation and team integration"
+    }
+  ]
+}
