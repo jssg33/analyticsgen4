@@ -234,7 +234,7 @@ public partial class EnterpriseContext : DbContext
 
     modelBuilder.Entity<User>(entity =>
     {
-        entity.ToTable("User");
+        entity.ToTable("Users");
 
         entity.HasKey(e => e.Id);
 

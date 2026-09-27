@@ -5,8 +5,8 @@ namespace Enterprise.Models
     {
         public int Id { get; set; }
 
-        public int ApiAuditId { get; set; }
-        public int ApiHostId { get; set; }
+        public int? ApiAuditId { get; set; }
+        public int? ApiHostId { get; set; }
 
         public string? ControllerName { get; set; }
 
@@ -20,9 +20,9 @@ namespace Enterprise.Models
 
         public string? ImplementationName { get; set; }
 
-        public bool IsImplemented { get; set; }
+        public bool? IsImplemented { get; set; }
 
-        public bool IsRegistered { get; set; }
+        public bool? IsRegistered { get; set; }
 
         public string? ServiceLifetime { get; set; }
 

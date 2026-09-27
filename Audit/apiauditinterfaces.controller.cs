@@ -114,7 +114,7 @@ public static class ApiInterfacesAuditEndpoints
                     return Results.NotFound();
 
                 context.ApiInterfacesAudit.Attach(record);
-
+                record.ApiHostId = input.ApiHostId;
                 record.ApiAuditId = input!.ApiAuditId;
                 record.ControllerName = input.ControllerName;
                 record.Route = input.Route;
