@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Enterprise.Models;
 
@@ -25,6 +27,7 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<AuditException> AuditExceptions { get; set; }
     public virtual DbSet<ApiHostException> ApiHostExceptions { get; set; }
     public virtual DbSet<ApiInterfacesAudit> ApiInterfacesAudit { get; set; }
+    public virtual DbSet<ApplicationUser> ApplicationUsers { get; set; }
     public virtual DbSet<Allstock> Allstocks { get; set; }
 
     public virtual DbSet<Apilog> Apilogs { get; set; }
@@ -233,118 +236,142 @@ public partial class EnterpriseContext : DbContext
         });
 
     modelBuilder.Entity<User>(entity =>
-    {
-        entity.ToTable("Users");
+{
+    entity.ToTable("Users");
 
-        entity.HasKey(e => e.Id);
+    entity.HasKey(e => e.Id);
 
-        entity.Property(e => e.Id)
-            .ValueGeneratedOnAdd();
+    entity.Property(e => e.Id)
+        .ValueGeneratedOnAdd();
 
-        entity.Property(e => e.Firstname)
-            .HasMaxLength(255);
+    entity.Property(e => e.Firstname)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Lastname)
-            .HasMaxLength(255);
+    entity.Property(e => e.Lastname)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Username)
-            .HasMaxLength(255);
+    entity.Property(e => e.Username)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Email)
-            .HasMaxLength(255);
+    entity.Property(e => e.Email)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Employee);
+    entity.Property(e => e.Employee);
 
-        entity.Property(e => e.Employeeid)
-            .HasMaxLength(255);
+    entity.Property(e => e.Employeeid)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Microsoftid)
-            .HasMaxLength(255);
+    entity.Property(e => e.Microsoftid)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Ncrid)
-            .HasMaxLength(255);
+    entity.Property(e => e.Ncrid)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Oracleid)
-            .HasMaxLength(255);
+    entity.Property(e => e.Oracleid)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Azureid)
-            .HasMaxLength(255);
+    entity.Property(e => e.Azureid)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Plainpassword)
-            .HasMaxLength(500);
+    entity.Property(e => e.Plainpassword)
+        .HasMaxLength(500);
 
-        entity.Property(e => e.Hashedpassword)
-            .HasMaxLength(500);
+    entity.Property(e => e.Hashedpassword)
+        .HasMaxLength(500);
 
-        entity.Property(e => e.Passwordtype);
+    entity.Property(e => e.Passwordtype);
 
-        entity.Property(e => e.Jid);
+    entity.Property(e => e.Jid);
 
-        entity.Property(e => e.Profileurl)
-            .HasMaxLength(1000);
+    entity.Property(e => e.Profileurl)
+        .HasMaxLength(1000);
 
-        entity.Property(e => e.Role)
-            .HasMaxLength(100);
+    entity.Property(e => e.Role)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Fullname)
-            .HasMaxLength(255);
+    entity.Property(e => e.Role2)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Companyid)
-            .HasMaxLength(100);
+    entity.Property(e => e.Role3)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Resettoken)
-            .HasMaxLength(500);
+    entity.Property(e => e.Fullname)
+        .HasMaxLength(255);
 
-        entity.Property(e => e.Resettokenexpiration);
+    entity.Property(e => e.Companyid)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Userid);
+    entity.Property(e => e.Resettoken)
+        .HasMaxLength(500);
 
-        entity.Property(e => e.Btn)
-            .HasMaxLength(100);
+    entity.Property(e => e.Resettokenexpiration);
 
-        entity.Property(e => e.Iscertified);
+    entity.Property(e => e.Userid);
 
-        entity.Property(e => e.Groupid1)
-            .HasMaxLength(100);
+    entity.Property(e => e.Btn)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Groupid2)
-            .HasMaxLength(100);
+    entity.Property(e => e.Iscertified);
 
-        entity.Property(e => e.Groupid3)
-            .HasMaxLength(100);
+    entity.Property(e => e.Groupid1)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Groupid4)
-            .HasMaxLength(100);
+    entity.Property(e => e.Groupid2)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Groupid5)
-            .HasMaxLength(100);
+    entity.Property(e => e.Groupid3)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Accountstatus)
-            .HasMaxLength(100);
+    entity.Property(e => e.Groupid4)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Accountactiondate)
-            .HasMaxLength(100);
+    entity.Property(e => e.Groupid5)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Accountactiondescription)
-            .HasMaxLength(1000);
+    entity.Property(e => e.Accountstatus)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Displayname)
-            .HasMaxLength(255);
+    entity.Property(e => e.Accountactiondate)
+        .HasMaxLength(100);
 
-        entity.Property(e => e.Useridstring)
-            .HasMaxLength(100);
+    entity.Property(e => e.Accountactiondescription)
+        .HasMaxLength(1000);
 
-        entity.Property(e => e.Tenantid)
-            .HasMaxLength(100);
+    entity.Property(e => e.Displayname)
+        .HasMaxLength(255);
 
-        // Recommended indexes
-        entity.HasIndex(e => e.Email);
-        entity.HasIndex(e => e.Username);
-        entity.HasIndex(e => e.Microsoftid);
-        entity.HasIndex(e => e.Azureid);
-        entity.HasIndex(e => e.Tenantid);
-        entity.HasIndex(e => e.Companyid);
-    });
+    entity.Property(e => e.Useridstring)
+        .HasMaxLength(100);
+
+    entity.Property(e => e.Tenantid)
+        .HasMaxLength(100);
+
+    entity.Property(e => e.ApplicationIds)
+        .HasColumnType("nvarchar(max)")
+        .HasConversion(
+            v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+            v => string.IsNullOrEmpty(v)
+                ? new List<string>()
+                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null)!
+        );
+
+    entity.Property(e => e.ApplicationPermissions)
+        .HasColumnType("nvarchar(max)")
+        .HasConversion(
+            v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+            v => string.IsNullOrEmpty(v)
+                ? new List<string>()
+                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null)!
+        );
+
+    // Recommended indexes
+    entity.HasIndex(e => e.Email);
+    entity.HasIndex(e => e.Username);
+    entity.HasIndex(e => e.Microsoftid);
+    entity.HasIndex(e => e.Azureid);
+    entity.HasIndex(e => e.Tenantid);
+    entity.HasIndex(e => e.Companyid);
+});
 
         modelBuilder.Entity<Userlog>(entity =>
         {

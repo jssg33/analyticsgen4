@@ -117,6 +117,7 @@ app.MapUserProfileLogEndpoints();
 app.MapApiInterfacesAuditEndpoints();
 app.MapUserDownloadLogEndpoints();
 app.MapBootstrapEndpoints();
+app.MapApplicationAccessEndpoints();
 
 //app.Run();
 //app.Run();

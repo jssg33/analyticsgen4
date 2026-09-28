@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Org.BouncyCastle.Bcpg;
 
 namespace Enterprise.Models;
 
@@ -42,4 +43,6 @@ public partial class User
     public string? Displayname { get; set; }
     public string? Useridstring { get; set; }
     public string? Tenantid {get; set;}
+    public List<string>? ApplicationIds { get; set; }
+    public List<string>? ApplicationPermissions { get; set; }
 }

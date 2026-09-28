@@ -813,6 +813,8 @@ group.MapPost("/loginMicrosoft", async (
         userUsername = user.Username,
         userEmail = user.Email,
         userRole = user.Role,
+        userRole2 = user.Role2,
+        userRole3 = user.Role3,
         token,
         sessionId = session.Id
     });

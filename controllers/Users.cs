@@ -62,10 +62,35 @@ public static class UserEndpoints
         if (input.Jid != null) existing.Jid = input.Jid;
         if (input.Profileurl != null) existing.Profileurl = input.Profileurl;
         if (input.Role != null) existing.Role = input.Role;
-        if (input.Role != null) existing.Role2 = input.Role2;
-        if (input.Role != null) existing.Role3 = input.Role3;
+        if (input.Role2 != null) existing.Role2 = input.Role2;
+        if (input.Role3 != null) existing.Role3 = input.Role3;
         if (input.Fullname != null) existing.Fullname = input.Fullname;
-        await context.SaveChangesAsync();
+        if (input.Lastname != null) existing.Lastname = input.Lastname;
+if (input.Firstname != null) existing.Firstname = input.Firstname;
+if (input.Username != null) existing.Username = input.Username;
+if (input.Email != null) existing.Email = input.Email;
+if (input.Employee != null) existing.Employee = input.Employee;
+if (input.Employeeid != null) existing.Employeeid = input.Employeeid;
+if (input.Microsoftid != null) existing.Microsoftid = input.Microsoftid;
+if (input.Ncrid != null) existing.Ncrid = input.Ncrid;
+if (input.Oracleid != null) existing.Oracleid = input.Oracleid;
+if (input.Azureid != null) existing.Azureid = input.Azureid;
+if (input.Plainpassword != null) existing.Plainpassword = input.Plainpassword;
+if (input.Passwordtype != null) existing.Passwordtype = input.Passwordtype;
+if (input.Jid != null) existing.Jid = input.Jid;
+if (input.Profileurl != null) existing.Profileurl = input.Profileurl;
+
+if (input.Role != null) existing.Role = input.Role;
+if (input.Role2 != null) existing.Role2 = input.Role2;
+if (input.Role3 != null) existing.Role3 = input.Role3;
+
+if (input.Fullname != null) existing.Fullname = input.Fullname;
+if (input.ApplicationIds != null)
+    existing.ApplicationIds = input.ApplicationIds;
+if (input.ApplicationPermissions != null)
+    existing.ApplicationPermissions = input.ApplicationPermissions;
+
+await context.SaveChangesAsync();
 
         return TypedResults.Accepted("Updated ID:" + existing.Id) as IResult;
     }
