@@ -345,7 +345,6 @@ public partial class EnterpriseContext : DbContext
 
     entity.Property(e => e.Tenantid)
         .HasMaxLength(100);
-
     entity.Property(e => e.ApplicationIds)
         .HasColumnType("nvarchar(max)")
         .HasConversion(
@@ -371,6 +370,71 @@ public partial class EnterpriseContext : DbContext
     entity.HasIndex(e => e.Azureid);
     entity.HasIndex(e => e.Tenantid);
     entity.HasIndex(e => e.Companyid);
+});
+
+modelBuilder.Entity<ApplicationUser>(entity =>
+{
+    entity.ToTable("ApplicationUsers");
+
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.Id)
+        .ValueGeneratedOnAdd();
+
+    entity.Property(e => e.ApplicationId);
+
+    entity.Property(e => e.UserId);
+
+    entity.Property(e => e.Permission)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.RoleName)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.AccessType)
+        .HasMaxLength(100);
+
+    entity.Property(e => e.ApprovalGroup)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.RequestTicket)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.BusinessJustification)
+        .HasMaxLength(2000);
+
+    entity.Property(e => e.IsActive);
+
+    entity.Property(e => e.CreatedDate);
+
+    entity.Property(e => e.ModifiedDate);
+
+    entity.Property(e => e.LastReviewedDate);
+
+    entity.Property(e => e.ReviewedBy)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.AccessGrantedDate);
+
+    entity.Property(e => e.AccessRemovedDate);
+
+    // Recommended indexes
+
+    entity.HasIndex(e => e.ApplicationId);
+
+    entity.HasIndex(e => e.UserId);
+
+    entity.HasIndex(e => e.Permission);
+
+    entity.HasIndex(e => e.RoleName);
+
+    entity.HasIndex(e => e.IsActive);
+
+    entity.HasIndex(e => e.AccessType);
+
+    entity.HasIndex(e => e.ApprovalGroup);
+
+    entity.HasIndex(e => e.LastReviewedDate);
 });
 
         modelBuilder.Entity<Userlog>(entity =>
