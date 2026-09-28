@@ -1,3 +1,11 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Enterprise.Models
+{
+    [Table("ApiAccessPermissions")]
+    
 public class ApiAccessPermission
 {
     public int Id { get; set; }
@@ -13,4 +21,5 @@ public class ApiAccessPermission
     public DateTime CreatedDate { get; set; }
 
     public string? GrantedBy { get; set; }
+}
 }
