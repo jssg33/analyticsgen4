@@ -13,7 +13,7 @@ namespace EnterpriseControllers;
 // OPTION 5 DUMPS THE VALUE OF FILES IN THE QUEUE FOR PROCESSING.
 // OPTION 6 REMOVES ZERO CARTS FOR A USER.
 // OPTIONS 7 AND 8 IMPACT PROCESSING OF PARK REVIEWS.
-// OPTION 9 LOADS INITIAL SQL DATA.
+// OPTION 9 POLLS BACKEND WEB SERVERS FOR HTTP/HTTPS SUPPORT.
 // OPTION 10 RETURNS COMPILED INTERFACES AND THEIR METHODS.
 
 /*
@@ -86,9 +86,8 @@ public class SystemConsoleController : ControllerBase
                 return Ok("Option 8 is currently disabled.");
 
             case 9:
-                DatabaseTools.LoadInitData();
-                return Ok("Initial SQL data loaded.");
-
+                return Ok(BackendWebServerPoller.PollBackendServers());
+            
             case 10:
                 return Ok(GetRegisteredInterfaces());
 
