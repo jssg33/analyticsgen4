@@ -1,8 +1,9 @@
-using Enterprise.Data;
-using Enterprise.Models;
+using System;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using Enterprise.Models;
 
-namespace Enterprise.Controllers;
+namespace somecontrollers.Controllers;
 
 public static class SitesController
 {
@@ -10,15 +11,19 @@ public static class SitesController
     {
         var group = app.MapGroup("/api/sites");
 
-        group.MapGet("/", async (EnterpriseContext db) =>
+        group.MapGet("/", async () =>
         {
+            using var db = new EnterpriseContext();
+
             return await db.Sites.ToListAsync();
         })
         .WithName("01GetSites")
         .WithOpenApi();
 
-        group.MapGet("/{id}", async (int id, EnterpriseContext db) =>
+        group.MapGet("/{id}", async (int id) =>
         {
+            using var db = new EnterpriseContext();
+
             var site = await db.Sites.FindAsync(id);
 
             return site is null
@@ -28,8 +33,10 @@ public static class SitesController
         .WithName("02GetSite")
         .WithOpenApi();
 
-        group.MapPost("/", async (Site site, EnterpriseContext db) =>
+        group.MapPost("/", async (Site site) =>
         {
+            using var db = new EnterpriseContext();
+
             db.Sites.Add(site);
             await db.SaveChangesAsync();
 
@@ -40,15 +47,16 @@ public static class SitesController
         .WithName("03CreateSite")
         .WithOpenApi();
 
-        group.MapPut("/{id}", async (
-            int id,
-            Site updated,
-            EnterpriseContext db) =>
+        group.MapPut("/{id}", async (int id, Site updated) =>
         {
+            using var db = new EnterpriseContext();
+
             var existing = await db.Sites.FindAsync(id);
 
             if (existing is null)
+            {
                 return Results.NotFound();
+            }
 
             existing.SiteName = updated.SiteName;
             existing.SiteCode = updated.SiteCode;
@@ -70,12 +78,16 @@ public static class SitesController
         .WithName("04UpdateSite")
         .WithOpenApi();
 
-        group.MapDelete("/{id}", async (int id, EnterpriseContext db) =>
+        group.MapDelete("/{id}", async (int id) =>
         {
+            using var db = new EnterpriseContext();
+
             var existing = await db.Sites.FindAsync(id);
 
             if (existing is null)
+            {
                 return Results.NotFound();
+            }
 
             db.Sites.Remove(existing);
             await db.SaveChangesAsync();

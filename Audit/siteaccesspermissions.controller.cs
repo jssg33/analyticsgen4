@@ -1,8 +1,9 @@
-using Enterprise.Data;
-using Enterprise.Models;
+using System;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using Enterprise.Models;
 
-namespace Enterprise.Controllers;
+namespace somecontrollers.Controllers;
 
 public static class SiteAccessPermissionsController
 {
@@ -10,15 +11,19 @@ public static class SiteAccessPermissionsController
     {
         var group = app.MapGroup("/api/siteaccesspermissions");
 
-        group.MapGet("/", async (EnterpriseContext db) =>
+        group.MapGet("/", async () =>
         {
+            using var db = new EnterpriseContext();
+
             return await db.SiteAccessPermissions.ToListAsync();
         })
         .WithName("01GetSiteAccessPermissions")
         .WithOpenApi();
 
-        group.MapGet("/{id}", async (int id, EnterpriseContext db) =>
+        group.MapGet("/{id}", async (int id) =>
         {
+            using var db = new EnterpriseContext();
+
             var item = await db.SiteAccessPermissions.FindAsync(id);
 
             return item is null
@@ -28,8 +33,10 @@ public static class SiteAccessPermissionsController
         .WithName("02GetSiteAccessPermission")
         .WithOpenApi();
 
-        group.MapPost("/", async (SiteAccessPermission permission, EnterpriseContext db) =>
+        group.MapPost("/", async (SiteAccessPermission permission) =>
         {
+            using var db = new EnterpriseContext();
+
             db.SiteAccessPermissions.Add(permission);
             await db.SaveChangesAsync();
 
@@ -40,15 +47,16 @@ public static class SiteAccessPermissionsController
         .WithName("03CreateSiteAccessPermission")
         .WithOpenApi();
 
-        group.MapPut("/{id}", async (
-            int id,
-            SiteAccessPermission updated,
-            EnterpriseContext db) =>
+        group.MapPut("/{id}", async (int id, SiteAccessPermission updated) =>
         {
+            using var db = new EnterpriseContext();
+
             var existing = await db.SiteAccessPermissions.FindAsync(id);
 
             if (existing is null)
+            {
                 return Results.NotFound();
+            }
 
             existing.UserId = updated.UserId;
             existing.SiteId = updated.SiteId;
@@ -67,12 +75,16 @@ public static class SiteAccessPermissionsController
         .WithName("04UpdateSiteAccessPermission")
         .WithOpenApi();
 
-        group.MapDelete("/{id}", async (int id, EnterpriseContext db) =>
+        group.MapDelete("/{id}", async (int id) =>
         {
+            using var db = new EnterpriseContext();
+
             var existing = await db.SiteAccessPermissions.FindAsync(id);
 
             if (existing is null)
+            {
                 return Results.NotFound();
+            }
 
             db.SiteAccessPermissions.Remove(existing);
             await db.SaveChangesAsync();

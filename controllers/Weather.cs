@@ -1,9 +1,25 @@
-using Enterprise.Data;
+using System;
+using System.Linq;
+using Enterprise.Models;
 
-namespace Enterprise.Controllers;
+namespace somecontrollers.Controllers;
 
 public static class WeatherForecastController
 {
+    private static readonly string[] Summaries =
+    {
+        "Freezing",
+        "Bracing",
+        "Chilly",
+        "Cool",
+        "Mild",
+        "Warm",
+        "Balmy",
+        "Hot",
+        "Sweltering",
+        "Scorching"
+    };
+
     public static void MapWeatherForecastEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/weather");
@@ -37,7 +53,17 @@ public static class WeatherForecastController
                     });
                 }
 
-                return Results.Ok("GET Success");
+                var forecast = Enumerable.Range(1, 5)
+                    .Select(index => new
+                    {
+                        Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                        TemperatureC = Random.Shared.Next(-20, 55),
+                        TemperatureF = 32 + (int)(Random.Shared.Next(-20, 55) / 0.5556),
+                        Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+                    })
+                    .ToArray();
+
+                return Results.Ok(forecast);
             }
         })
         .WithName("02GetWeatherForecast")

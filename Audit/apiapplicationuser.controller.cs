@@ -1,6 +1,6 @@
 using System;
-using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Enterprise.Models;
 
 namespace somecontrollers.Controllers;
@@ -11,15 +11,19 @@ public static class ApiApplicationsAccessController
     {
         var group = app.MapGroup("/api/applicationaccess");
 
-        group.MapGet("/", async (EnterpriseContext db) =>
+        group.MapGet("/", async () =>
         {
+            using var db = new EnterpriseContext();
+
             return await db.ApplicationUsers.ToListAsync();
         })
         .WithName("01GetAllApplicationAccess")
         .WithOpenApi();
 
-        group.MapGet("/{id:int}", async (int id, EnterpriseContext db) =>
+        group.MapGet("/{id:int}", async (int id) =>
         {
+            using var db = new EnterpriseContext();
+
             var item = await db.ApplicationUsers.FindAsync(id);
 
             if (item == null)
@@ -30,8 +34,10 @@ public static class ApiApplicationsAccessController
         .WithName("01GetApplicationAccessById")
         .WithOpenApi();
 
-        group.MapGet("/application/{applicationId:int}", async (int applicationId, EnterpriseContext db) =>
+        group.MapGet("/application/{applicationId:int}", async (int applicationId) =>
         {
+            using var db = new EnterpriseContext();
+
             var items = await db.ApplicationUsers
                 .Where(x => x.ApplicationId == applicationId)
                 .ToListAsync();
@@ -41,8 +47,10 @@ public static class ApiApplicationsAccessController
         .WithName("01GetApplicationAccessByApplication")
         .WithOpenApi();
 
-        group.MapGet("/user/{userId:int}", async (int userId, EnterpriseContext db) =>
+        group.MapGet("/user/{userId:int}", async (int userId) =>
         {
+            using var db = new EnterpriseContext();
+
             var items = await db.ApplicationUsers
                 .Where(x => x.UserId == userId)
                 .ToListAsync();
@@ -52,8 +60,10 @@ public static class ApiApplicationsAccessController
         .WithName("01GetApplicationAccessByUser")
         .WithOpenApi();
 
-        group.MapPost("/", async (ApplicationUser input, EnterpriseContext db) =>
+        group.MapPost("/", async (ApplicationUser input) =>
         {
+            using var db = new EnterpriseContext();
+
             input.CreatedDate = DateTime.UtcNow;
 
             db.ApplicationUsers.Add(input);
@@ -67,8 +77,10 @@ public static class ApiApplicationsAccessController
         .WithName("01CreateApplicationAccess")
         .WithOpenApi();
 
-        group.MapPut("/{id:int}", async (int id, ApplicationUser input, EnterpriseContext db) =>
+        group.MapPut("/{id:int}", async (int id, ApplicationUser input) =>
         {
+            using var db = new EnterpriseContext();
+
             var existing = await db.ApplicationUsers.FindAsync(id);
 
             if (existing == null)
@@ -118,8 +130,10 @@ public static class ApiApplicationsAccessController
         .WithName("01UpdateApplicationAccess")
         .WithOpenApi();
 
-        group.MapDelete("/{id:int}", async (int id, EnterpriseContext db) =>
+        group.MapDelete("/{id:int}", async (int id) =>
         {
+            using var db = new EnterpriseContext();
+
             var existing = await db.ApplicationUsers.FindAsync(id);
 
             if (existing == null)
