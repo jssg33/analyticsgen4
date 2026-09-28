@@ -29,9 +29,10 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<ApiInterfacesAudit> ApiInterfacesAudit { get; set; }
     public virtual DbSet<ApplicationUser> ApplicationUsers { get; set; }
     public virtual DbSet<Allstock> Allstocks { get; set; }
-
     public virtual DbSet<Apilog> Apilogs { get; set; }
-
+    public virtual DbSet<Site> Sites { get; set; }
+    public virtual DbSet<SiteAccessPermission> SiteAccessPermissions { get; set; }
+    public virtual DbSet<ApiAccessPermission> ApiAccessPermissions { get; set; }
     public virtual DbSet<CipherSupport> CipherSupports { get; set; }
 
     public virtual DbSet<CockyCipherBlock> CockyCipherBlocks { get; set; }
