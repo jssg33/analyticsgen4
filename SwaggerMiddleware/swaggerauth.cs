@@ -1,146 +1,72 @@
-using System.Text;
 using Enterprise.Models;
-using EnterpriseServices;
 
-namespace SwaggerTools;
+namespace somecontrollers.Controllers;
 
-public class SwaggerAuthMiddleware
+public static class TwofactorEndpoints
 {
-    private readonly RequestDelegate _next;
-
-    public SwaggerAuthMiddleware(RequestDelegate next)
+    public static void MapTwofactorEndpoints(
+        this IEndpointRouteBuilder routes)
     {
-        _next = next;
-    }
+        var group = routes.MapGroup("/api/TwoFactor")
+            .WithTags("TwoFactor");
 
-    public async Task Invoke(HttpContext context)
-    {
-        if (context.Request.Path.StartsWithSegments("/swagger"))
+        group.MapGet("/{sessionId:int}", (int sessionId) =>
         {
-            string? authHeader =
-                context.Request.Headers["Authorization"]
-                .ToString();
+            using var context = new EnterpriseContext();
 
-            if (!string.IsNullOrWhiteSpace(authHeader) &&
-                authHeader.StartsWith("Basic "))
+            var session = context.Usersessions
+                .FirstOrDefault(x => x.Id == sessionId);
+
+            if (session == null)
             {
-                try
-                {
-                    string encoded =
-                        authHeader.Substring("Basic ".Length)
-                        .Trim();
-
-                    string decoded =
-                        Encoding.UTF8.GetString(
-                            Convert.FromBase64String(encoded));
-
-                    string[] parts =
-                        decoded.Split(':', 2);
-
-                    if (parts.Length == 2)
-                    {
-                        string username = parts[0];
-                        string password = parts[1];
-
-                        using var db = new EnterpriseContext();
-
-                        var user = db.Users
-                            .FirstOrDefault(u =>
-                                u.Username == username);
-
-                        if (user != null)
-                        {
-                            bool validPassword =
-                                BCrypt.Net.BCrypt.Verify(
-                                    password,
-                                    user.Hashedpassword);
-
-                            bool isSwaggerAdmin =
-                                user.Role3 == "SwaggerAdmin";
-
-                            if (validPassword && isSwaggerAdmin)
-                            {
-                                var twoFactor =
-                                    new Twofactor();
-
-                                string challenge =
-                                    twoFactor.GenerateKey();
-
-                                var session =
-                                    new Usersession
-                                    {
-                                        Userid = user.Id,
-                                        Useridasstring =
-                                            user.Id.ToString(),
-
-                                        Token =
-                                            Guid.NewGuid()
-                                            .ToString("N"),
-
-                                        Sessionstart =
-                                            DateTime.UtcNow
-                                            .ToString("o"),
-
-                                        Sessionend = null,
-
-                                        Sessiondescription =
-                                            "Swagger Login Pending 2FA",
-
-                                        Sessionusername =
-                                            user.Username,
-
-                                        Sessionemail =
-                                            user.Email,
-
-                                        Sessionfirstname =
-                                            user.Firstname,
-
-                                        Sessionlastname =
-                                            user.Lastname,
-
-                                        Sessionfullname =
-                                            user.Fullname,
-
-                                        Sessioncomplete = 0,
-
-                                        Acknowledged = 0,
-
-                                        Twofactorkey =
-                                            challenge
-                                    };
-
-                                db.Usersessions.Add(session);
-                                db.SaveChanges();
-
-                                context.Response.StatusCode =
-                                    StatusCodes.Status303SeeOther;
-
-                                context.Response.Headers.Location =
-                                    $"/api/twofactor/{session.Id}";
-
-                                return;
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Ignore malformed auth header
-                }
+                return Results.NotFound();
             }
 
-            context.Response.Headers["WWW-Authenticate"] =
-                "Basic";
+            return Results.Ok(new
+            {
+                ErrorCode = 1003,
+                Status = "TwoFactorRequired",
+                SessionId = session.Id,
+                UserId = session.Userid,
+                Challenge = session.Twofactorkey,
+                Message = "FusionIdentity Root Audit Verification Required"
+            });
+        })
+        .WithName("01GetTwoFactorChallenge")
+        .WithOpenApi();
 
-            context.Response.StatusCode =
-                StatusCodes.Status401Unauthorized;
 
-            await context.Response.WriteAsync(
-                "FusionIdentity Error 1001: Invalid Credentials");
+        group.MapPost("/approve/{sessionId:int}/{code}",
+            async (int sessionId, string code) =>
+        {
+            using var context = new EnterpriseContext();
 
-            return;
-        }
+            var session = context.Usersessions
+                .FirstOrDefault(x => x.Id == sessionId);
 
-        await _next(context);
+            if (session == null)
+            {
+                return Results.NotFound();
+            }
+
+            if (session.Twofactorkey != code)
+            {
+                return Results.BadRequest(
+                    "FusionIdentity Error 1004: Invalid Two Factor Code");
+            }
+
+            session.Sessioncomplete = 1;
+            session.Acknowledged = 1;
+
+            await context.SaveChangesAsync();
+
+            return Results.Ok(new
+            {
+                SessionId = session.Id,
+                Status = "Approved"
+            });
+        })
+        .WithName("02ApproveTwoFactor")
+        .WithOpenApi();
     }
 }
