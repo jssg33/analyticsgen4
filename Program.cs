@@ -137,7 +137,8 @@ app.MapWeatherForecastEndpoints();
 //var myPasswords = new MyPasswords();
 //await MyPasswords.HashAllUserPasswordsAsync();
 
-//INCREASE SECURITY ON SWAGGER
+//INCREASE SECURITY ON SWAGGER TO TWO FACTOR
+app.MapTwofactorEndpoints();
 app.UseMiddleware<SwaggerAuthMiddleware>();
 
 if (builder.Environment.IsDevelopment()) { await RunCliAsync(); } 
