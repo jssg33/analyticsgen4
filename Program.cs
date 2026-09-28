@@ -122,6 +122,9 @@ app.MapSitesEndpoints();
 app.MapSiteAccessPermissionsEndpoints();
 app.MapApiAccessPermissionsEndpoints();
 
+//ADD Weather Default Controller
+app.MapWeatherForecastEndpoints();
+
 //app.Run();
 //app.Run();
 //THIS ROUTINE RUNS A PASSWORD HASHER AGAINST THE CURRENT USER TABLE.
