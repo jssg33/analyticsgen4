@@ -1,0 +1,16 @@
+CREATE TABLE ApiAccessPermissions
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    UserId INT NOT NULL,
+
+    ApiId INT NOT NULL,
+
+    PermissionLevel VARCHAR(100),
+
+    IsEnabled BIT NOT NULL DEFAULT(1),
+
+    CreatedDate DATETIME NOT NULL DEFAULT(GETDATE()),
+
+    GrantedBy VARCHAR(255)
+);
