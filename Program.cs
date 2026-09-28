@@ -118,6 +118,9 @@ app.MapApiInterfacesAuditEndpoints();
 app.MapUserDownloadLogEndpoints();
 app.MapBootstrapEndpoints();
 app.MapApplicationAccessEndpoints();
+app.MapSitesEndpoints();
+app.MapSiteAccessPermissionsEndpoints();
+app.MapApiAccessPermissionsEndpoints();
 
 //app.Run();
 //app.Run();
