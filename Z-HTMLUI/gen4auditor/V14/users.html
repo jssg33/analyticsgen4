@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Users · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  .acc-table td, .acc-table th { vertical-align: middle; }
+  .acc-table .form-select { min-width: 110px; }
+  .acc-off { opacity: .55; }
+  .acc-section h6 { margin: 0; }
+  .acc-section { border: 1px solid #e3e6ea; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+  .chip { display: inline-block; font-size: .78rem; padding: 1px 7px; border-radius: 10px; background: #eef1f4; border: 1px solid #dde2e7; margin: 0 4px 3px 0; white-space: nowrap; }
+  .chip b { font-weight: 600; }
+  .chip.bad { background: #fdecee; border-color: #f5c2c7; color: #842029; }
+  .chip.priv { background: #fff3cd; border-color: #ffe69c; color: #664d03; }
+  .chip .rl { color: #6c757d; font-weight: 400; }
+  .changes li { padding: 1px 0; }
+</style>
+</head>
+<body>
+<section data-page>
+  <h2>Users</h2>
+  <div class="page-sub">Add users, choose the applications each one may use and, for those applications only, their API access. Site access is set here too. Users keep the rest of their profile up to date themselves after signing in.</div>
+  <div id="banner"></div>
+</section>
+
+<!-- Add user (through the Auth controller so the password is hashed) -->
+<div class="modal fade" id="addModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <form id="addForm" autocomplete="off">
+  <div class="modal-header"><h5 class="modal-title" id="addTitle">Add user</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label small mb-1" for="aFirst">First name</label><input class="form-control form-control-sm" id="aFirst" required></div>
+      <div class="col-6"><label class="form-label small mb-1" for="aLast">Last name</label><input class="form-control form-control-sm" id="aLast" required></div>
+      <div class="col-6"><label class="form-label small mb-1" for="aUser">User name</label><input class="form-control form-control-sm" id="aUser" autocapitalize="off" spellcheck="false" required></div>
+      <div class="col-6"><label class="form-label small mb-1" for="aEmail">Email</label><input class="form-control form-control-sm" id="aEmail" type="email" required></div>
+      <div class="col-6 pw-row"><label class="form-label small mb-1" for="aPass">Password</label><input class="form-control form-control-sm" id="aPass" type="password" autocomplete="new-password" minlength="8"></div>
+      <div class="col-6 pw-row"><label class="form-label small mb-1" for="aPass2">Confirm password</label><input class="form-control form-control-sm" id="aPass2" type="password" autocomplete="new-password"></div>
+    </div>
+    <div class="row g-2 mt-1" id="roleRow"></div>
+    <div class="form-text" id="addNote"></div>
+    <div class="alert alert-danger small mt-3 mb-0 d-none" id="addErr"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+    <button class="btn btn-primary" id="addSave" type="submit">Save</button></div>
+  </form>
+</div></div></div>
+
+<!-- Access dialog -->
+<div class="modal fade" id="accModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body" id="accBody"></div>
+  <div class="modal-footer d-block">
+    <div id="accChanges" class="small mb-2"></div>
+    <div class="alert alert-danger small d-none mb-2" id="accErr"></div>
+    <div class="d-flex justify-content-end gap-2">
+      <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+      <button class="btn btn-primary" id="accSave" type="button">Save access</button>
+    </div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("users");
+const { esc, api, toast } = Cocky;
+const ACC = Object.assign({ appLevels: ["Read", "Write", "Admin"], apiLevels: ["Read", "Write", "Admin"], siteLevels: ["Read", "Write", "Admin"],
+  defaultLevel: "Read", appPermissionFormat: "parallel", reviewDays: 90 }, Cocky.CFG.access || {});
+// ---------- roles (build 5.4): config.js roles ----------
+const ROLES = (Cocky.CFG.roles || []).map((r, i) => ({ label: "Role " + (i + 1), values: [], default: "", required: false, privileged: [], aliases: [], ...r }));
+const lc = v => String(v ?? "").toLowerCase();
+// The User property each role set is stored in: the configured field, or an alias, whichever the API's records have
+function roleKey(set) {
+  for (const name of [set.field, ...set.aliases]) {
+    const hit = D.users.map(u => Object.keys(u).find(k => lc(k) === lc(name))).find(Boolean);
+    if (hit) return hit;
+  }
+  return set.field;
+}
+const roleOf = (u, set) => { const v = u[roleKey(set)]; return v == null ? "" : String(v).trim(); };
+const inList = (set, v) => set.values.some(x => lc(x) === lc(v));
+const roleSelect = (set, i, value) => {
+  const cur = value ?? "", opts = set.values.map(v => [v, v]);
+  // Nothing is picked for the user: an unset required role shows "(choose)" rather than defaulting to the first value
+  if (!set.required) opts.unshift(["", "(not set)"]);
+  else if (!cur) opts.unshift(["", "(choose)"]);
+  if (cur && !inList(set, cur)) opts.push([cur, cur + " (not in list)"]);
+  return `<div class="col-4"><label class="form-label small mb-1" for="aRole${i}">${esc(set.label)}</label>
+    <select class="form-select form-select-sm" id="aRole${i}">${opts.map(([v, t]) =>
+      `<option value="${esc(v)}" ${lc(v) === lc(cur) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>`;
+};
+// The chosen roles as { <User property>: value }, with "" sent as null
+const readRoles = () => Object.fromEntries(ROLES.map((set, i) => [roleKey(set), document.getElementById("aRole" + i).value || null]));
+
+const params = new URLSearchParams(location.search);
+const me = window.CockyAuth?.current() || {};
+const grantor = () => me.username || me.email || "CockyAuditor";
+
+// Fields that are never shown in a form or sent back to the API
+const SECRET = /password|resettoken/i;
+const val = (o, k) => { const hit = Object.keys(o || {}).find(x => x.toLowerCase() === k.toLowerCase()); return hit ? o[hit] : undefined; };
+
+// ---------- data ----------
+const D = { users: [], apps: [], links: [], hosts: [], apiGrants: [], sites: [], siteGrants: [], missing: {} };
+async function loadAll() {
+  const opt = (key) => api.list(key).catch(e => { if (e.status === 404) { D.missing[key] = true; return []; } throw e; });
+  D.missing = {};
+  const [users, apps, links, hosts, apiGrants, sites, siteGrants] = await Promise.all([
+    api.list("users"), opt("apps"), opt("apphosts"), opt("apihosts"), opt("apiaccess"), opt("sites"), opt("siteaccess")]);
+  Object.assign(D, { users, apps, links, hosts, apiGrants, sites, siteGrants });
+  D.appById = new Map(apps.map(a => [String(a.id), a]));
+  D.hostById = new Map(hosts.map(h => [h.id, h]));
+  D.siteById = new Map(sites.map(s => [s.id, s]));
+}
+const appName = a => a ? (a.applicationName || a.applicationCode || "App #" + a.id) : "";
+const hostName = h => h ? (h.apiHostName || h.apiHostUrl || "Host #" + h.id) : "";
+const siteName = s => s ? (s.siteName || s.siteCode || "Site #" + s.id) : "";
+const userName = u => u.fullname || [u.firstname, u.lastname].filter(Boolean).join(" ") || u.username || u.email || "User #" + u.id;
+const hostActive = h => h && h.isActive !== false && h.active !== false;
+
+// ---------- User.ApplicationIds / ApplicationPermissions (List<string>, stored as JSON) ----------
+function list(v) {
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
+  if (v == null || v === "") return [];
+  const s = String(v).trim();
+  if (s.startsWith("[")) { try { return list(JSON.parse(s)); } catch {} }
+  return s.split(/[,;|]/).map(x => x.trim()).filter(Boolean);
+}
+const PAIR = /^\s*([^:=]+?)\s*[:=]\s*(.*)$/;
+// Map of appId (string) -> level ("" if none recorded). Reads both "parallel" lists and "<id>:<level>" pairs.
+function appsOf(u) {
+  const ids = list(val(u, "applicationIds")), perms = list(val(u, "applicationPermissions"));
+  const out = new Map(ids.map(id => [id, ""]));
+  const pairs = perms.length && perms.every(p => PAIR.test(p) && ids.includes(PAIR.exec(p)[1]));
+  if (pairs) perms.forEach(p => { const m = PAIR.exec(p); out.set(m[1], m[2]); });
+  else ids.forEach((id, i) => out.set(id, perms[i] ?? ""));
+  return out;
+}
+function appsPayload(map) {
+  const ids = [...map.keys()];
+  const perms = ACC.appPermissionFormat === "pairs" ? ids.map(id => `${id}:${map.get(id) || ACC.defaultLevel}`) : ids.map(id => map.get(id) || ACC.defaultLevel);
+  return { applicationIds: ids, applicationPermissions: perms };
+}
+// Host ids reachable through a set of app ids (ApplicationApi links) -> Map hostId -> [appId...]
+function hostsVia(appIds) {
+  const out = new Map();
+  D.links.forEach(l => { const a = String(l.applicationId);
+    if (appIds.has(a)) { if (!out.has(l.apiHostId)) out.set(l.apiHostId, []); if (!out.get(l.apiHostId).includes(a)) out.get(l.apiHostId).push(a); } });
+  return out;
+}
+const apiGrantsOf = u => D.apiGrants.filter(g => g.userId === u.id);
+const siteGrantsOf = u => D.siteGrants.filter(g => g.userId === u.id);
+
+// ---------- access findings ----------
+const DAY = 864e5;
+function findingsFor(u) {
+  const f = [], add = (level, text) => f.push({ level, text });
+  const apps = appsOf(u), via = hostsVia(new Set(apps.keys()));
+  const pw = val(u, "plainpassword");
+  if (pw) add("fail", "Password stored in plain text (Plainpassword)");
+  apps.forEach((lvl, id) => {
+    const a = D.appById.get(id);
+    if (!D.missing.apps && !a) add("warn", `Application #${id} in ApplicationIds doesn't exist`);
+    else if (a && a.isActive === false) add("warn", `Has access to inactive application ${appName(a)}`);
+  });
+  const ids = list(val(u, "applicationIds")), perms = list(val(u, "applicationPermissions"));
+  if (ids.length && perms.length && perms.length !== ids.length && !perms.every(p => PAIR.test(p)))
+    add("info", `ApplicationPermissions has ${perms.length} entries for ${ids.length} applications`);
+  const seen = new Map();
+  apiGrantsOf(u).forEach(g => {
+    const h = D.hostById.get(g.apiId);
+    seen.set(g.apiId, (seen.get(g.apiId) || 0) + 1);
+    if (g.isEnabled === false) return;
+    if (!h) add("warn", `API access to host #${g.apiId}, which doesn't exist`);
+    else if (!via.has(g.apiId)) add("fail", `API access to ${hostName(h)} isn't through any of the user's applications`);
+    else if (!hostActive(h)) add("info", `API access to inactive host ${hostName(h)}`);
+    if (!g.grantedBy) add("warn", `API access to ${hostName(h) || "#" + g.apiId} has no Granted by`);
+  });
+  seen.forEach((n, id) => { if (n > 1) add("warn", `${n} API permissions for the same host ${hostName(D.hostById.get(id)) || "#" + id}`); });
+  const now = Date.now();
+  siteGrantsOf(u).forEach(g => {
+    const s = D.siteById.get(g.siteId), nm = siteName(s) || "site #" + g.siteId;
+    if (g.isEnabled === false) return;
+    if (!s) add("warn", `Site access to site #${g.siteId}, which doesn't exist`);
+    else if (s.isActive === false) add("info", `Site access to inactive site ${nm}`);
+    const exp = Cocky.parseDate(g.expirationDate);
+    if (exp && exp.getTime() < now) add("fail", `Site access to ${nm} expired ${exp.toLocaleDateString()} but is still enabled`);
+    const rev = Cocky.parseDate(g.reviewedDate);
+    if (!rev) add("warn", `Site access to ${nm} has never been reviewed`);
+    else if (now - rev.getTime() > ACC.reviewDays * DAY) add("warn", `Site access to ${nm} last reviewed ${rev.toLocaleDateString()} (over ${ACC.reviewDays} days)`);
+    if (!g.grantedBy) add("warn", `Site access to ${nm} has no Granted by`);
+  });
+  ROLES.forEach(set => {
+    const v = roleOf(u, set);
+    if (!v) { if (set.required) add("warn", `${set.label} isn't set`); return; }
+    if (!inList(set, v)) add("info", `${set.label} "${v}" isn't one of: ${set.values.join(", ")}`);
+    else if (set.privileged.some(p => lc(p) === lc(v))) add("info", `Privileged role: ${set.label} ${v}`);
+  });
+  const status = String(u.accountstatus || "");
+  if (/disabl|lock|inactive|terminat|suspend|closed/i.test(status) && (apps.size || apiGrantsOf(u).some(g => g.isEnabled !== false) || siteGrantsOf(u).some(g => g.isEnabled !== false)))
+    add("warn", `Account is "${status}" but still has access`);
+  return f;
+}
+const worst = f => f.some(x => x.level === "fail") ? "fail" : f.some(x => x.level === "warn") ? "warn" : f.length ? "info" : "pass";
+function findingsBadge(f) {
+  if (!f.length) return '<span class="badge text-bg-success">OK</span>';
+  const n = l => f.filter(x => x.level === l).length;
+  const tip = f.map(x => `${x.level.toUpperCase()}: ${x.text}`).join("\n");
+  return `<span title="${esc(tip)}">${n("fail") ? `<span class="badge text-bg-danger me-1">${n("fail")} fail</span>` : ""}${n("warn") ? `<span class="badge text-bg-warning me-1">${n("warn")} warn</span>` : ""}${!n("fail") && !n("warn") ? `<span class="badge text-bg-secondary">${n("info")} info</span>` : ""}</span>`;
+}
+
+// ---------- grid ----------
+Cocky.SCHEMA.users.format = {
+  fullname: (v, u) => esc(userName(u)) + (String(u.id) === String(me.userid) ? ' <span class="badge text-bg-info">you</span>' : ""),
+  appAccess: (v, u) => {
+    const a = appsOf(u);
+    if (!a.size) return '<span class="text-muted small">None</span>';
+    return [...a].map(([id, lvl]) => { const app = D.appById.get(id);
+      return `<span class="chip ${app ? "" : "bad"}">${esc(app ? appName(app) : "#" + id)}${lvl ? ` · <b>${esc(lvl)}</b>` : ""}</span>`; }).join("");
+  },
+  apiAccess: (v, u) => {
+    if (D.missing.apiaccess) return '<span class="text-muted small">n/a</span>';
+    const via = hostsVia(new Set(appsOf(u).keys()));
+    const g = apiGrantsOf(u).filter(x => x.isEnabled !== false);
+    if (!g.length) return '<span class="text-muted small">None</span>';
+    const outside = g.filter(x => !via.has(x.apiId)).length;
+    const tip = g.map(x => `${hostName(D.hostById.get(x.apiId)) || "#" + x.apiId} · ${x.permissionLevel || "—"}${via.has(x.apiId) ? "" : " (not through an app)"}`).join("\n");
+    return `<span title="${esc(tip)}"><b>${g.length}</b> API${g.length === 1 ? "" : "s"}${outside ? ` <span class="badge text-bg-danger">${outside} outside apps</span>` : ""}</span>`;
+  },
+  siteAccess: (v, u) => {
+    if (D.missing.siteaccess) return '<span class="text-muted small">n/a</span>';
+    const g = siteGrantsOf(u).filter(x => x.isEnabled !== false);
+    if (!g.length) return '<span class="text-muted small">None</span>';
+    return `<span title="${esc(g.map(x => `${siteName(D.siteById.get(x.siteId)) || "#" + x.siteId} · ${x.accessLevel || "—"}`).join("\n"))}"><b>${g.length}</b> site${g.length === 1 ? "" : "s"}</span>`;
+  },
+  roles: (v, u) => {
+    const chips = ROLES.map(set => { const r = roleOf(u, set); if (!r) return "";
+      const cls = !inList(set, r) ? "bad" : set.privileged.some(p => lc(p) === lc(r)) ? "priv" : "";
+      return `<span class="chip ${cls}" title="${esc(set.label)}">${esc(r)}</span>`; }).join("");
+    return chips || '<span class="text-muted small">None</span>';
+  },
+  findings: (v, u) => findingsBadge(u._f || [])
+};
+
+main.insertAdjacentHTML("beforeend", `
+  <div class="card"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+      <input class="form-control form-control-sm" id="q" style="max-width:240px" placeholder="Search users…">
+      <select class="form-select form-select-sm" id="appFilter" style="max-width:240px"><option value="">All applications</option></select>
+      <select class="form-select form-select-sm" id="roleFilter" style="max-width:200px"><option value="">All roles</option></select>
+      <select class="form-select form-select-sm" id="fFilter" style="max-width:190px">
+        <option value="">All users</option><option value="issues">With fail/warn findings</option><option value="noapps">No applications</option></select>
+      <span class="small text-muted" id="count"></span>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" id="refresh" type="button">Refresh</button>
+        <button class="btn btn-sm btn-primary" id="addBtn" type="button">+ Add User</button>
+      </div>
+    </div>
+    <div id="grid"></div>
+  </div></div>`);
+const $ = id => document.getElementById(id);
+if (params.get("app")) $("appFilter").dataset.want = params.get("app");
+if (params.get("role")) $("roleFilter").dataset.want = params.get("role");   // users.html?role=admin or ?role=2:auditor
+
+function banner() {
+  const b = [];
+  const withPw = D.users.filter(u => val(u, "plainpassword"));
+  const returnsSecrets = D.users.some(u => Object.keys(u).some(k => SECRET.test(k) && u[k] != null && u[k] !== ""));
+  if (returnsSecrets) b.push(`<div class="alert alert-danger small"><strong>Fail: GET ${esc(Cocky.CFG.endpoints.users)} returns password fields to anyone who calls it.</strong>
+    ${withPw.length ? `${withPw.length} of ${D.users.length} users have a <b>plain-text password</b> stored (Plainpassword). ` : ""}The route needs no token and sends
+    Plainpassword / Hashedpassword / Resettoken with every user. Return a view model without them, clear Plainpassword, and require a token. CockyAuditor never shows or sends these fields.</div>`);
+  const missing = Object.keys(D.missing).filter(k => ["apiaccess", "siteaccess", "sites", "apps", "apphosts"].includes(k));
+  if (missing.length) b.push(`<div class="alert alert-warning small">These routes answered 404, so that part of Access is turned off: ${missing.map(k => `<code>${esc(Cocky.CFG.endpoints[k])}</code>`).join(", ")}. Check they're deployed (config.js has the routes).</div>`);
+  $("banner").innerHTML = b.join("");
+}
+
+function draw() {
+  const q = $("q").value, app = $("appFilter").value, ff = $("fFilter").value, rf = $("roleFilter").value;
+  let rows = Cocky.filterRows(D.users.map(u => { const c = {}; Object.keys(u).forEach(k => { if (!SECRET.test(k)) c[k] = u[k]; }); c._u = u; return c; }), q).map(c => c._u);
+  if (app) rows = rows.filter(u => appsOf(u).has(app));
+  if (rf) { const m = /^(\d+):(.*)$/.exec(rf);
+    rows = rows.filter(u => m ? lc(roleOf(u, ROLES[m[1] - 1] || {})) === lc(m[2]) : ROLES.some(set => lc(roleOf(u, set)) === lc(rf))); }
+  if (ff === "issues") rows = rows.filter(u => ["fail", "warn"].includes(worst(u._f)));
+  if (ff === "noapps") rows = rows.filter(u => !appsOf(u).size);
+  $("count").textContent = `${rows.length} of ${D.users.length}`;
+  Cocky.renderTable($("grid"), "users", rows, {
+    columns: Cocky.SCHEMA.users.columns,
+    emptyText: D.users.length ? "No users match." : "No users yet.",
+    rowActions: [{ label: "Access", className: "btn-primary", onClick: openAccess }],
+    onEdit: editUser,
+    onDelete: deleteUser,
+    onRowClick: openAccess
+  });
+}
+async function load() {
+  $("grid").innerHTML = Cocky.spinner();
+  try { await loadAll(); }
+  catch (e) { $("grid").innerHTML = ""; $("grid").appendChild(Cocky.errorBox(e, load)); return; }
+  D.users.forEach(u => u._f = findingsFor(u));
+  D.users.sort((a, b) => ({ fail: 0, warn: 1, info: 2, pass: 3 }[worst(a._f)] - { fail: 0, warn: 1, info: 2, pass: 3 }[worst(b._f)]) || userName(a).localeCompare(userName(b)));
+  const af = $("appFilter"), want = af.value || af.dataset.want || "";
+  af.innerHTML = `<option value="">All applications</option>` + D.apps.slice().sort((a, b) => appName(a).localeCompare(appName(b)))
+    .map(a => `<option value="${a.id}">${esc(appName(a))} (${D.users.filter(u => appsOf(u).has(String(a.id))).length})</option>`).join("");
+  af.value = want; delete af.dataset.want;
+  const rfEl = $("roleFilter"), rWant = rfEl.value || rfEl.dataset.want || "";
+  rfEl.innerHTML = `<option value="">All roles</option>` + ROLES.map((set, i) => {
+    const vals = [...set.values]; D.users.forEach(u => { const v = roleOf(u, set); if (v && !vals.some(x => lc(x) === lc(v))) vals.push(v); });
+    return `<optgroup label="${esc(set.label)}">${vals.map(v => `<option value="${i + 1}:${esc(v)}">${esc(v)} (${D.users.filter(u => lc(roleOf(u, set)) === lc(v)).length})</option>`).join("")}</optgroup>`;
+  }).join("");
+  rfEl.value = /^\d+:/.test(rWant) ? rWant : ([...rfEl.options].find(o => lc(o.value.split(":").slice(1).join(":")) === lc(rWant))?.value || "");
+  delete rfEl.dataset.want;
+  banner(); draw();
+  const open = params.get("user");
+  if (open) { params.delete("user"); const u = D.users.find(x => String(x.id) === open); if (u) openAccess(u); }
+}
+["q", "appFilter", "roleFilter", "fFilter"].forEach(id => $(id).addEventListener(id === "q" ? "input" : "change", draw));
+$("refresh").onclick = load;
+
+// ---------- edit / delete ----------
+async function deleteUser(u) {
+  if (String(u.id) === String(me.userid)) { toast("You can't delete the account you're signed in with.", "warning"); return; }
+  const api_ = apiGrantsOf(u), site_ = siteGrantsOf(u);
+  // Remove the user's permission rows first; put them back if the delete fails
+  const ok = await Cocky.confirmDelete("users", u, async () => {
+    const removed = [];
+    for (const [res, rows] of [["apiaccess", api_], ["siteaccess", site_]])
+      for (const g of rows) { await api.remove(res, g.id); removed.push([res, g]); }
+    return async () => { for (const [res, g] of removed) await api.create(res, g); };
+  });
+  if (ok) load();
+}
+
+// ---------- add / edit user (registration fields only) ----------
+// Add goes through POST /api/Auth/signup, which hashes the password. Edit PUTs just the registration fields;
+// users update the rest of their profile themselves after signing in.
+const addM = bootstrap.Modal.getOrCreateInstance($("addModal"));
+let editing = null;
+function openUserForm(u) {
+  editing = u || null;
+  $("addForm").reset(); $("addErr").classList.add("d-none");
+  $("addTitle").textContent = u ? `Edit ${userName(u)}` : "Add user";
+  document.querySelectorAll(".pw-row").forEach(el => el.classList.toggle("d-none", !!u));
+  $("aPass").required = $("aPass2").required = !u;
+  $("addSave").textContent = u ? "Save" : "Add user & set access";
+  $("addNote").innerHTML = u ? "Only the registration fields are edited here. The user updates the rest of their profile after signing in; passwords are changed by the user."
+    : "Created with <code>POST /api/Auth/signup</code>, which stores the password hashed (bcrypt). The user can sign in straight away.";
+  if (u) { $("aFirst").value = u.firstname || ""; $("aLast").value = u.lastname || ""; $("aUser").value = u.username || ""; $("aEmail").value = u.email || ""; }
+  $("roleRow").innerHTML = ROLES.map((set, i) => roleSelect(set, i, u ? roleOf(u, set) : set.default)).join("");
+  addM.show(); setTimeout(() => $("aFirst").focus(), 300);
+}
+const editUser = u => openUserForm(u);
+$("addBtn").onclick = () => openUserForm(null);
+$("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = m => { $("addErr").textContent = m; $("addErr").classList.remove("d-none"); };
+  const body = { firstname: $("aFirst").value.trim(), lastname: $("aLast").value.trim(), username: $("aUser").value.trim(), email: $("aEmail").value.trim() };
+  if (!body.firstname || !body.lastname || !body.username || !body.email) return err("All fields are required.");
+  // The API's PUT doesn't check for duplicates, so check here (signup checks on the server too)
+  const other = D.users.filter(x => !editing || x.id !== editing.id);
+  if (other.some(x => String(x.username || "").toLowerCase() === body.username.toLowerCase())) return err("That user name is already in use.");
+  if (other.some(x => String(x.email || "").toLowerCase() === body.email.toLowerCase())) return err("That email is already registered.");
+  if (!editing) {
+    if ($("aPass").value.length < 8) return err("The password must be at least 8 characters.");
+    if ($("aPass").value !== $("aPass2").value) return err("The passwords don't match.");
+  }
+  const roles = readRoles();
+  const missingRole = ROLES.find((set, i) => set.required && !$("aRole" + i).value);
+  if (missingRole) return err(`Choose ${missingRole.label}.`);
+  const btn = $("addSave"), label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    if (editing) {
+      try { await api.update("users", editing.id, { ...body, fullname: `${body.firstname} ${body.lastname}`, ...roles }); }
+      catch (x) { return err(x.message); }
+      addM.hide(); toast(`${body.firstname} ${body.lastname} saved.`); load(); return;
+    }
+    let created;
+    try { created = await api.create("authsignup", { ...body, plainPassword: $("aPass").value }); }
+    catch (x) { return err(x.status === 400 ? (x.message.split(" - ").pop().replace(/^"|"$/g, "") || x.message) : x.message); }
+    const id = created && typeof created === "object" ? (created.id ?? created.Id) : null;
+    addM.hide();
+    await load();
+    const u = D.users.find(x => id != null ? x.id === id : String(x.username || "").toLowerCase() === body.username.toLowerCase());
+    // Signup doesn't take roles, so set them on the new user straight after
+    let roleNote = "";
+    if (u) {
+      try { await api.update("users", u.id, { ...body, fullname: `${body.firstname} ${body.lastname}`, ...roles }); Object.assign(u, roles); u._f = findingsFor(u); draw(); }
+      catch (x) { roleNote = " Setting the roles failed: " + x.message + " Use Edit to set them."; }
+    } else roleNote = " The new user wasn't found in the list, so the roles weren't set. Use Edit to set them.";
+    toast(`${body.firstname} ${body.lastname} added.` + roleNote, roleNote ? "warning" : "success");
+    if (u) openAccess(u);
+  } finally { btn.disabled = false; btn.textContent = label; $("aPass").value = $("aPass2").value = ""; }
+});
+
+// ---------- Access dialog ----------
+const accM = bootstrap.Modal.getOrCreateInstance($("accModal"));
+const levelSelect = (levels, value, attrs) => {
+  const opts = [...levels]; if (value && !opts.some(l => l.toLowerCase() === String(value).toLowerCase())) opts.push(value);
+  return `<select class="form-select form-select-sm" ${attrs}>${opts.map(l => `<option ${String(l).toLowerCase() === String(value || "").toLowerCase() ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+};
+const toDateInput = v => { const d = Cocky.parseDate(v); if (!d) return ""; const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+
+let S;   // state of the open dialog
+function openAccess(u) {
+  const apps = appsOf(u);
+  const apiBy = new Map(); apiGrantsOf(u).forEach(g => { if (!apiBy.has(g.apiId)) apiBy.set(g.apiId, []); apiBy.get(g.apiId).push(g); });
+  const siteBy = new Map(); siteGrantsOf(u).forEach(g => { if (!siteBy.has(g.siteId)) siteBy.set(g.siteId, []); siteBy.get(g.siteId).push(g); });
+  S = {
+    u, apps0: new Map(apps), apps: new Map(apps),
+    api: new Map([...apiBy].map(([id, gs]) => [id, { on: true, level: gs[0].permissionLevel || ACC.defaultLevel, enabled: gs[0].isEnabled !== false, grants: gs }])),
+    site: new Map([...siteBy].map(([id, gs]) => [id, { on: true, level: gs[0].accessLevel || ACC.defaultLevel, enabled: gs[0].isEnabled !== false,
+      exp: toDateInput(gs[0].expirationDate), review: false, grants: gs }])),
+    appQ: "", siteQ: ""
+  };
+  $("accModal").querySelector(".modal-title").innerHTML = `Access: ${esc(userName(u))} <span class="small text-muted fw-normal">${esc(u.username || "")}${u.email ? " · " + esc(u.email) : ""}${ROLES.map(set => roleOf(u, set)).filter(Boolean).map(r => " · " + esc(r)).join("")}</span>`;
+  $("accErr").classList.add("d-none");
+  drawAccess();
+  accM.show();
+}
+
+function drawAccess() {
+  const { u } = S;
+  const f = findingsFor(u).filter(x => x.level !== "info" || true);
+  const via = hostsVia(new Set(S.apps.keys()));
+  // --- Applications ---
+  const q = S.appQ.toLowerCase();
+  const appRows = D.apps.slice().sort((a, b) => (S.apps.has(String(b.id)) - S.apps.has(String(a.id))) || appName(a).localeCompare(appName(b)))
+    .filter(a => !q || S.apps.has(String(a.id)) || [appName(a), a.applicationCode, a.environment].some(v => String(v ?? "").toLowerCase().includes(q)));
+  const unknownApps = [...S.apps.keys()].filter(id => !D.appById.has(id));
+  const appHtml = D.missing.apps ? `<div class="small text-muted">The Application route isn't available.</div>` : `
+    <input class="form-control form-control-sm mb-2" style="max-width:260px" placeholder="Filter applications…" data-q="app" value="${esc(S.appQ)}">
+    <div class="table-responsive"><table class="table table-sm acc-table mb-0"><thead><tr><th style="width:36px"></th><th>Application</th><th>Host APIs</th><th style="width:150px">Level</th></tr></thead><tbody>
+    ${appRows.map(a => { const id = String(a.id), on = S.apps.has(id), hs = D.links.filter(l => String(l.applicationId) === id).length;
+      return `<tr class="${on ? "" : "acc-off"}"><td><input class="form-check-input" type="checkbox" data-app="${id}" ${on ? "checked" : ""}></td>
+        <td><b>${esc(appName(a))}</b>${a.isActive === false ? ' <span class="badge text-bg-secondary">inactive</span>' : ""}${a.environment ? ` <span class="badge text-bg-light border fw-normal">${esc(a.environment)}</span>` : ""}</td>
+        <td class="small">${hs}</td>
+        <td>${on ? levelSelect(ACC.appLevels, S.apps.get(id) || ACC.defaultLevel, `data-applevel="${id}"`) : ""}</td></tr>`; }).join("")}
+    ${unknownApps.map(id => `<tr class="table-warning"><td><input class="form-check-input" type="checkbox" data-app="${esc(id)}" checked></td>
+        <td>Application #${esc(id)} <span class="badge text-bg-warning">doesn't exist</span></td><td></td><td>${levelSelect(ACC.appLevels, S.apps.get(id) || ACC.defaultLevel, `data-applevel="${esc(id)}"`)}</td></tr>`).join("")}
+    </tbody></table></div>`;
+
+  // --- APIs: only hosts of the permitted apps, plus existing grants outside them (flagged) ---
+  const offered = [...via.keys()].map(id => D.hostById.get(id) || { id, _missing: true })
+    .sort((a, b) => hostName(a).localeCompare(hostName(b)));
+  const outside = [...S.api.keys()].filter(id => !via.has(id) && S.api.get(id).grants?.length);
+  const hostRow = (h, outsideRow) => { const st = S.api.get(h.id) || { on: false, level: ACC.defaultLevel, enabled: true };
+    const apps_ = (via.get(h.id) || []).map(a => appName(D.appById.get(a)) || "#" + a);
+    return `<tr class="${st.on ? "" : "acc-off"} ${outsideRow ? "table-danger" : ""}">
+      <td><input class="form-check-input" type="checkbox" data-api="${h.id}" ${st.on ? "checked" : ""}></td>
+      <td><b>${esc(hostName(h))}</b>${h._missing ? ' <span class="badge text-bg-warning">host not found</span>' : !hostActive(h) ? ' <span class="badge text-bg-secondary">inactive</span>' : ""}
+        <div class="small text-muted">${esc(h.apiHostUrl || "")}</div></td>
+      <td class="small">${outsideRow ? '<span class="text-danger">not through any of this user\'s apps</span>' : esc(apps_.join(", "))}</td>
+      <td>${st.on ? levelSelect(ACC.apiLevels, st.level, `data-apilevel="${h.id}"`) : ""}</td>
+      <td>${st.on ? `<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-apien="${h.id}" ${st.enabled ? "checked" : ""}></div>` : ""}</td>
+      <td class="small text-muted">${st.grants?.[0] ? `#${st.grants[0].id}${st.grants[0].grantedBy ? " · by " + esc(st.grants[0].grantedBy) : ""}${st.grants.length > 1 ? ` <span class="badge text-bg-warning">${st.grants.length} rows</span>` : ""}` : st.on ? '<span class="badge text-bg-success">new</span>' : ""}</td></tr>`; };
+  const apiHtml = D.missing.apiaccess ? `<div class="small text-muted">The ApiAccessPermissions route isn't available.</div>` : `
+    ${!S.apps.size ? `<div class="small text-muted">Give the user an application first. API access is offered only for the host APIs of the applications the user may use.</div>` :
+      !offered.length ? `<div class="small text-muted">The user's applications have no host APIs linked. Link them on the Apps page.</div>` : `
+    <div class="d-flex gap-2 mb-2"><button class="btn btn-sm btn-outline-primary" type="button" data-bulk="all">Grant all ${offered.length}</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-bulk="none">Clear</button></div>`}
+    ${offered.length || outside.length ? `<div class="table-responsive"><table class="table table-sm acc-table mb-0"><thead><tr><th style="width:36px"></th><th>Host API</th><th>Through</th><th style="width:150px">Level</th><th>Enabled</th><th>Record</th></tr></thead><tbody>
+      ${offered.map(h => hostRow(h, false)).join("")}
+      ${outside.map(id => hostRow(D.hostById.get(id) || { id, _missing: true }, true)).join("")}
+    </tbody></table></div>` : ""}
+    ${outside.length ? `<div class="small text-danger mt-1">${outside.length} API permission(s) aren't through any of this user's applications. Untick to remove them, or give the user the application that uses that host.</div>` : ""}`;
+
+  // --- Sites ---
+  const sq = S.siteQ.toLowerCase();
+  const siteRows = D.sites.slice().sort((a, b) => ((S.site.get(b.id)?.on ? 1 : 0) - (S.site.get(a.id)?.on ? 1 : 0)) || siteName(a).localeCompare(siteName(b)))
+    .filter(s => !sq || S.site.get(s.id)?.on || [siteName(s), s.siteCode, s.city, s.state].some(v => String(v ?? "").toLowerCase().includes(sq)));
+  const orphanSites = [...S.site.keys()].filter(id => !D.siteById.has(id));
+  const siteRow = s => { const st = S.site.get(s.id) || { on: false, level: ACC.defaultLevel, enabled: true, exp: "" }, g = st.grants?.[0];
+    const rev = g && Cocky.parseDate(g.reviewedDate), stale = !rev || Date.now() - rev.getTime() > ACC.reviewDays * DAY;
+    const expired = st.exp && new Date(st.exp + "T23:59:59") < new Date();
+    return `<tr class="${st.on ? "" : "acc-off"}">
+      <td><input class="form-check-input" type="checkbox" data-site="${s.id}" ${st.on ? "checked" : ""}></td>
+      <td><b>${esc(siteName(s))}</b>${s._missing ? ' <span class="badge text-bg-warning">site not found</span>' : s.isActive === false ? ' <span class="badge text-bg-secondary">inactive</span>' : ""}
+        <div class="small text-muted">${esc([s.city, s.state].filter(Boolean).join(", "))}</div></td>
+      <td>${st.on ? levelSelect(ACC.siteLevels, st.level, `data-sitelevel="${s.id}"`) : ""}</td>
+      <td>${st.on ? `<div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-siteen="${s.id}" ${st.enabled ? "checked" : ""}></div>` : ""}</td>
+      <td>${st.on ? `<input type="date" class="form-control form-control-sm ${expired ? "is-invalid" : ""}" data-siteexp="${s.id}" value="${esc(st.exp || "")}">` : ""}</td>
+      <td class="small">${st.on ? (g ? `${rev ? `${esc(rev.toLocaleDateString())}${g.reviewedBy ? " by " + esc(g.reviewedBy) : ""}` : '<span class="text-warning">never</span>'}
+        <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="rv${s.id}" data-siterev="${s.id}" ${st.review ? "checked" : ""}>
+        <label class="form-check-label ${stale ? "text-warning" : ""}" for="rv${s.id}">Reviewed now</label></div>` : '<span class="text-muted">set when saved</span>') : ""}</td></tr>`; };
+  const siteHtml = D.missing.siteaccess || D.missing.sites ? `<div class="small text-muted">The Sites or SiteAccessPermissions route isn't available.</div>` : !D.sites.length && !orphanSites.length
+    ? `<div class="small text-muted">No sites yet. Add them on the <a href="sites.html">Sites</a> page.</div>` : `
+    <input class="form-control form-control-sm mb-2" style="max-width:260px" placeholder="Filter sites…" data-q="site" value="${esc(S.siteQ)}">
+    <div class="table-responsive"><table class="table table-sm acc-table mb-0"><thead><tr><th style="width:36px"></th><th>Site</th><th style="width:150px">Level</th><th>Enabled</th><th style="width:160px">Expires</th><th>Reviewed</th></tr></thead><tbody>
+      ${siteRows.map(siteRow).join("")}${orphanSites.map(id => siteRow({ id, _missing: true })).join("")}
+    </tbody></table></div>`;
+
+  const fl = f.filter(x => x.level !== "pass");
+  $("accBody").innerHTML = `
+    ${fl.length ? `<div class="alert ${worst(fl) === "fail" ? "alert-danger" : worst(fl) === "warn" ? "alert-warning" : "alert-secondary"} small py-2"><b>Current findings</b>
+      <ul class="finding-list mb-0">${fl.map(x => `<li class="lvl-${x.level}">${esc(x.text)}</li>`).join("")}</ul></div>` : ""}
+    <div class="acc-section"><div class="d-flex justify-content-between mb-2"><h6>1 · Applications</h6><span class="small text-muted">${S.apps.size} selected</span></div>${appHtml}</div>
+    <div class="acc-section"><div class="d-flex justify-content-between mb-2"><h6>2 · API access <span class="small text-muted fw-normal">(host APIs of the selected applications)</span></h6><span class="small text-muted">${[...S.api.values()].filter(x => x.on).length} selected</span></div>${apiHtml}</div>
+    <div class="acc-section mb-0"><div class="d-flex justify-content-between mb-2"><h6>3 · Site access</h6><span class="small text-muted">${[...S.site.values()].filter(x => x.on).length} selected</span></div>${siteHtml}</div>`;
+  wireAccess();
+  drawChanges();
+}
+
+function wireAccess() {
+  const body = $("accBody");
+  body.querySelectorAll("[data-q]").forEach(i => i.oninput = () => {
+    S[i.dataset.q + "Q"] = i.value; const pos = i.selectionStart; drawAccess();
+    const n = $("accBody").querySelector(`[data-q="${i.dataset.q}"]`); n.focus(); n.setSelectionRange(pos, pos);
+  });
+  body.querySelectorAll("[data-app]").forEach(c => c.onchange = () => {
+    const id = c.dataset.app;
+    if (c.checked) S.apps.set(id, S.apps0.get(id) || ACC.defaultLevel); else S.apps.delete(id);
+    drawAccess();
+  });
+  body.querySelectorAll("[data-applevel]").forEach(s => s.onchange = () => { S.apps.set(s.dataset.applevel, s.value); drawChanges(); });
+  const apiSt = id => { if (!S.api.has(id)) S.api.set(id, { on: false, level: ACC.defaultLevel, enabled: true, grants: [] }); return S.api.get(id); };
+  body.querySelectorAll("[data-api]").forEach(c => c.onchange = () => { apiSt(+c.dataset.api).on = c.checked; drawAccess(); });
+  body.querySelectorAll("[data-apilevel]").forEach(s => s.onchange = () => { apiSt(+s.dataset.apilevel).level = s.value; drawChanges(); });
+  body.querySelectorAll("[data-apien]").forEach(c => c.onchange = () => { apiSt(+c.dataset.apien).enabled = c.checked; drawChanges(); });
+  body.querySelectorAll("[data-bulk]").forEach(b => b.onclick = () => {
+    const via = hostsVia(new Set(S.apps.keys()));
+    via.forEach((_, id) => apiSt(id).on = b.dataset.bulk === "all"); drawAccess();
+  });
+  const siteSt = id => { if (!S.site.has(id)) S.site.set(id, { on: false, level: ACC.defaultLevel, enabled: true, exp: "", review: false, grants: [] }); return S.site.get(id); };
+  body.querySelectorAll("[data-site]").forEach(c => c.onchange = () => { siteSt(+c.dataset.site).on = c.checked; drawAccess(); });
+  body.querySelectorAll("[data-sitelevel]").forEach(s => s.onchange = () => { siteSt(+s.dataset.sitelevel).level = s.value; drawChanges(); });
+  body.querySelectorAll("[data-siteen]").forEach(c => c.onchange = () => { siteSt(+c.dataset.siteen).enabled = c.checked; drawChanges(); });
+  body.querySelectorAll("[data-siteexp]").forEach(i => i.onchange = () => { siteSt(+i.dataset.siteexp).exp = i.value; drawAccess(); });
+  body.querySelectorAll("[data-siterev]").forEach(c => c.onchange = () => { siteSt(+c.dataset.siterev).review = c.checked; drawChanges(); });
+}
+
+// Work out every change the Save button will make
+function plan() {
+  const p = { user: null, apiCreate: [], apiUpdate: [], apiDelete: [], siteCreate: [], siteUpdate: [], siteDelete: [], text: [] };
+  const same = (a, b) => a.size === b.size && [...a].every(([k, v]) => b.has(k) && (b.get(k) || "") === (v || ""));
+  if (!same(S.apps, S.apps0) || (S.apps.size && [...S.apps.values()].some(v => !v))) {
+    p.user = appsPayload(S.apps);
+    const added = [...S.apps.keys()].filter(k => !S.apps0.has(k)), removed = [...S.apps0.keys()].filter(k => !S.apps.has(k));
+    const nm = id => appName(D.appById.get(id)) || "#" + id;
+    if (added.length) p.text.push(`Add application${added.length > 1 ? "s" : ""}: ${added.map(nm).join(", ")}`);
+    if (removed.length) p.text.push(`Remove application${removed.length > 1 ? "s" : ""}: ${removed.map(nm).join(", ")}`);
+    const changed = [...S.apps.keys()].filter(k => S.apps0.has(k) && (S.apps0.get(k) || "") !== (S.apps.get(k) || ""));
+    if (changed.length) p.text.push(`Change level: ${changed.map(k => `${nm(k)} → ${S.apps.get(k)}`).join(", ")}`);
+  }
+  if (!D.missing.apiaccess) {
+    const via = hostsVia(new Set(S.apps.keys()));
+    S.api.forEach((st, id) => {
+      const g = st.grants || [], keep = st.on && (via.has(id) || g.length);   // outside-app rows can be kept, but not added
+      const nm = hostName(D.hostById.get(id)) || "host #" + id;
+      if (!keep || (!via.has(id) && !st.on)) { g.forEach(x => p.apiDelete.push(x)); if (g.length) p.text.push(`Remove API access: ${nm}${!via.has(id) && S.apps0.size !== S.apps.size ? " (no longer through an app)" : ""}`); return; }
+      if (!g.length) { p.apiCreate.push({ userId: S.u.id, apiId: id, permissionLevel: st.level, isEnabled: st.enabled, createdDate: new Date().toISOString(), grantedBy: grantor() }); p.text.push(`Grant API access: ${nm} (${st.level})`); return; }
+      const g0 = g[0];
+      if ((g0.permissionLevel || "") !== st.level || (g0.isEnabled !== false) !== st.enabled) {
+        p.apiUpdate.push({ ...g0, permissionLevel: st.level, isEnabled: st.enabled });
+        p.text.push(`Update API access: ${nm} (${st.level}${st.enabled ? "" : ", disabled"})`);
+      }
+    });
+    // Rows for hosts the user no longer reaches through any app and that were ticked off above are covered;
+    // rows for hosts that dropped out because an app was removed:
+    S.api.forEach((st, id) => { if (st.on && !via.has(id) && st.grants?.length && [...S.apps0.keys()].some(a => hostsVia(new Set([a])).has(id)) ) {
+      st.grants.forEach(x => { if (!p.apiDelete.includes(x)) p.apiDelete.push(x); });
+      p.apiUpdate = p.apiUpdate.filter(x => x.apiId !== id);
+      p.text.push(`Remove API access: ${hostName(D.hostById.get(id)) || "host #" + id} (its application was removed)`); } });
+  }
+  if (!D.missing.siteaccess && !D.missing.sites) {
+    S.site.forEach((st, id) => {
+      const g = st.grants || [], nm = siteName(D.siteById.get(id)) || "site #" + id;
+      const exp = st.exp ? new Date(st.exp + "T23:59:59").toISOString() : null;
+      if (!st.on) { g.forEach(x => p.siteDelete.push(x)); if (g.length) p.text.push(`Remove site access: ${nm}`); return; }
+      const now = new Date().toISOString();
+      if (!g.length) { p.siteCreate.push({ userId: S.u.id, siteId: id, accessLevel: st.level, isEnabled: st.enabled, grantedDate: now, grantedBy: grantor(),
+        expirationDate: exp, reviewedDate: now, reviewedBy: grantor() }); p.text.push(`Grant site access: ${nm} (${st.level})`); return; }
+      const g0 = g[0], oldExp = toDateInput(g0.expirationDate);
+      if ((g0.accessLevel || "") !== st.level || (g0.isEnabled !== false) !== st.enabled || oldExp !== (st.exp || "") || st.review) {
+        p.siteUpdate.push({ ...g0, accessLevel: st.level, isEnabled: st.enabled, expirationDate: exp,
+          ...(st.review ? { reviewedDate: now, reviewedBy: grantor() } : {}) });
+        p.text.push(`${st.review ? "Review" : "Update"} site access: ${nm}`);
+      }
+    });
+  }
+  p.count = (p.user ? 1 : 0) + ["apiCreate", "apiUpdate", "apiDelete", "siteCreate", "siteUpdate", "siteDelete"].reduce((s, k) => s + p[k].length, 0);
+  return p;
+}
+function drawChanges() {
+  const p = plan();
+  $("accChanges").innerHTML = p.text.length ? `<b>${p.text.length} change${p.text.length === 1 ? "" : "s"} to save:</b><ul class="changes mb-0">${p.text.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`
+    : '<span class="text-muted">No changes.</span>';
+  $("accSave").disabled = !p.count;
+}
+
+$("accSave").onclick = async () => {
+  const p = plan(), btn = $("accSave"), errBox = $("accErr");
+  if (!p.count) return;
+  btn.disabled = true; btn.textContent = "Saving…"; errBox.classList.add("d-none");
+  const fails = [];
+  try {
+    if (p.user) {
+      try { await api.update("users", S.u.id, p.user); }
+      catch (e) { errBox.textContent = "Saving the user's applications failed, so nothing else was changed: " + e.message; errBox.classList.remove("d-none"); return; }
+    }
+    const run = (arr, fn) => arr.map(x => fn(x).catch(e => fails.push(e.message)));
+    await Promise.all([
+      ...run(p.apiDelete, g => api.remove("apiaccess", g.id)),
+      ...run(p.apiUpdate, g => api.update("apiaccess", g.id, g)),
+      ...run(p.apiCreate, g => api.createFilling("apiaccess", g)),
+      ...run(p.siteDelete, g => api.remove("siteaccess", g.id)),
+      ...run(p.siteUpdate, g => api.update("siteaccess", g.id, g)),
+      ...run(p.siteCreate, g => api.createFilling("siteaccess", g))
+    ]);
+    if (fails.length) { errBox.textContent = `${fails.length} change(s) failed: ${fails[0]}`; errBox.classList.remove("d-none"); await load(); return; }
+    accM.hide();
+    toast(`${userName(S.u)}: ${p.text.length} change${p.text.length === 1 ? "" : "s"} saved.`);
+    await load();
+  } finally { btn.textContent = "Save access"; btn.disabled = false; }
+};
+
+load();
+</script>
+</body>
+</html>
