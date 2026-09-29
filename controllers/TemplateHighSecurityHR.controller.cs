@@ -1,10 +1,13 @@
-using Microsoft.AspNetCore.Mvc;
+using System;
 using Microsoft.EntityFrameworkCore;
-using FusionIdentity.Data;
-using FusionIdentity.Models;
+using System.Linq;
+using Enterprise.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.Mvc;
 
-namespace FusionIdentity.Controllers
-{
+namespace somecontrollers.Controllers;
+
     public static class HRController
     {
         public static void MapHREndpoints(this WebApplication app)
@@ -81,4 +84,4 @@ namespace FusionIdentity.Controllers
             .WithOpenApi();
         }
     }
-}
+
