@@ -113,5 +113,7 @@ namespace Enterprise.Models
         public string? SwaggerVersion { get; set; }
         public string? Notes { get; set; }
         public string? SecurityClassification { get; set; }
-    }
+        public int? LastStatusCode { get; set; }
+        public int? LastResponseMs { get; set; }
+        }
 }
