@@ -140,6 +140,8 @@ app.MapWeatherForecastEndpoints();
 
 // TWO FACTOR
 app.MapTwofactorEndpoints();
+//SECURITY TEST ADVANCED SQL PERMISSIONS
+app.MapHREndpoints(); //WITHOUT INTEGRATED SECURITY
 
 #endregion
 
