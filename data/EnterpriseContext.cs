@@ -449,6 +449,19 @@ modelBuilder.Entity<ApplicationUser>(entity =>
             entity.Property(e => e.uid).HasColumnName("uid");
         });
 
+    modelBuilder.Entity<EmployeeHR>(entity =>
+    {
+        entity.HasNoKey();
+
+        entity.ToView("vw_EmployeeHR");
+
+        entity.Property(e => e.EmployeeId);
+        entity.Property(e => e.Username);
+        entity.Property(e => e.SocialSecurityNo);
+        entity.Property(e => e.Salary);
+        entity.Property(e => e.TotalStockOptions);
+    });
+
         modelBuilder.Entity<ApiHostException>(entity =>
         {
         entity.ToTable("ApiHostException");
