@@ -6,8 +6,11 @@ using Enterprise.Controllers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using EnterpriseServices;
+using SwaggerTools;
 
 var builder = WebApplication.CreateBuilder(args);
+
+#region SERVICES
 
 // AUTHENTICATION + AZURE AD
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -43,13 +46,17 @@ builder.Services.AddCors(options =>
 // CUSTOM SERVICES
 builder.Services.AddScoped<ServiceCipherSupportsService>();
 
+#endregion
+
 var app = builder.Build();
 
-// CORS
+#region MIDDLEWARE
+
 app.UseCors("AllowAll");
 
-// SWAGGER
 app.UseSwagger();
+
+app.UseMiddleware<SwaggerAuthMiddleware>();
 
 app.UseSwaggerUI(options =>
 {
@@ -58,18 +65,23 @@ app.UseSwaggerUI(options =>
         "My API V4");
 });
 
-// AUTHENTICATION
 app.UseAuthentication();
 
-// AUTHORIZATION
 app.UseAuthorization();
 
-// MVC CONTROLLERS
+#endregion
+
+#region CONTROLLERS
+
 app.MapControllers();
 
-// MINIMAL API ENDPOINTS
+#endregion
+
+#region MINIMAL API ENDPOINTS
+
 app.MapAdminlogsEndpoints();
 app.MapAllstockEndpoints();
+
 //09/21/2026 - Added API Auditor
 app.MapApiAuditEndpoints();
 app.MapApihostEndpoints();
@@ -103,14 +115,15 @@ app.MapUsersessionEndpoints();
 app.MapApiHostExceptionEndpoints();
 app.MapApplicationEndpoints();
 app.MapApplicationApiEndpoints();
-//New WebServices Auditor
+
+// New WebServices Auditor
 app.MapWebServerEndpoints();
 app.MapWebFarmEndpoints();
 app.MapDatabaseServerEndpoints();
 app.MapDatabaseEndpoints();
 app.MapWebFarmServerEndpoints();
 
-//CONVERSIONS TO MAP REDUCED FORM
+// CONVERSIONS TO MAP REDUCED FORM
 app.MapLunaLogEndpoints();
 app.MapSysLogEndpoints();
 app.MapUserProfileLogEndpoints();
@@ -122,28 +135,39 @@ app.MapSitesEndpoints();
 app.MapSiteAccessPermissionsEndpoints();
 app.MapApiAccessPermissionsEndpoints();
 
-//ADD Weather Default Controller
+// ADD Weather Default Controller
 app.MapWeatherForecastEndpoints();
 
-//app.Run();
-//app.Run();
-//THIS ROUTINE RUNS A PASSWORD HASHER AGAINST THE CURRENT USER TABLE.
-//IT WILL REBUILD THE PASSWORDS ALSO USING A RANDOM HASHER USING BCRYPT
-//THE SAME PASSWORD WILL GENERATE A UNIQUE STRING EVERY TIME.
-//AUTH WILL FAIL WITHOUT THE BCRYPT SO EVEN HAVING THE PLAIN PASSWORD IS NO HELP.
-//COMMENTED OUT AS IT SHOULD ONLY BE RUN WITH ADMINISTRATOR PERMISSION.
-//WE DO NEED TO CONSIDER WHETHER THE /API/USER GET NEEDS TO BE PRESENT AND OR PERMISSIONS ON USERMANAGER.
-
-//var myPasswords = new MyPasswords();
-//await MyPasswords.HashAllUserPasswordsAsync();
-
-//INCREASE SECURITY ON SWAGGER TO TWO FACTOR
+// TWO FACTOR
 app.MapTwofactorEndpoints();
-app.UseMiddleware<SwaggerAuthMiddleware>();
 
-if (builder.Environment.IsDevelopment()) { await RunCliAsync(); } 
+#endregion
+
+#region PASSWORD HASH NOTE
+
+// THIS ROUTINE RUNS A PASSWORD HASHER AGAINST THE CURRENT USER TABLE.
+// IT WILL REBUILD THE PASSWORDS ALSO USING A RANDOM HASHER USING BCRYPT
+// THE SAME PASSWORD WILL GENERATE A UNIQUE STRING EVERY TIME.
+// AUTH WILL FAIL WITHOUT THE BCRYPT SO EVEN HAVING THE PLAIN PASSWORD IS NO HELP.
+// COMMENTED OUT AS IT SHOULD ONLY BE RUN WITH ADMINISTRATOR PERMISSION.
+// WE DO NEED TO CONSIDER WHETHER THE /API/USER GET NEEDS TO BE PRESENT
+// AND OR PERMISSIONS ON USERMANAGER.
+
+// var myPasswords = new MyPasswords();
+// await MyPasswords.HashAllUserPasswordsAsync();
+
+#endregion
+
+#region DEVELOPMENT CLI
+
+if (builder.Environment.IsDevelopment())
+{
+    await RunCliAsync();
+}
+
 await app.RunAsync();
 
+#endregion
 
 static async Task RunCliAsync()
 {
@@ -151,6 +175,7 @@ static async Task RunCliAsync()
     Console.WriteLine("Type 'help' for commands, 'exit' to quit.");
 
     string? input;
+
     do
     {
         Console.Write("> ");
@@ -168,7 +193,7 @@ static async Task RunCliAsync()
                 Console.WriteLine("  zerocarts  - Remove zero carts for a user");
                 Console.WriteLine("  avg        - Update avg rating for one park");
                 Console.WriteLine("  avgall     - Update avg rating for first 500 parks");
-                Console.WriteLine(" initdata - Load initial.sql (parks, users, reviews)");
+                Console.WriteLine("  initdata   - Load initial.sql");
                 Console.WriteLine("  exit       - Quit CLI");
                 break;
 
@@ -192,25 +217,29 @@ static async Task RunCliAsync()
                 SystemCLISupport.ShowFileList();
                 break;
 
-            case "initdata": 
-                Console.WriteLine("Running initial.sql..."); 
-                EnterpriseServices.DatabaseTools.LoadInitData(); 
+            case "initdata":
+                Console.WriteLine("Running initial.sql...");
+                EnterpriseServices.DatabaseTools.LoadInitData();
                 break;
 
             case "zerocarts":
                 Console.Write("Enter user ID: ");
+
                 if (int.TryParse(Console.ReadLine(), out int userId))
                     SystemCLISupport.RemoveZeroCarts(userId);
                 else
                     Console.WriteLine("Invalid user ID.");
+
                 break;
 
             case "avg":
                 Console.Write("Enter park ID: ");
+
                 if (int.TryParse(Console.ReadLine(), out int parkId))
                     SystemCLISupport.UpdateParkAvg(parkId);
                 else
                     Console.WriteLine("Invalid park ID.");
+
                 break;
 
             case "avgall":
@@ -231,6 +260,3 @@ static async Task RunCliAsync()
 
     await Task.CompletedTask;
 }
-
-
-
