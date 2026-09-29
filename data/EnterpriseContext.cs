@@ -38,6 +38,9 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<CockyCipherBlock> CockyCipherBlocks { get; set; }
 
     public virtual DbSet<Customer> Customers { get; set; }
+    
+    public virtual DbSet<EmployeeHR> EmployeeHR { get; set; }
+    
     public virtual DbSet<UserDownloadLog> UserDownloadLogs { get; set; }
 
     public virtual DbSet<Keyassignment> Keyassignments { get; set; }
