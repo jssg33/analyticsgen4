@@ -89,5 +89,29 @@ public static class AllstockEndpoints
         })
         .WithName("DeleteAllstock")
         .WithOpenApi();
+
+
+        // POST bulk create
+        group.MapPost("/bulk", async (List<Allstock> inputs) =>
+        {
+        if (inputs == null || !inputs.Any())
+            return Results.BadRequest("No records supplied.");
+
+        using (var context = new EnterpriseContext())
+        {
+            await context.Allstocks.AddRangeAsync(inputs);
+            await context.SaveChangesAsync();
+
+            return Results.Ok(new
+            {
+            Message = $"{inputs.Count} stocks inserted.",
+            Count = inputs.Count
+            });
+        }
+})
+.WithName("CreateAllstocksBulk")
+.WithOpenApi();
+
+        
     }
 }
