@@ -119,44 +119,49 @@ public partial class EnterpriseContext : DbContext
 
         modelBuilder.Entity<Allstock>(entity =>
         {
-            entity.ToTable("allstocks");
-
-            entity.Property(e => e.Avgdividend).HasColumnName("avgdividend");
-            entity.Property(e => e.Change).HasColumnName("change");
-            entity.Property(e => e.Div2016).HasColumnName("Div_2016");
-            entity.Property(e => e.Div2017).HasColumnName("Div_2017");
-            entity.Property(e => e.Div2018).HasColumnName("Div_2018");
-            entity.Property(e => e.Div2019).HasColumnName("Div_2019");
-            entity.Property(e => e.Div2020).HasColumnName("Div_2020");
-            entity.Property(e => e.Div2021).HasColumnName("Div_2021");
-            entity.Property(e => e.Div2022).HasColumnName("Div_2022");
-            entity.Property(e => e.Div2023).HasColumnName("Div_2023");
-            entity.Property(e => e.Div2024).HasColumnName("Div_2024");
-            entity.Property(e => e.Div2025).HasColumnName("Div_2025");
-            entity.Property(e => e.Div2026).HasColumnName("Div_2026");
-            entity.Property(e => e.Fiveyeardivproj).HasColumnName("fiveyeardivproj");
-            entity.Property(e => e.Fiveyearequityproj).HasColumnName("fiveyearequityproj");
-            entity.Property(e => e.Price2016).HasColumnName("Price_2016");
-            entity.Property(e => e.Price2017).HasColumnName("Price_2017");
-            entity.Property(e => e.Price2018).HasColumnName("Price_2018");
-            entity.Property(e => e.Price2019).HasColumnName("Price_2019");
-            entity.Property(e => e.Price2020).HasColumnName("Price_2020");
-            entity.Property(e => e.Price2021).HasColumnName("Price_2021");
-            entity.Property(e => e.Price2022).HasColumnName("Price_2022");
-            entity.Property(e => e.Price2023).HasColumnName("Price_2023");
-            entity.Property(e => e.Price2024).HasColumnName("Price_2024");
-            entity.Property(e => e.Price2025).HasColumnName("Price_2025");
-            entity.Property(e => e.Price2026).HasColumnName("Price_2026");
-            entity.Property(e => e.PriceEnd).HasColumnName("price_end");
-            entity.Property(e => e.PriceStart).HasColumnName("price_start");
-            entity.Property(e => e.Sector).HasColumnName("sector");
-            entity.Property(e => e.Shares500).HasColumnName("shares500");
-            entity.Property(e => e.Totaldividends).HasColumnName("totaldividends");
-            entity.Property(e => e.Totalfiveyearview).HasColumnName("totalfiveyearview");
-            entity.Property(e => e.Totalreturn).HasColumnName("totalreturn");
-            entity.Property(e => e.Totalreturnover10).HasColumnName("totalreturnover10");
-            entity.Property(e => e.Totalspend).HasColumnName("totalspend");
-        });
+        entity.ToTable("allstocks");
+        entity.HasKey(e => e.Id);
+        entity.Property(e => e.Id).UseIdentityColumn();
+        entity.Property(e => e.Company).HasMaxLength(200);
+        entity.Property(e => e.Ticker).HasMaxLength(25);
+        entity.Property(e => e.Sector).HasMaxLength(100);
+        entity.Property(e => e.Selected).HasMaxLength(50);
+        entity.Property(e => e.Source).HasMaxLength(250);
+        entity.Property(e => e.Price2016);
+        entity.Property(e => e.Price2017);
+        entity.Property(e => e.Price2018);
+        entity.Property(e => e.Price2019);
+        entity.Property(e => e.Price2020);
+        entity.Property(e => e.Price2021);
+        entity.Property(e => e.Price2022);
+        entity.Property(e => e.Price2023);
+        entity.Property(e => e.Price2024);
+        entity.Property(e => e.Price2025);
+        entity.Property(e => e.Price2026);
+        entity.Property(e => e.Div2016);
+        entity.Property(e => e.Div2017);
+        entity.Property(e => e.Div2018);
+        entity.Property(e => e.Div2019);
+        entity.Property(e => e.Div2020);
+        entity.Property(e => e.Div2021);
+        entity.Property(e => e.Div2022);
+        entity.Property(e => e.Div2023);
+        entity.Property(e => e.Div2024);
+        entity.Property(e => e.Div2025);
+        entity.Property(e => e.Div2026);
+        entity.Property(e => e.Avgdividend);
+        entity.Property(e => e.Totaldividends);
+        entity.Property(e => e.PriceStart);
+        entity.Property(e => e.PriceEnd);
+        entity.Property(e => e.Change);
+        entity.Property(e => e.Totalreturn);
+        entity.Property(e => e.Totalreturnover10);
+        entity.Property(e => e.Shares500);
+        entity.Property(e => e.Totalspend);
+        entity.Property(e => e.Fiveyearequityproj);
+        entity.Property(e => e.Fiveyeardivproj);
+        entity.Property(e => e.Totalfiveyearview);
+});
 
         modelBuilder.Entity<CipherSupport>(entity =>
         {

@@ -61,12 +61,22 @@ public static class AllstockEndpoints
         // POST create
         group.MapPost("/", async (Allstock input) =>
         {
-            using (var context = new EnterpriseContext())
+        using (var context = new EnterpriseContext())
+        {
+        // Ensure SQL Server generates the identity value
+        input.Id = 0;
+
+        context.Allstocks.Add(input);
+        await context.SaveChangesAsync();
+
+        return TypedResults.Created(
+            $"/allstocks/{input.Id}",
+            new
             {
-                context.Allstocks.Add(input);
-                await context.SaveChangesAsync();
-                return TypedResults.Created("Created ID:" + input.Id);
-            }
+                Message = "Created",
+                Id = input.Id
+            });
+        }
         })
         .WithName("CreateAllstock")
         .WithOpenApi();
@@ -91,26 +101,26 @@ public static class AllstockEndpoints
         .WithOpenApi();
 
 
-        // POST bulk create
         group.MapPost("/bulk", async (List<Allstock> inputs) =>
-        {
-        if (inputs == null || !inputs.Any())
-            return Results.BadRequest("No records supplied.");
+    {
+    if (inputs == null || !inputs.Any())
+        return Results.BadRequest("No records supplied.");
+    using (var context = new EnterpriseContext())
+    {
+    foreach (var item in inputs)
+    {
+    item.Id = 0;
+    }
 
-        using (var context = new EnterpriseContext())
-        {
-            await context.Allstocks.AddRangeAsync(inputs);
-            await context.SaveChangesAsync();
-
-            return Results.Ok(new
-            {
-            Message = $"{inputs.Count} stocks inserted.",
-            Count = inputs.Count
-            });
-        }
-})
-.WithName("CreateAllstocksBulk")
-.WithOpenApi();
+    await context.Allstocks.AddRangeAsync(inputs);
+    await context.SaveChangesAsync();
+return Results.Ok(new
+{
+Message = $"{inputs.Count} stocks inserted.",
+Count = inputs.Count
+});
+}
+});
 
         
     }

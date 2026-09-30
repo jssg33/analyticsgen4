@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zqFsY+JRUds=",
+  "dgSpecHash": "OpmE8jMjZmI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj",
+  "projectFilePath": "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\stritzj\\.nuget\\packages\\azure.ai.formrecognizer\\4.1.0\\azure.ai.formrecognizer.4.1.0.nupkg.sha512",
     "C:\\Users\\stritzj\\.nuget\\packages\\azure.ai.openai\\2.1.0\\azure.ai.openai.2.1.0.nupkg.sha512",
@@ -108,10 +108,10 @@
     {
       "code": "NU1510",
       "level": "Warning",
-      "message": "PackageReference System.Reflection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.",
-      "projectPath": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj",
+      "message": "PackageReference System.Reflection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj",
+      "filePath": "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj",
       "libraryId": "System.Reflection",
       "targetGraphs": [
         "net10.0"

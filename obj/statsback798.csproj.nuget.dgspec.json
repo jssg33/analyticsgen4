@@ -1,25 +1,31 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj": {}
+    "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj": {}
   },
   "projects": {
-    "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj": {
+    "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj",
+        "projectUniqueName": "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj",
         "projectName": "statsback798",
-        "projectPath": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\statsback798.csproj",
+        "projectPath": "C:\\Users\\stritzj\\source\\analyticsgen4\\statsback798.csproj",
         "packagesPath": "C:\\Users\\stritzj\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\stritzj\\GitHub\\analyticsgen4\\obj\\",
+        "outputPath": "C:\\Users\\stritzj\\source\\analyticsgen4\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\stritzj\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\stritzj\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -39,7 +45,7 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.400"
+        "SdkAnalysisLevel": "10.0.300"
       },
       "frameworks": {
         "net10.0": {
@@ -164,7 +170,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Users\\stritzj\\DOTNET\\10.0.400\\sdk\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.301/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
