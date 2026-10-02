@@ -152,7 +152,9 @@ public static class ApiAuditEndpoints
                 audit.SwaggerVersion = input.SwaggerVersion;
                 audit.Notes = input.Notes;
                 audit.SecurityClassification = input.SecurityClassification;
-
+                audit.LastStatusCode = input.LastStatusCode;
+                audit.LastResponseMs = input.LastResponseMs;
+        
                 await context.SaveChangesAsync();
 
                 return Results.Accepted(
