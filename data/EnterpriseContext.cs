@@ -95,6 +95,7 @@ public partial class EnterpriseContext : DbContext
 
     public virtual  DbSet<WebFarmServer> WebFarmServers { get; set; }
     public virtual DbSet<DatabaseServer> DatabaseServers { get; set; }
+    public virtual DbSet<WorkerTroubleTicket> WorkerTroubleTickets {get; set;}
     public virtual DbSet<Database> Databases { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
