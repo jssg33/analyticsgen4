@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sites · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Sites</h2>
+  <div class="page-sub">Physical sites users can be given access to. Who has access to a site is set per user on the <a href="users.html">Users</a> page (Access).</div>
+  <div id="setup"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("sites");
+const esc = Cocky.esc;
+let grants = [], users = [];
+async function loadLookups() {
+  [grants, users] = await Promise.all([
+    Cocky.api.list("siteaccess").catch(() => []),
+    Cocky.api.list("users").catch(() => [])
+  ]);
+}
+const userLabel = id => { const u = users.find(x => x.id === id);
+  return u ? (u.fullname || [u.firstname, u.lastname].filter(Boolean).join(" ") || u.username || u.email) : "User #" + id; };
+Cocky.SCHEMA.sites.format = {
+  siteUsers: (v, s) => {
+    const g = grants.filter(x => x.siteId === s.id && x.isEnabled !== false);
+    if (!g.length) return '<span class="text-muted small">None</span>';
+    const expired = g.filter(x => { const d = Cocky.parseDate(x.expirationDate); return d && d < new Date(); }).length;
+    return `<span title="${esc(g.map(x => `${userLabel(x.userId)} · ${x.accessLevel || "—"}`).join("\n"))}"><b>${g.length}</b> user${g.length === 1 ? "" : "s"}</span>` +
+      (expired ? ` <span class="badge text-bg-danger">${expired} expired</span>` : "");
+  }
+};
+(async () => {
+  try { await Cocky.api.list("sites"); }
+  catch (e) {
+    if (e.status === 404) { document.getElementById("setup").innerHTML = `<div class="alert alert-warning"><strong>The API didn't answer on <code>${esc(Cocky.CFG.endpoints.sites)}</code>.</strong>
+      Check the API has been deployed with <code>MapSitesEndpoints()</code>.<div class="small text-muted mt-1">${esc(e.message)}</div></div>`; return; }
+  }
+  Cocky.crudPage("sites", {
+    mount: main,
+    columns: Cocky.SCHEMA.sites.columns,
+    beforeLoad: loadLookups,
+    sort: rows => rows.slice().sort((a, b) => String(a.siteName || "").localeCompare(String(b.siteName || ""))),
+    // Remove the site's access rows first (put back if the delete fails)
+    beforeDelete: async s => {
+      const mine = grants.filter(x => x.siteId === s.id);
+      if (mine.length && !confirm(`${mine.length} user permission(s) for this site will be removed too. Continue?`)) throw new Error("Cancelled.");
+      const removed = [];
+      for (const g of mine) { await Cocky.api.remove("siteaccess", g.id); removed.push(g); }
+      return async () => { for (const g of removed) await Cocky.api.create("siteaccess", g); };
+    }
+  });
+})();
+</script>
+</body>
+</html>

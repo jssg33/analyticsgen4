@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User Sessions · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>User Sessions</h2>
+  <div class="page-sub">Who is signed in right now (the Usersessions table). A session is <b>open</b> while <code>Sessioncomplete</code> isn't 1 and
+    <code>Sessionend</code> is blank. <b>Time open</b> runs from <code>Sessionstart</code> to now. Auditors and admins can close stale sessions:
+    records are never deleted, they're updated with <code>Sessionend</code> = now and <code>Sessioncomplete</code> = 1.
+    Click a column to sort, click a session for every field (tokens and keys are never shown).</div>
+  <div class="row row-cols-2 row-cols-md-4 g-3 mb-3" id="tiles"></div>
+  <div id="banner"></div>
+  <div class="card"><div class="card-body">
+    <div class="row g-2 align-items-center mb-3">
+      <div class="col-12 col-md-4 col-lg-3"><input class="form-control form-control-sm" id="search" placeholder="Search user, email, id…"></div>
+      <div class="col-6 col-md-3 col-lg-2"><select class="form-select form-select-sm" id="stateFilter"></select></div>
+      <div class="col-6 col-md-3 col-lg-2"><select class="form-select form-select-sm" id="ageFilter"></select></div>
+      <div class="col-12 col-lg d-flex flex-wrap gap-2 align-items-center justify-content-lg-end">
+        <span class="small text-muted me-auto me-lg-0" id="count"></span>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">Columns</button>
+          <div class="dropdown-menu dropdown-menu-end p-2 small" id="colMenu" style="max-height:60vh;overflow:auto;min-width:240px"></div>
+        </div>
+        <select class="form-select form-select-sm" id="pageSize" style="width:auto" title="Rows per page"></select>
+        <button class="btn btn-outline-secondary btn-sm" id="reload" type="button">Refresh</button>
+        <button class="btn btn-warning btn-sm d-none" id="expireBtn" type="button">Expire sessions over 1 day…</button>
+      </div>
+    </div>
+    <div id="grid"></div>
+    <nav class="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-2" id="pager"></nav>
+  </div></div>
+</section>
+
+<!-- Expire dialog: asks, then shows progress and the result -->
+<div class="modal fade" id="expireModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Expire stale user sessions?</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body" id="expireBody"></div>
+  <div class="modal-footer" id="expireFoot"></div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+Cocky.layout("sessions");
+const { esc } = Cocky, $ = s => document.querySelector(s);
+const US = Object.assign({
+  expireAfterHours: 24, expireRoles: ["auditor", "admin", "superuser"], promptOnOpen: true, concurrency: 4,
+  pageSizes: [25, 50, 100], defaultColumns: [], secretFields: []
+}, Cocky.CFG.userSessions || {});
+const STALE_MS = US.expireAfterHours * 36e5;
+const STALE_LABEL = US.expireAfterHours % 24 === 0 ? `${US.expireAfterHours / 24} day${US.expireAfterHours === 24 ? "" : "s"}` : `${US.expireAfterHours} hours`;
+const lc = s => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// ---------- fields (Enterprise.Models.Usersession) ----------
+// Names as the model spells them; matched to the JSON without case, so "sessionstart" / "Sessionstart" both work.
+const FIELDS = [
+  ["Id", "Id", "num"], ["Userid", "User id", "num"], ["Sessionusername", "User name"], ["Sessionfullname", "Full name"],
+  ["Sessionfirstname", "First name"], ["Sessionlastname", "Last name"], ["Sessionemail", "Email"],
+  ["Sessionstart", "Session start", "date"], ["_open", "Time open", "dur"], ["Sessionend", "Session end", "date"],
+  ["Sessioncomplete", "Status", "num"], ["Sessiondescription", "Description"], ["Acknowledged", "Acknowledged", "num"],
+  ["Actionpriority", "Action priority", "num"], ["Sessionrecorded", "Recorded", "num"], ["Sessionrecordurl", "Record URL"],
+  ["Twofactorprovider", "2FA provider"], ["Twofactorkeysmsdestination", "2FA SMS to"], ["Twofactorkeyemaildestination", "2FA email to"],
+  ["Useridasstring", "User id (text)"],
+  ["Token", "Token", "secret"], ["GoogleToken", "Google token", "secret"], ["FacebookToken", "Facebook token", "secret"],
+  ["MicrosoftToken", "Microsoft token", "secret"], ["Targetcipher", "Target cipher", "secret"], ["Twofactorkey", "2FA key", "secret"],
+  ["Twofactorprovidertoken", "2FA provider token", "secret"], ["Twofactorproviderauthstring", "2FA auth string", "secret"]
+];
+const SECRET = new Set(FIELDS.filter(f => f[2] === "secret").map(f => lc(f[0])).concat(US.secretFields.map(lc)));
+const DEFAULT_COLS = US.defaultColumns.length ? US.defaultColumns.map(lc)
+  : ["id", "userid", "sessionusername", "sessionfullname", "sessionemail", "sessionstart", "_open", "sessionend", "sessioncomplete", "sessiondescription"];
+let K = {};          // model name (lower) -> the JSON key the API actually uses
+let cols = [];       // [{ id, key, label, kind }] every column the records have; shown ones in `visible`
+let visible = new Set(DEFAULT_COLS);
+try { const saved = JSON.parse(localStorage.getItem("cocky.sessions.cols") || "null"); if (Array.isArray(saved) && saved.length) visible = new Set(saved); } catch {}
+
+const val = (r, name) => { const k = K[lc(name)]; return k === undefined ? undefined : r[k]; };
+// Sessionstart / Sessionend are strings. .NET's "o" format has 7 fraction digits; trim to 3 so every browser parses it.
+const parseWhen = v => { if (v == null || String(v).trim() === "") return null; return Cocky.parseDate(String(v).trim().replace(/(\.\d{3})\d+/, "$1")); };
+const startOf = r => parseWhen(val(r, "Sessionstart"));
+const endOf = r => parseWhen(val(r, "Sessionend"));
+const isOpen = r => Number(val(r, "Sessioncomplete")) !== 1 && !String(val(r, "Sessionend") ?? "").trim();
+const openMs = r => { const s = startOf(r); if (!s) return null; const e = isOpen(r) ? new Date() : (endOf(r) || new Date()); return e - s; };
+const isStale = r => isOpen(r) && (openMs(r) ?? 0) > STALE_MS;
+const dur = ms => { if (ms == null) return "—"; if (ms < 0) return "starts in future";
+  const m = Math.floor(ms / 6e4), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60), mm = m % 60;
+  return d ? `${d} d ${h} h` : h ? `${h} h ${mm} m` : `${Math.max(mm, 0)} m`; };
+
+// ---------- who am I (my own session is never expired from here) ----------
+const me = window.CockyAuth?.current() || {};
+const isMine = r => (me.sessionid && String(r.id ?? val(r, "Id")) === String(me.sessionid)) || (me.token && val(r, "Token") === me.token);
+let canExpire = false;
+async function checkRole() {
+  const want = US.expireRoles.map(x => String(x).toLowerCase());
+  if (want.includes(String(me.role || "").toLowerCase())) return true;
+  // The sign-in only keeps Role 1; an auditor is usually Role 2, so look at the user's own record too
+  try {
+    const users = await Cocky.api.list("users");
+    const u = users.find(x => String(x.id) === String(me.userid));
+    if (!u) return false;
+    const names = (Cocky.CFG.roles || []).flatMap(rl => [rl.field, ...(rl.aliases || [])]).map(lc);
+    return Object.keys(u).some(k => names.includes(lc(k)) && want.includes(String(u[k] ?? "").toLowerCase()));
+  } catch { return false; }
+}
+
+// ---------- state ----------
+let rows = [], page = 1, sortKey = "_open", sortDir = -1;
+const qs = new URLSearchParams(location.search);
+
+function buildCols(rs) {
+  const keys = [...new Set(rs.slice(0, 200).flatMap(r => Object.keys(r)))];
+  K = {}; keys.forEach(k => { K[lc(k)] = k; });
+  const known = FIELDS.filter(([n]) => n === "_open" || K[lc(n)] !== undefined).map(([n, label, kind]) => ({ id: n === "_open" ? "_open" : lc(n), key: n, label, kind: kind || "text" }));
+  // Anything else the API returns (scalar only; Keyassignments and other collections aren't columns)
+  const extra = keys.filter(k => !FIELDS.some(([n]) => lc(n) === lc(k)) && rs.every(r => r[k] == null || typeof r[k] !== "object"))
+    .map(k => ({ id: lc(k), key: k, label: Cocky.titleCase(k), kind: SECRET.has(lc(k)) ? "secret" : typeof rs.find(r => r[k] != null)?.[k] === "number" ? "num" : "text" }));
+  cols = known.concat(extra);
+  if (!cols.some(c => visible.has(c.id))) visible = new Set(DEFAULT_COLS);
+}
+
+// Sort value for a column
+function sv(r, c) {
+  if (c.id === "_open") return openMs(r) ?? -Infinity;
+  if (c.kind === "date") { const d = c.id === "sessionstart" ? startOf(r) : parseWhen(val(r, c.key)); return d ? d.getTime() : -Infinity; }
+  const v = val(r, c.key);
+  if (c.kind === "secret") return v != null && String(v).trim() !== "" ? 1 : 0;
+  if (c.id === "sessioncomplete") return isOpen(r) ? 0 : 1;
+  if (c.kind === "num") return v == null || v === "" ? -Infinity : Number(v);
+  return String(v ?? "").toLowerCase();
+}
+
+// ---------- cells ----------
+const dash = '<span class="text-muted">—</span>';
+function cell(r, c) {
+  if (c.id === "_open") {
+    const ms = openMs(r);
+    if (ms == null) return `<span class="text-muted small" title="Sessionstart is blank or not a date">no start</span>`;
+    const cls = !isOpen(r) ? "text-bg-light border" : ms > STALE_MS ? "text-bg-danger" : ms > STALE_MS / 3 ? "text-bg-warning" : "text-bg-success";
+    return `<span class="badge ${cls} text-nowrap" data-open="${esc(r.__i)}">${esc(dur(ms))}</span>${isOpen(r) ? "" : '<div class="small text-muted">until end</div>'}`;
+  }
+  const v = val(r, c.key);
+  if (c.id === "sessioncomplete") return isOpen(r) ? '<span class="badge text-bg-primary">Open</span>' : `<span class="badge text-bg-secondary" title="Sessioncomplete ${esc(v ?? "null")}">Closed</span>`;
+  if (c.kind === "secret") return v != null && String(v).trim() !== "" ? '<span class="badge text-bg-light border fw-normal">set</span>' : dash;
+  if (v == null || String(v).trim() === "") return dash;
+  if (c.kind === "date") {
+    const d = parseWhen(v);
+    if (!d) return `<span class="text-danger small" title="Not a date the page can read">${esc(v)}</span>`;
+    return `<span class="text-nowrap">${esc(d.toLocaleDateString())}</span><div class="small text-muted text-nowrap">${esc(d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}</div>`;
+  }
+  if (c.id === "id") return `<b>${esc(v)}</b>${isMine(r) ? ' <span class="badge text-bg-info">you</span>' : ""}`;
+  const s = String(v);
+  return s.length > 60 ? `<span title="${esc(s)}">${esc(s.slice(0, 57))}…</span>` : esc(s);
+}
+const detail = r => `<div class="detail-grid">${Object.entries(r).filter(([k]) => k !== "__i").map(([k, v]) => {
+  const shown = SECRET.has(lc(k)) ? (v != null && String(v).trim() !== "" ? `<span class="text-muted">set (${String(v).length} characters, hidden)</span>` : dash)
+    : v == null || v === "" ? dash : Array.isArray(v) ? `<span class="text-muted">${v.length} item(s)</span>` : typeof v === "object" ? '<span class="text-muted">(object)</span>'
+    : esc(v);
+  return `<div class="k">${esc(FIELDS.find(f => lc(f[0]) === lc(k))?.[1] || Cocky.titleCase(k))}</div><div class="v" style="word-break:break-all">${shown}</div>`;
+}).join("")}</div>`;
+
+// ---------- filter, sort, draw ----------
+function filtered() {
+  const q = $("#search").value.trim().toLowerCase(), st = $("#stateFilter").value, age = $("#ageFilter").value;
+  let out = rows.filter(r =>
+    (st === "all" || (st === "open" ? isOpen(r) : !isOpen(r))) &&
+    (!age || (age === "stale" ? (openMs(r) ?? 0) > STALE_MS : age === "fresh" ? (openMs(r) ?? Infinity) <= STALE_MS : openMs(r) == null)) &&
+    (!q || Object.entries(r).some(([k, v]) => !SECRET.has(lc(k)) && v != null && typeof v !== "object" && String(v).toLowerCase().includes(q))));
+  const c = cols.find(x => x.id === sortKey) || cols.find(x => x.id === "_open");
+  if (c) out = out.slice().sort((a, b) => { const x = sv(a, c), y = sv(b, c);
+    return (typeof x === "string" || typeof y === "string" ? String(x).localeCompare(String(y), undefined, { numeric: true }) : (x > y) - (x < y)) * sortDir; });
+  return out;
+}
+function drawTiles() {
+  const open = rows.filter(isOpen), stale = open.filter(isStale), users = new Set(open.map(r => val(r, "Userid") ?? val(r, "Sessionusername")).filter(v => v != null && v !== ""));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tile = (lbl, n, f, cls = "") => `<div class="col"><div class="card stat h-100"><div class="card-body"><a href="#" data-f="${f}">
+    <div class="lbl">${lbl}</div><div class="num ${n && cls ? cls : ""}">${n}</div></a></div></div></div>`;
+  $("#tiles").innerHTML = tile("Open sessions", open.length, "open", "text-primary") + tile("Users signed in", users.size, "open") +
+    tile(`Open over ${STALE_LABEL}`, stale.length, "stale", "text-danger") +
+    tile("Closed today", rows.filter(r => !isOpen(r) && (endOf(r)?.getTime() ?? 0) >= today.getTime()).length, "closed");
+  document.querySelectorAll("#tiles [data-f]").forEach(a => a.onclick = ev => { ev.preventDefault();
+    const f = a.dataset.f; $("#stateFilter").value = f === "closed" ? "closed" : "open"; $("#ageFilter").value = f === "stale" ? "stale" : ""; page = 1; draw(); });
+}
+function drawColMenu() {
+  $("#colMenu").innerHTML = cols.map(c => `<label class="dropdown-item d-flex gap-2 align-items-center py-1"><input type="checkbox" class="form-check-input m-0" data-c="${esc(c.id)}" ${visible.has(c.id) ? "checked" : ""}>
+    ${esc(c.label)}${c.kind === "secret" ? ' <span class="text-muted">(set / —)</span>' : ""}</label>`).join("") +
+    `<div class="dropdown-divider"></div><div class="d-flex gap-2 px-2"><button class="btn btn-sm btn-link p-0" data-all="1">All</button><button class="btn btn-sm btn-link p-0" data-all="0">Default</button></div>`;
+  $("#colMenu").querySelectorAll("[data-c]").forEach(cb => cb.onchange = () => { cb.checked ? visible.add(cb.dataset.c) : visible.delete(cb.dataset.c); saveCols(); draw(); });
+  $("#colMenu").querySelectorAll("[data-all]").forEach(b => b.onclick = () => { visible = new Set(b.dataset.all === "1" ? cols.map(c => c.id) : DEFAULT_COLS); saveCols(); drawColMenu(); draw(); });
+}
+const saveCols = () => { try { localStorage.setItem("cocky.sessions.cols", JSON.stringify([...visible])); } catch {} };
+
+function draw() {
+  const list = filtered(), size = +$("#pageSize").value || 25, pages = Math.max(1, Math.ceil(list.length / size));
+  page = Math.min(page, pages);
+  const shown = list.slice((page - 1) * size, page * size), vc = cols.filter(c => visible.has(c.id));
+  $("#count").textContent = `${list.length} of ${rows.length} sessions`;
+  if (!rows.length) { $("#grid").innerHTML = '<div class="empty">No user sessions.</div>'; $("#pager").innerHTML = ""; return; }
+  if (!list.length) { $("#grid").innerHTML = '<div class="empty">No sessions match.</div>'; $("#pager").innerHTML = ""; return; }
+  const act = canExpire;
+  $("#grid").innerHTML = `<div class="table-responsive"><table class="table table-sm table-striped table-bordered table-hover align-middle mb-0">
+    <thead class="table-light"><tr>${vc.map(c => `<th class="small text-uppercase text-muted text-nowrap sortable" data-k="${esc(c.id)}" role="button" title="Sort by ${esc(c.label)}">${esc(c.label)}${c.id === sortKey ? (sortDir > 0 ? " ▲" : " ▼") : ' <span class="opacity-25">⇅</span>'}</th>`).join("")}${act ? "<th></th>" : ""}</tr></thead>
+    <tbody>${shown.map(r => `<tr class="clickable${isOpen(r) ? "" : " text-muted"}${isStale(r) ? " table-danger" : ""}" data-i="${r.__i}">${vc.map(c => `<td>${cell(r, c)}</td>`).join("")}
+        ${act ? `<td class="text-end">${isOpen(r) && !isMine(r) ? `<button class="btn btn-sm btn-outline-danger text-nowrap" data-close="${r.__i}">Close</button>` : ""}</td>` : ""}</tr>
+      <tr class="d-none" data-d="${r.__i}"><td colspan="${vc.length + (act ? 1 : 0)}" class="bg-light">${detail(r)}</td></tr>`).join("")}</tbody></table></div>`;
+  $("#grid").querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = e => {
+    const c = e.target.closest("[data-close]"); if (c) { e.stopPropagation(); askExpire([rows[+c.dataset.close]], "one"); return; }
+    $(`#grid tr[data-d="${tr.dataset.i}"]`).classList.toggle("d-none"); });
+  $("#grid").querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k, c = cols.find(x => x.id === k);
+    sortDir = sortKey === k ? -sortDir : (c && (c.kind === "date" || c.kind === "dur") ? -1 : 1); sortKey = k; draw(); });
+  const btn = (p, label, dis, on) => `<li class="page-item${dis ? " disabled" : ""}${on ? " active" : ""}"><a class="page-link" href="#" data-p="${p}">${label}</a></li>`;
+  const nums = [...new Set([1, page - 1, page, page + 1, pages].filter(p => p >= 1 && p <= pages))].sort((a, b) => a - b);
+  $("#pager").innerHTML = `<div class="small text-muted">Showing ${(page - 1) * size + 1}–${Math.min(page * size, list.length)} of ${list.length}</div>
+    <ul class="pagination pagination-sm mb-0">${btn(page - 1, "‹", page === 1)}${nums.map((p, i) => (i && p - nums[i - 1] > 1 ? '<li class="page-item disabled"><span class="page-link">…</span></li>' : "") + btn(p, p, false, p === page)).join("")}${btn(page + 1, "›", page === pages)}</ul>`;
+  $("#pager").querySelectorAll("[data-p]").forEach(a => a.onclick = ev => { ev.preventDefault(); const p = +a.dataset.p; if (p >= 1 && p <= pages) { page = p; draw(); } });
+}
+// Time open keeps counting while the page is open
+setInterval(() => { document.querySelectorAll("[data-open]").forEach(el => { const r = rows[+el.dataset.open]; if (r && isOpen(r)) el.textContent = dur(openMs(r)); }); drawTiles(); }, 30000);
+
+// ---------- expire (update, never delete) ----------
+const modal = () => bootstrap.Modal.getOrCreateInstance($("#expireModal"));
+function staleSessions() { return rows.filter(r => isStale(r) && !isMine(r)); }
+
+function askExpire(list, mode = "stale") {
+  if (!canExpire) { Cocky.toast("Only auditors and admins can expire sessions.", "warning"); return; }
+  if (!list.length) { Cocky.toast(`No open sessions older than ${STALE_LABEL}.`, "info"); return; }
+  const oldest = list.reduce((a, b) => (openMs(b) ?? 0) > (openMs(a) ?? 0) ? b : a);
+  const users = new Set(list.map(r => val(r, "Sessionusername") || val(r, "Sessionemail") || val(r, "Userid")).filter(Boolean));
+  const mine = mode === "stale" && rows.some(r => isStale(r) && isMine(r));
+  $("#expireModal .modal-title").textContent = mode === "one" ? "Close this user session?" : `Expire all user sessions over ${STALE_LABEL} old?`;
+  $("#expireBody").innerHTML = `
+    <p class="mb-2">${mode === "one" ? "This session" : `<b>${list.length}</b> open session${list.length === 1 ? "" : "s"} (${users.size} user${users.size === 1 ? "" : "s"}) started more than ${STALE_LABEL} ago; the oldest has been open <b>${esc(dur(openMs(oldest)))}</b>.`}
+      ${mode === "one" ? "" : "Do you want to expire them?"}</p>
+    <div class="alert alert-info small py-2">Nothing is deleted. Each record is updated: <code>Sessionend</code> = now (${esc(new Date().toISOString())}) and
+      <code>Sessioncomplete</code> = 1 (closed). Every other field is sent back unchanged.</div>
+    ${mine ? '<div class="small text-muted mb-2">Your own session is left open.</div>' : ""}
+    <div class="table-responsive" style="max-height:260px"><table class="table table-sm table-bordered small mb-0"><thead class="table-light"><tr><th>Id</th><th>User</th><th>Session start</th><th>Time open</th></tr></thead>
+    <tbody>${list.slice().sort((a, b) => (openMs(b) ?? 0) - (openMs(a) ?? 0)).map(r => `<tr><td>${esc(r.id ?? val(r, "Id"))}</td><td>${esc(val(r, "Sessionusername") || val(r, "Sessionfullname") || val(r, "Sessionemail") || "#" + (val(r, "Userid") ?? "?"))}</td>
+      <td>${esc(startOf(r)?.toLocaleString() ?? "")}</td><td>${esc(dur(openMs(r)))}</td></tr>`).join("")}</tbody></table></div>`;
+  $("#expireFoot").innerHTML = `<button class="btn btn-secondary" data-bs-dismiss="modal" type="button">No, leave them open</button>
+    <button class="btn btn-danger" id="expireYes" type="button">Yes, expire ${list.length === 1 ? "it" : `${list.length} sessions`}</button>`;
+  $("#expireYes").onclick = () => runExpire(list);
+  modal().show();
+}
+
+// The PUT body: the record as read, with the two fields changed. Navigation collections (Keyassignments) go as [].
+function closedBody(r, nowIso) {
+  const b = {};
+  Object.entries(r).forEach(([k, v]) => { if (k === "__i") return; b[k] = Array.isArray(v) ? [] : v !== null && typeof v === "object" ? undefined : v; });
+  b[K.sessionend || "sessionend"] = nowIso;
+  b[K.sessioncomplete || "sessioncomplete"] = 1;
+  return JSON.parse(JSON.stringify(b));
+}
+
+async function runExpire(list) {
+  const nowIso = new Date().toISOString(), total = list.length;
+  let done = 0; const ok = [], failed = [];
+  $("#expireFoot").innerHTML = "";
+  $("#expireBody").innerHTML = `<p class="mb-2">Updating ${total} session${total === 1 ? "" : "s"}…</p>
+    <div class="progress" role="progressbar"><div class="progress-bar progress-bar-striped progress-bar-animated" id="expireBar" style="width:0%"></div></div>`;
+  const queue = list.slice();
+  async function worker() {
+    while (queue.length) {
+      const r = queue.shift(), id = r.id ?? val(r, "Id");
+      try { await Cocky.api.update("usersession", id, closedBody(r, nowIso)); ok.push(id); }
+      catch (e) { failed.push({ id, message: e.message }); }
+      done++; $("#expireBar").style.width = `${Math.round(done / total * 100)}%`;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(US.concurrency, total) }, worker));
+
+  // Read the table back: the API answering 2xx doesn't mean it saved Sessionend / Sessioncomplete
+  let notSaved = [], verifyError = "";
+  try {
+    await load({ quiet: true });
+    const byId = new Map(rows.map(r => [String(r.id ?? val(r, "Id")), r]));
+    notSaved = ok.filter(id => { const r = byId.get(String(id)); return r && isOpen(r); });
+  } catch (e) { verifyError = e.message; }
+  const saved = ok.length - notSaved.length;
+  $("#expireModal .modal-title").textContent = "Expire sessions: result";
+  $("#expireBody").innerHTML = `
+    ${saved ? `<div class="alert alert-success py-2"><b>${saved}</b> session${saved === 1 ? "" : "s"} closed (Sessionend ${esc(new Date(nowIso).toLocaleString())}, Sessioncomplete 1).</div>` : ""}
+    ${notSaved.length ? `<div class="alert alert-danger small"><b>${notSaved.length} update${notSaved.length === 1 ? " was" : "s were"} accepted by the API but not saved</b>
+      (ids ${esc(notSaved.slice(0, 20).join(", "))}${notSaved.length > 20 ? "…" : ""}). The API's <code>PUT /api/Usersession/{id}</code> only copies
+      <code>Sessiondescription</code>; deploy the PUT in <code>api/UsersessionPut-6.0.cs</code> so it also copies <code>Sessionend</code> and
+      <code>Sessioncomplete</code>, then run this again.</div>` : ""}
+    ${failed.length ? `<div class="alert alert-warning small"><b>${failed.length} failed:</b><ul class="mb-0">${failed.slice(0, 15).map(f => `<li>#${esc(f.id)}: ${esc(f.message)}</li>`).join("")}</ul></div>` : ""}
+    ${verifyError ? `<div class="alert alert-warning small">Couldn't re-read the sessions to check the result: ${esc(verifyError)}</div>` : ""}`;
+  $("#expireFoot").innerHTML = `<button class="btn btn-primary" data-bs-dismiss="modal" type="button">Done</button>`;
+  if (notSaved.length) showPutBanner(notSaved.length);
+}
+function showPutBanner(n) {
+  $("#banner").innerHTML = `<div class="alert alert-danger small">${n} session update${n === 1 ? "" : "s"} didn't stick: the API's Usersession PUT ignores
+    <code>Sessionend</code> and <code>Sessioncomplete</code>. Fix: <code>api/UsersessionPut-6.0.cs</code> (see README, build 6.0).</div>`;
+}
+
+// ---------- load ----------
+const rowsFrom = d => Array.isArray(d) ? d : d && typeof d === "object" ? (["items", "data", "value", "results"].map(k => d[k]).find(Array.isArray) || [d]) : [];
+async function load({ quiet = false } = {}) {
+  if (!quiet) { $("#grid").innerHTML = Cocky.spinner("Reading /api/Usersession…"); $("#pager").innerHTML = ""; }
+  try { rows = rowsFrom(await Cocky.api.list("usersession")).filter(r => r && typeof r === "object"); }
+  catch (e) {
+    if (quiet) throw e;
+    $("#grid").innerHTML = ""; $("#grid").appendChild(Cocky.errorBox(e, load)); return;
+  }
+  rows.forEach((r, i) => { r.__i = i; });
+  buildCols(rows); drawColMenu(); drawTiles(); draw();
+  const n = staleSessions().length;
+  const b = $("#expireBtn");
+  b.classList.toggle("d-none", !canExpire);
+  b.textContent = `Expire sessions over ${STALE_LABEL}${n ? ` (${n})` : ""}…`;
+  b.disabled = !n;
+}
+
+$("#stateFilter").innerHTML = `<option value="open">Open sessions</option><option value="closed">Closed sessions</option><option value="all">All sessions</option>`;
+$("#ageFilter").innerHTML = `<option value="">Any age</option><option value="stale">Open over ${STALE_LABEL}</option><option value="fresh">Under ${STALE_LABEL}</option><option value="nostart">No start time</option>`;
+$("#pageSize").innerHTML = US.pageSizes.map(n => `<option value="${n}">${n} per page</option>`).join("");
+if (["open", "closed", "all"].includes(qs.get("state"))) $("#stateFilter").value = qs.get("state");
+if (qs.get("age") === "stale") $("#ageFilter").value = "stale";
+if (qs.get("q")) $("#search").value = qs.get("q");
+["#search", "#stateFilter", "#ageFilter", "#pageSize"].forEach(s => $(s).addEventListener(s === "#search" ? "input" : "change", () => { page = 1; draw(); }));
+$("#reload").onclick = () => load();
+$("#expireBtn").onclick = () => askExpire(staleSessions());
+
+(async () => {
+  [canExpire] = await Promise.all([checkRole(), load()]);
+  draw();
+  const n = staleSessions().length;
+  $("#expireBtn").classList.toggle("d-none", !canExpire);
+  // Opening the page asks an auditor / admin straight away when there's something to expire
+  if (canExpire && US.promptOnOpen && n) askExpire(staleSessions());
+})();
+</script>
+</body>
+</html>

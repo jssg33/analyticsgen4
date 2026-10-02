@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL Tables · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <nav class="small mb-1"><a href="sqlservers.html">SQL Catalog</a> › <span id="crumb">All databases</span></nav>
+  <h2 id="title">Tables</h2>
+  <div class="page-sub">Tables in the SQL catalog (AuditSqlTables). <b>Fields</b> opens a table's columns. A table is flagged
+    <b>Contains PHI / PII</b> when any of its columns holds it; Findings note when the flags and columns disagree, PHI / PII columns that
+    aren't encrypted, and tables with no primary key. Deleting a table deletes its columns from the catalog too.</div>
+  <div id="setup"></div>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="sqlcatalog.js"></script>
+<script>
+const main = Cocky.layout("sqlcatalog");
+const { esc, api } = Cocky, SQ = SqlCatalog;
+const qs = new URLSearchParams(location.search), serverId = qs.get("server") ? +qs.get("server") : null;
+let d = SQ.index({ sqlservers: [], sqltables: [], sqlfields: [], missing: [] });
+async function loadCatalog() {
+  d = await SQ.loadAll();
+  const s = d.serverById.get(serverId);
+  document.getElementById("crumb").textContent = serverId ? (s ? SQ.serverName(s) : `Server #${serverId} (not found)`) : "All databases";
+  document.getElementById("title").textContent = s ? `Tables · ${SQ.serverName(s)}` : "Tables";
+}
+Cocky.SCHEMA.sqltables.format = {
+  table: (v, t) => `<a href="sqlfields.html?table=${t.id}" class="text-decoration-none"><span class="text-muted">${esc(SQ.str(t, "schemaName") || "dbo")}.</span><b>${esc(SQ.str(t, "tableName"))}</b></a>` +
+    (serverId ? "" : `<div class="small text-muted">${esc(SQ.serverName(d.serverById.get(SQ.num(t, "sqlServerId"))) || "server #" + SQ.num(t, "sqlServerId"))}</div>`),
+  description: v => v ? `<span class="small" title="${esc(v)}">${esc(String(v).slice(0, 90))}${String(v).length > 90 ? "…" : ""}</span>` : '<span class="text-muted small">—</span>',
+  fieldCount: (v, t) => { const fs = d.fieldsOf(t.id); return `<a href="sqlfields.html?table=${t.id}" class="text-decoration-none"><b>${fs.length}</b></a>` + (fs.some(f => SQ.yes(f, "isPrimaryKey")) ? "" : fs.length ? ' <span class="badge text-bg-warning fw-normal">no PK</span>' : ""); },
+  flags: (v, t) => { const fs = d.fieldsOf(t.id), phi = fs.filter(f => SQ.yes(f, "containsPHI")).length, pii = fs.filter(f => SQ.yes(f, "containsPII")).length;
+    return (SQ.yes(t, "containsPHI") ? `<span class="badge text-bg-danger me-1">PHI${phi ? " · " + phi : ""}</span>` : "") + (SQ.yes(t, "containsPII") ? `<span class="badge text-bg-warning">PII${pii ? " · " + pii : ""}</span>` : "") || '<span class="text-muted small">None</span>'; },
+  controls: (v, t) => (SQ.yes(t, "hasRowLevelSecurity") ? '<span class="badge text-bg-success fw-normal me-1" title="Row-level security">RLS</span>' : "") +
+    (SQ.yes(t, "hasDynamicDataMasking") ? '<span class="badge text-bg-success fw-normal me-1" title="Dynamic data masking">Masking</span>' : "") +
+    (SQ.str(t, "classificationStatus") ? `<div class="small text-muted">${esc(SQ.str(t, "classificationStatus"))}</div>` : "") || '<span class="text-muted small">—</span>',
+  someRowCount: (v, t) => (v == null ? '<span class="text-muted small">—</span>' : Number(v).toLocaleString()) +
+    (SQ.num(t, "tableSizeMB") != null ? `<div class="small text-muted text-nowrap">${Number(SQ.num(t, "tableSizeMB")).toLocaleString()} MB</div>` : ""),
+  findings: (v, t) => SQ.badge(SQ.tableFindings(t, d))
+};
+let view = qs.get("show") || "";
+const filterRows = rows => rows.filter(t => (serverId == null || SQ.num(t, "sqlServerId") === serverId) && (
+  !view || (view === "issues" ? SQ.tableFindings(t, d).some(f => f.level !== "info") : view === "phi" ? SQ.yes(t, "containsPHI") || d.fieldsOf(t.id).some(f => SQ.yes(f, "containsPHI"))
+    : view === "pii" ? SQ.yes(t, "containsPII") || d.fieldsOf(t.id).some(f => SQ.yes(f, "containsPII")) : true)));
+let page;
+page = Cocky.crudPage("sqltables", {
+  mount: main,
+  columns: Cocky.SCHEMA.sqltables.columns,
+  beforeLoad: loadCatalog,
+  toolbarExtra: `<select class="form-select form-select-sm" id="show" style="max-width:210px"><option value="">All tables</option><option value="issues">With fail / warn findings</option><option value="phi">Holding PHI</option><option value="pii">Holding PII</option></select>`,
+  filter: filterRows,
+  sort: rows => rows.slice().sort((a, b) => SQ.tableName(a).localeCompare(SQ.tableName(b))),
+  addDefaults: () => serverId ? { sqlServerId: serverId, schemaName: "dbo" } : { schemaName: "dbo" },
+  rowActions: [{ label: "Fields", className: "btn-primary", onClick: t => location.href = "sqlfields.html?table=" + t.id }],
+  // AuditSqlFields has a foreign key to the table: remove its columns first, and put them back if the delete fails
+  beforeDelete: async t => {
+    const fs = d.fieldsOf(t.id);
+    if (fs.length && !confirm(`${SQ.tableName(t)} has ${fs.length} column(s) in the catalog. They'll be deleted too. Go ahead?`)) throw new Error("Delete cancelled.");
+    for (const f of fs) await api.remove("sqlfields", f.id);
+    return async () => { for (const f of fs) { const { id, ...body } = f; await api.create("sqlfields", body); } };
+  }
+});
+document.getElementById("show").value = view;
+document.getElementById("show").onchange = e => { view = e.target.value; page.redraw(); };
+</script>
+</body>
+</html>

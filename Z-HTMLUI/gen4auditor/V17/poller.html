@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poller · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  .spark { display: block; }
+  .wiz-steps .badge { font-weight: 500; }
+  .wiz-list { max-height: 52vh; overflow: auto; }
+  .wiz-list label { cursor: pointer; }
+</style>
+</head>
+<body>
+<section data-page>
+  <h2>Poller</h2>
+  <div class="page-sub">Pings the <b>IP address</b> behind each chosen endpoint's URL, never the API itself: the host name is resolved to an IP
+    (DNS over HTTPS), then the poller times a bare connection to <code>https://&lt;ip&gt;:&lt;port&gt;/</code> with no API path, no
+    credentials and nothing read back. Any answer, even a refused connection or a certificate error, means the host is up; only no reply
+    within the timeout counts as down. Endpoints that share an IP and port are pinged once.</div>
+  <div class="row row-cols-2 row-cols-md-4 g-3 mb-3" id="tiles"></div>
+  <div id="notes"></div>
+  <div class="card"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <button class="btn btn-sm btn-primary" id="runBtn" type="button" disabled>Start</button>
+      <button class="btn btn-sm btn-outline-secondary" id="onceBtn" type="button" disabled>Ping now</button>
+      <button class="btn btn-sm btn-outline-dark" id="wizBtn" type="button">Choose endpoints…</button>
+      <span class="small text-muted" id="status">Choose the endpoints to poll.</span>
+      <div class="ms-auto d-flex gap-2 align-items-center">
+        <select class="form-select form-select-sm" id="showFilter" style="width:auto">
+          <option value="">All targets</option><option value="down">Down only</option><option value="up">Up only</option>
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" id="csvBtn" type="button" disabled>Download CSV</button>
+      </div>
+    </div>
+    <div id="grid"><div class="empty">No endpoints chosen yet.</div></div>
+  </div></div>
+</section>
+
+<!-- Wizard -->
+<div class="modal fade" id="wiz" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><div>
+    <h5 class="modal-title mb-1">Poll endpoints</h5>
+    <div class="wiz-steps small" id="wizSteps"></div></div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body" id="wizBody"></div>
+  <div class="modal-footer justify-content-between">
+    <span class="small text-muted" id="wizInfo"></span>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" id="wizBack" type="button">Back</button>
+      <button class="btn btn-primary" id="wizNext" type="button">Next</button>
+    </div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="tickets.js"></script>
+<script>
+Cocky.layout("poller");
+const { esc } = Cocky, $ = s => document.querySelector(s);
+const PC = Object.assign({
+  intervals: [5, 10, 15, 30, 60], defaultInterval: 10, timeoutMs: 3000, slowMs: 300, rounds: [0, 10, 30, 60, 120],
+  concurrency: 6, history: 60,
+  dns: ["https://dns.google/resolve?name={host}&type={type}", "https://cloudflare-dns.com/dns-query?name={host}&type={type}"],
+  dnsCacheMinutes: 10, pingService: ""
+}, Cocky.CFG.poller || {});
+// Ports browsers refuse to connect to (an instant error there says nothing about the host)
+const UNSAFE_PORTS = new Set([1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080]);
+
+let hosts = [], endpoints = [];
+let chosenHosts = new Set(), chosenEps = new Set();
+let targets = [];          // [{ key, host, port, ip, ipNote, endpoints: [], apiHosts: Set, hist: [{t, ms, up, how}], ... }]
+let settings = { interval: PC.defaultInterval, rounds: 0, timeout: PC.timeoutMs };
+let running = false, round = 0, timer = null, nextAt = 0, busy = false, sortKey = "status", sortDir = 1;
+
+const hostName = h => h ? (h.apiHostName || h.apiHostUrl || "Host #" + h.id) : "No host";
+const epLabel = e => { const m = Tickets.methodOf(e); return `${m} ${Cocky.e9.pathOf(e) || e.url || "#" + e.id}`; };
+const isActive = e => e.isActive !== false && e.active !== false;
+const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/, isIp = h => IPV4.test(h) || h.includes(":");
+const isPrivate = ip => /^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip) || /^(::1|f[cd]|fe80)/i.test(ip);
+
+// Where an endpoint lives: host + port from its URL (same rules as Run Audit), else its IPv4 address
+function whereOf(e) {
+  const u = Tickets.targetUrl(e, hosts);
+  try {
+    if (u) { const x = new URL(u); return { host: x.hostname.replace(/^\[|\]$/g, ""), port: +x.port || (x.protocol === "http:" ? 80 : 443), url: u }; }
+  } catch {}
+  const ip = Tickets.val(e.iPv4Address);
+  return ip ? { host: ip, port: e.primaryPort > 0 ? e.primaryPort : 443, url: "" } : null;
+}
+
+// ---------- DNS (over HTTPS, so it works from a browser) ----------
+const dnsCache = new Map();
+async function resolve(host) {
+  if (isIp(host)) return { ip: host, note: "" };
+  const hit = dnsCache.get(host);
+  if (hit && Date.now() - hit.at < PC.dnsCacheMinutes * 6e4) return hit.r;
+  let r = null, last = "";
+  for (const type of ["A", "AAAA"]) {
+    for (const tpl of PC.dns) {
+      try {
+        const res = await fetch(tpl.replace("{host}", encodeURIComponent(host)).replace("{type}", type), { headers: { accept: "application/dns-json" }, cache: "no-store" });
+        const d = await res.json();
+        const ans = (d.Answer || []).filter(a => a.type === (type === "A" ? 1 : 28));
+        if (ans.length) { const cname = (d.Answer || []).find(a => a.type === 5);
+          r = { ip: ans[0].data, all: ans.map(a => a.data), note: cname ? `via ${String(cname.data).replace(/\.$/, "")}` : "" }; break; }
+        if (d.Status === 3) { last = "no such host (NXDOMAIN)"; break; }
+        last = "no address";
+      } catch (e) { last = "DNS lookup failed"; }
+    }
+    if (r) break;
+  }
+  r = r || { ip: "", note: last || "not resolved" };
+  dnsCache.set(host, { at: Date.now(), r });
+  return r;
+}
+
+// ---------- the ping ----------
+// A bare connection to the IP: no API path, no credentials, nothing read (no-cors). Resolves { up, ms, how }.
+async function ping(t) {
+  if (PC.pingService) {
+    const t0 = performance.now();
+    try {
+      const res = await fetch(PC.pingService.replace("{ip}", encodeURIComponent(t.ip || t.host)).replace("{host}", encodeURIComponent(t.host)), { cache: "no-store", signal: AbortSignal.timeout(settings.timeout + 2000) });
+      const d = await res.json();
+      return { up: !!(d.ok ?? d.up ?? d.success), ms: d.ms ?? d.roundtrip ?? d.time ?? Math.round(performance.now() - t0), how: "ICMP (ping service)" };
+    } catch (e) { return { up: false, ms: null, how: "ping service: " + e.message }; }
+  }
+  const addr = t.ip || t.host, hostPart = addr.includes(":") ? `[${addr}]` : addr;
+  const ctrl = new AbortController(), tm = setTimeout(() => ctrl.abort(), settings.timeout);
+  const t0 = performance.now();
+  try {
+    await fetch(`https://${hostPart}:${t.port}/?cockyping=${Date.now()}`, { mode: "no-cors", cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", signal: ctrl.signal });
+    return { up: true, ms: Math.round(performance.now() - t0), how: "answered" };
+  } catch (e) {
+    if (e.name === "AbortError") return { up: false, ms: null, how: `no reply in ${settings.timeout} ms` };
+    // Fast failure = the host's network stack answered (TLS mismatch on a bare IP, refused port, ...)
+    return { up: true, ms: Math.round(performance.now() - t0), how: "answered (connection refused or certificate for another name)" };
+  } finally { clearTimeout(tm); }
+}
+
+// ---------- targets ----------
+async function buildTargets() {
+  const map = new Map();
+  const eps = endpoints.filter(e => chosenEps.has(e.id));
+  const wheres = eps.map(e => [e, whereOf(e)]);
+  const names = [...new Set(wheres.filter(([, w]) => w).map(([, w]) => w.host))];
+  const res = Object.fromEntries(await Promise.all(names.map(async n => [n, await resolve(n)])));
+  const skipped = [];
+  wheres.forEach(([e, w]) => {
+    if (!w) { skipped.push(e); return; }
+    const r = res[w.host] || { ip: "", note: "" };
+    const key = `${r.ip || w.host}:${w.port}`;
+    if (!map.has(key)) map.set(key, { key, host: w.host, names: new Set(), port: w.port, ip: r.ip, ipAll: r.all || [], ipNote: r.note, endpoints: [], apiHosts: new Set(), hist: [] });
+    const t = map.get(key);
+    t.names.add(w.host); t.endpoints.push(e); t.apiHosts.add(e.apiHostId ?? null);
+  });
+  // keep history for targets that were already being polled
+  const old = new Map(targets.map(t => [t.key, t]));
+  targets = [...map.values()].map(t => Object.assign(t, old.has(t.key) ? { hist: old.get(t.key).hist } : {}));
+  const notes = [];
+  if (skipped.length) notes.push(`${skipped.length} endpoint${skipped.length === 1 ? " has" : "s have"} no URL, FQDN or IP to ping: ${skipped.slice(0, 6).map(e => esc(epLabel(e))).join(", ")}${skipped.length > 6 ? "…" : ""}.`);
+  const unresolved = targets.filter(t => !t.ip && !isIp(t.host));
+  if (unresolved.length) notes.push(`Couldn't resolve ${unresolved.map(t => `<code>${esc(t.host)}</code> (${esc(t.ipNote)})`).join(", ")} to an IP; those are pinged by name.`);
+  const priv = targets.filter(t => t.ip && isPrivate(t.ip));
+  if (priv.length) notes.push(`${priv.length} target${priv.length === 1 ? " is" : "s are"} on a private address (${priv.map(t => esc(t.ip)).join(", ")}). The browser may block connections from this page to a private network, which shows as up straight away; check those from inside the network.`);
+  const bad = targets.filter(t => UNSAFE_PORTS.has(t.port));
+  if (bad.length) notes.push(`Browsers won't connect to port ${[...new Set(bad.map(t => t.port))].join(", ")}, so ${bad.map(t => esc(t.key)).join(", ")} can't be pinged from here.`);
+  $("#notes").innerHTML = notes.length ? `<div class="alert alert-warning small">${notes.map(n => `<div>${n}</div>`).join("")}</div>` : "";
+  targets.forEach(t => { t.unpingable = UNSAFE_PORTS.has(t.port); });
+}
+
+// ---------- stats ----------
+function stats(t) {
+  const h = t.hist, ups = h.filter(x => x.up), ms = ups.map(x => x.ms).filter(v => v != null);
+  const last = h[h.length - 1];
+  return { n: h.length, last, up: last ? last.up : null, lastMs: last?.up ? last.ms : null,
+    avg: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null, min: ms.length ? Math.min(...ms) : null, max: ms.length ? Math.max(...ms) : null,
+    loss: h.length ? Math.round((h.length - ups.length) / h.length * 100) : null,
+    downSince: last && !last.up ? (() => { let i = h.length - 1; while (i > 0 && !h[i - 1].up) i--; return h[i].t; })() : null };
+}
+function spark(t) {
+  const h = t.hist.slice(-30), W = 120, H = 24, bw = W / 30;
+  const max = Math.max(PC.slowMs * 2, ...h.filter(x => x.up && x.ms != null).map(x => x.ms));
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-label="last ${h.length} pings">${h.map((x, i) => {
+    const hh = x.up ? Math.max(2, Math.round((x.ms ?? 0) / max * (H - 2))) : H;
+    const c = !x.up ? "#dc3545" : x.ms > PC.slowMs ? "#e0a100" : "#2a78d6";
+    return `<rect x="${(30 - h.length + i) * bw}" y="${H - hh}" width="${bw - 1}" height="${hh}" fill="${c}" rx="1"><title>${esc(new Date(x.t).toLocaleTimeString())}: ${x.up ? x.ms + " ms" : "no reply"}</title></rect>`;
+  }).join("")}</svg>`;
+}
+
+// ---------- draw ----------
+const COLS = [
+  ["status", "Status"], ["apihost", "API host"], ["target", "Host name"], ["ip", "IP address"], ["port", "Port"], ["endpoints", "Endpoints"],
+  ["last", "Last (ms)"], ["avg", "Avg"], ["min", "Min"], ["max", "Max"], ["loss", "Loss"], ["spark", "Recent"], ["checked", "Checked"]
+];
+function sortVal(t, k) {
+  const s = stats(t);
+  switch (k) {
+    case "status": return s.up == null ? 2 : s.up ? 1 : 0;
+    case "apihost": return [...t.apiHosts].map(id => hostName(hosts.find(h => h.id === id))).join(", ").toLowerCase();
+    case "target": return t.host.toLowerCase();
+    case "ip": return (t.ip || "").split(".").map(x => x.padStart(3, "0")).join(".");
+    case "port": return t.port;
+    case "endpoints": return t.endpoints.length;
+    case "last": return s.lastMs ?? Infinity;
+    case "avg": return s.avg ?? Infinity;
+    case "min": return s.min ?? Infinity;
+    case "max": return s.max ?? Infinity;
+    case "loss": return s.loss ?? -1;
+    case "checked": return s.last?.t ?? 0;
+    default: return 0;
+  }
+}
+function drawTiles() {
+  const ss = targets.map(stats), up = ss.filter(s => s.up === true).length, down = ss.filter(s => s.up === false).length;
+  const ms = ss.map(s => s.avg).filter(v => v != null);
+  const tile = (lbl, n, cls = "", sub = "") => `<div class="col"><div class="card stat h-100"><div class="card-body"><div class="lbl">${lbl}</div><div class="num ${cls}">${n}</div>${sub ? `<div class="small text-muted">${sub}</div>` : ""}</div></div></div>`;
+  $("#tiles").innerHTML = tile("Targets (IP : port)", targets.length, "", `${targets.reduce((a, t) => a + t.endpoints.length, 0)} endpoints`) +
+    tile("Up", up, up ? "text-success" : "") + tile("Down", down, down ? "text-danger" : "") +
+    tile("Average", ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) + " ms" : "–", "", round ? `round ${round}${settings.rounds ? " of " + settings.rounds : ""}` : "");
+}
+function draw() {
+  drawTiles();
+  $("#csvBtn").disabled = !targets.some(t => t.hist.length);
+  if (!targets.length) { $("#grid").innerHTML = '<div class="empty">No endpoints chosen yet. Use <b>Choose endpoints…</b></div>'; return; }
+  const f = $("#showFilter").value;
+  let list = targets.filter(t => !f || (f === "down" ? stats(t).up === false : stats(t).up === true));
+  list = list.slice().sort((a, b) => { const x = sortVal(a, sortKey), y = sortVal(b, sortKey);
+    return (typeof x === "string" ? x.localeCompare(y, undefined, { numeric: true }) : (x > y) - (x < y)) * sortDir || a.key.localeCompare(b.key); });
+  const open = new Set([...document.querySelectorAll("#grid tr[data-d]:not(.d-none)")].map(tr => tr.dataset.d));
+  $("#grid").innerHTML = !list.length ? '<div class="empty">Nothing matches.</div>' : `<div class="table-responsive"><table class="table table-sm table-striped table-bordered table-hover align-middle mb-0">
+    <thead class="table-light"><tr>${COLS.map(([k, l]) => k === "spark" ? `<th class="small text-uppercase text-muted">${l}</th>`
+      : `<th class="small text-uppercase text-muted text-nowrap sortable" data-k="${k}" role="button">${l}${k === sortKey ? (sortDir > 0 ? " ▲" : " ▼") : ' <span class="opacity-25">⇅</span>'}</th>`).join("")}</tr></thead>
+    <tbody>${list.map(t => { const s = stats(t);
+      const badge = t.unpingable ? '<span class="badge text-bg-secondary">can\'t ping</span>' : s.up == null ? '<span class="badge text-bg-light border">waiting</span>'
+        : s.up ? `<span class="badge ${s.lastMs > PC.slowMs ? "text-bg-warning" : "text-bg-success"}">Up</span>` : `<span class="badge text-bg-danger">Down</span>${s.downSince ? `<div class="small text-muted text-nowrap">since ${esc(new Date(s.downSince).toLocaleTimeString())}</div>` : ""}`;
+      const n = v => v == null ? '<span class="text-muted">—</span>' : v;
+      return `<tr class="clickable${s.up === false ? " table-danger" : ""}" data-key="${esc(t.key)}">
+        <td>${badge}</td>
+        <td>${[...t.apiHosts].map(id => `<div class="text-nowrap">${esc(hostName(hosts.find(h => h.id === id)))}</div>`).join("")}</td>
+        <td>${[...t.names].map(x => `<div class="font-monospace small">${esc(x)}</div>`).join("")}${t.ipNote ? `<div class="small text-muted">${esc(t.ipNote)}</div>` : ""}</td>
+        <td class="font-monospace small">${t.ip ? esc(t.ip) : '<span class="text-muted">by name</span>'}${t.ipAll.length > 1 ? `<div class="small text-muted">+${t.ipAll.length - 1} more</div>` : ""}</td>
+        <td>${t.port}</td><td>${t.endpoints.length}</td>
+        <td class="fw-semibold">${n(s.lastMs)}</td><td>${n(s.avg)}</td><td>${n(s.min)}</td><td>${n(s.max)}</td>
+        <td>${s.loss == null ? n(null) : `<span class="${s.loss ? "text-danger fw-semibold" : ""}">${s.loss}%</span><div class="small text-muted">${s.n} sent</div>`}</td>
+        <td>${spark(t)}</td>
+        <td class="small text-nowrap">${s.last ? esc(new Date(s.last.t).toLocaleTimeString()) : "—"}</td></tr>
+        <tr class="${open.has(t.key) ? "" : "d-none"}" data-d="${esc(t.key)}"><td colspan="${COLS.length}" class="bg-light small">
+          ${s.last ? `<div class="mb-1"><b>Last result:</b> ${esc(s.last.how)}</div>` : ""}
+          <div class="mb-1"><b>Pinged as:</b> <code>https://${esc(t.ip || t.host)}:${t.port}/</code> (connection only; no API path)${t.ipAll.length > 1 ? ` · all addresses: ${t.ipAll.map(esc).join(", ")}` : ""}</div>
+          <b>Endpoints on this address:</b><ul class="mb-0">${t.endpoints.map(e => `<li><span class="font-monospace">${esc(epLabel(e))}</span> <span class="text-muted">#${e.id} · ${esc(hostName(hosts.find(h => h.id === e.apiHostId)))}</span></li>`).join("")}</ul>
+        </td></tr>`; }).join("")}</tbody></table></div>`;
+  $("#grid").querySelectorAll("tr[data-key]").forEach(tr => tr.onclick = () => document.querySelector(`#grid tr[data-d="${CSS.escape(tr.dataset.key)}"]`).classList.toggle("d-none"));
+  $("#grid").querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; draw(); });
+}
+
+// ---------- polling ----------
+async function pingRound() {
+  if (busy) return; busy = true;
+  round++;
+  const queue = targets.filter(t => !t.unpingable);
+  const worker = async () => { while (queue.length) { const t = queue.shift(); const r = await ping(t); t.hist.push({ t: Date.now(), ...r }); if (t.hist.length > PC.history) t.hist.shift(); } };
+  await Promise.all(Array.from({ length: Math.min(PC.concurrency, queue.length) }, worker));
+  busy = false;
+  draw();
+  if (running && settings.rounds && round >= settings.rounds) stop(`Finished ${round} rounds.`);
+}
+function tick() {
+  if (!running) return;
+  const left = Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
+  $("#status").textContent = busy ? `Round ${round}: pinging ${targets.length} target${targets.length === 1 ? "" : "s"}…` : `Polling every ${settings.interval} s · next in ${left} s`;
+  if (Date.now() >= nextAt && !busy) { nextAt = Date.now() + settings.interval * 1000; pingRound(); }
+}
+function start() {
+  if (!targets.length) return;
+  running = true; round = 0; nextAt = 0;
+  $("#runBtn").textContent = "Stop"; $("#runBtn").classList.replace("btn-primary", "btn-danger");
+  clearInterval(timer); timer = setInterval(tick, 500); tick();
+}
+function stop(msg) {
+  running = false; clearInterval(timer);
+  $("#runBtn").textContent = "Start"; $("#runBtn").classList.replace("btn-danger", "btn-primary");
+  $("#status").textContent = msg || `Stopped after ${round} round${round === 1 ? "" : "s"}.`;
+}
+$("#runBtn").onclick = () => running ? stop() : start();
+$("#onceBtn").onclick = async () => { if (!busy) { $("#status").textContent = "Pinging…"; await pingRound(); if (!running) $("#status").textContent = `Pinged ${targets.length} target${targets.length === 1 ? "" : "s"}.`; } };
+$("#showFilter").onchange = draw;
+$("#csvBtn").onclick = () => {
+  const rows = [["time", "ip", "port", "host_names", "api_hosts", "endpoints", "up", "ms", "result"]];
+  targets.forEach(t => t.hist.forEach(h => rows.push([new Date(h.t).toISOString(), t.ip, t.port, [...t.names].join(" "),
+    [...t.apiHosts].map(id => hostName(hosts.find(x => x.id === id))).join(" | "), t.endpoints.length, h.up ? 1 : 0, h.ms ?? "", h.how])));
+  const csv = rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(",")).join("\n");
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: `poller-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}.csv` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+// ---------- wizard: 1 hosts, 2 endpoints, 3 settings ----------
+const wizM = new bootstrap.Modal($("#wiz"));
+let step = 1;
+const remember = () => { try { localStorage.setItem("cocky.poller", JSON.stringify({ hosts: [...chosenHosts], eps: [...chosenEps], settings })); } catch {} };
+try { const s = JSON.parse(localStorage.getItem("cocky.poller") || "null"); if (s) { chosenHosts = new Set(s.hosts); chosenEps = new Set(s.eps); Object.assign(settings, s.settings || {}); } } catch {}
+const hostKey = id => id == null ? "none" : String(id);
+const epsOfHost = k => endpoints.filter(e => hostKey(e.apiHostId) === k);
+
+function wizDraw() {
+  const steps = ["API hosts", "Endpoints", "Polling"];
+  $("#wizSteps").innerHTML = steps.map((s, i) => `<span class="badge ${i + 1 === step ? "text-bg-primary" : i + 1 < step ? "text-bg-success" : "text-bg-light border"} me-1">${i + 1}. ${s}</span>`).join("");
+  $("#wizBack").classList.toggle("invisible", step === 1);
+  const body = $("#wizBody");
+  if (step === 1) {
+    const keys = [...new Set(hosts.map(h => String(h.id)).concat(endpoints.some(e => e.apiHostId == null) ? ["none"] : []))];
+    body.innerHTML = `<p class="mb-2">Which API hosts do you want to poll? You'll pick their endpoints next.</p>
+      <div class="d-flex gap-2 mb-2"><input class="form-control form-control-sm" id="wizQ" placeholder="Filter hosts…" style="max-width:260px">
+        <button class="btn btn-sm btn-link" id="wizAll" type="button">Select all</button><button class="btn btn-sm btn-link" id="wizNone" type="button">Clear</button></div>
+      <div class="list-group wiz-list">${keys.map(k => { const h = hosts.find(x => String(x.id) === k), eps = epsOfHost(k);
+        const exc = h && Cocky.hostException(window._hostExc, h.id);
+        return `<label class="list-group-item d-flex gap-2 align-items-start" data-name="${esc((hostName(h) + " " + (h?.apiHostUrl || "")).toLowerCase())}">
+          <input class="form-check-input mt-1" type="checkbox" data-h="${esc(k)}" ${chosenHosts.has(k) ? "checked" : ""} ${eps.length ? "" : "disabled"}>
+          <span class="flex-fill"><b>${esc(hostName(h))}</b>${h && (h.isActive === false || h.active === false) ? ' <span class="badge text-bg-secondary">inactive</span>' : ""}${exc ? ' <span class="badge text-bg-warning">excepted</span>' : ""}
+          <div class="small text-muted font-monospace">${esc(h?.apiHostUrl || (k === "none" ? "endpoints not linked to a host" : ""))}</div></span>
+          <span class="small text-muted text-nowrap">${eps.length} endpoint${eps.length === 1 ? "" : "s"}</span></label>`; }).join("") || '<div class="empty">No API hosts.</div>'}</div>`;
+    const sync = () => { body.querySelectorAll("[data-h]").forEach(cb => cb.checked ? chosenHosts.add(cb.dataset.h) : chosenHosts.delete(cb.dataset.h)); wizInfo(); };
+    body.querySelectorAll("[data-h]").forEach(cb => cb.onchange = sync);
+    $("#wizQ").oninput = () => { const q = $("#wizQ").value.toLowerCase(); body.querySelectorAll("[data-name]").forEach(l => l.classList.toggle("d-none", !!q && !l.dataset.name.includes(q))); };
+    $("#wizAll").onclick = () => { body.querySelectorAll("[data-name]:not(.d-none) [data-h]:not(:disabled)").forEach(cb => cb.checked = true); sync(); };
+    $("#wizNone").onclick = () => { body.querySelectorAll("[data-h]").forEach(cb => cb.checked = false); sync(); };
+  }
+  if (step === 2) {
+    const ks = [...chosenHosts];
+    body.innerHTML = `<p class="mb-2">Which endpoints? Each is pinged at the IP address of its URL (shown on the right); endpoints that share an address are pinged once.</p>
+      <div class="wiz-list">${ks.map(k => { const h = hosts.find(x => String(x.id) === k), eps = epsOfHost(k);
+        return `<div class="border rounded p-2 mb-2"><div class="d-flex justify-content-between align-items-center mb-1"><b>${esc(hostName(h))}</b>
+          <span><button class="btn btn-sm btn-link py-0" data-all="${esc(k)}" type="button">All</button><button class="btn btn-sm btn-link py-0" data-act="${esc(k)}" type="button">Active</button><button class="btn btn-sm btn-link py-0" data-none="${esc(k)}" type="button">None</button></span></div>
+          ${eps.map(e => { const w = whereOf(e); return `<label class="d-flex gap-2 align-items-start small py-1 border-top" data-hk="${esc(k)}">
+            <input class="form-check-input mt-1" type="checkbox" data-e="${e.id}" ${chosenEps.has(e.id) ? "checked" : ""} ${w ? "" : "disabled"} data-active="${isActive(e) ? 1 : 0}">
+            <span class="flex-fill"><span class="font-monospace">${esc(epLabel(e))}</span> <span class="text-muted">#${e.id}</span>${isActive(e) ? "" : ' <span class="badge text-bg-secondary">inactive</span>'}</span>
+            <span class="font-monospace text-muted text-nowrap">${w ? esc(w.host + ":" + w.port) : '<span class="text-danger">no address</span>'}</span></label>`; }).join("")}</div>`; }).join("")}</div>`;
+    const sync = () => { body.querySelectorAll("[data-e]").forEach(cb => cb.checked ? chosenEps.add(+cb.dataset.e) : chosenEps.delete(+cb.dataset.e)); wizInfo(); };
+    body.querySelectorAll("[data-e]").forEach(cb => cb.onchange = sync);
+    const set = (k, fn) => { body.querySelectorAll(`[data-hk="${CSS.escape(k)}"] [data-e]:not(:disabled)`).forEach(cb => cb.checked = fn(cb)); sync(); };
+    body.querySelectorAll("[data-all]").forEach(b => b.onclick = () => set(b.dataset.all, () => true));
+    body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => set(b.dataset.act, cb => cb.dataset.active === "1"));
+    body.querySelectorAll("[data-none]").forEach(b => b.onclick = () => set(b.dataset.none, () => false));
+  }
+  if (step === 3) {
+    body.innerHTML = `<div class="row g-3">
+      <div class="col-sm-4"><label class="form-label small mb-1">Ping every</label><select class="form-select form-select-sm" id="wInt">${PC.intervals.map(s => `<option value="${s}" ${s === settings.interval ? "selected" : ""}>${s} seconds</option>`).join("")}</select></div>
+      <div class="col-sm-4"><label class="form-label small mb-1">Stop after</label><select class="form-select form-select-sm" id="wRounds">${PC.rounds.map(n => `<option value="${n}" ${n === settings.rounds ? "selected" : ""}>${n ? n + " rounds" : "Keep polling until stopped"}</option>`).join("")}</select></div>
+      <div class="col-sm-4"><label class="form-label small mb-1">No reply after (ms)</label><input class="form-control form-control-sm" id="wTo" type="number" min="500" max="30000" step="500" value="${settings.timeout}"></div>
+      <div class="col-12"><div class="alert alert-info small mb-0">${PC.pingService ? `Pings go through the ping service in config.js (<code>${esc(PC.pingService)}</code>).`
+        : `Browsers can't send ICMP, so each ping times a bare connection to the IP and port (no API path, no credentials). Hosts that answer show their connect time; a host that doesn't reply within the limit is down. To use real ICMP, set <code>poller.pingService</code> in config.js.`}</div></div></div>`;
+  }
+  $("#wizNext").textContent = step === 3 ? "Start polling" : "Next";
+  wizInfo();
+}
+function wizInfo() {
+  const eps = endpoints.filter(e => chosenEps.has(e.id) && chosenHosts.has(hostKey(e.apiHostId)));
+  const addrs = new Set(eps.map(whereOf).filter(Boolean).map(w => w.host + ":" + w.port));
+  $("#wizInfo").textContent = step === 1 ? `${chosenHosts.size} host${chosenHosts.size === 1 ? "" : "s"} chosen` : `${eps.length} endpoint${eps.length === 1 ? "" : "s"} on ${addrs.size} address${addrs.size === 1 ? "" : "es"}`;
+  $("#wizNext").disabled = step === 1 ? !chosenHosts.size : !eps.length;
+}
+$("#wizBack").onclick = () => { step = Math.max(1, step - 1); wizDraw(); };
+$("#wizNext").onclick = async () => {
+  if (step === 1) {
+    // first time a host is picked, tick its active endpoints
+    chosenHosts.forEach(k => { const eps = epsOfHost(k); if (!eps.some(e => chosenEps.has(e.id))) eps.filter(e => isActive(e) && whereOf(e)).forEach(e => chosenEps.add(e.id)); });
+    step = 2; wizDraw(); return;
+  }
+  if (step === 2) { step = 3; wizDraw(); return; }
+  settings = { interval: +$("#wInt").value, rounds: +$("#wRounds").value, timeout: Math.min(30000, Math.max(500, +$("#wTo").value || PC.timeoutMs)) };
+  // only endpoints of the chosen hosts
+  chosenEps = new Set([...chosenEps].filter(id => { const e = endpoints.find(x => x.id === id); return e && chosenHosts.has(hostKey(e.apiHostId)); }));
+  remember();
+  $("#wizNext").disabled = true; $("#wizNext").innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Resolving IPs…';
+  stop("Resolving IP addresses…");
+  await buildTargets();
+  wizM.hide();
+  $("#runBtn").disabled = $("#onceBtn").disabled = !targets.length;
+  draw();
+  start();
+};
+function openWizard() { step = 1; wizDraw(); wizM.show(); }
+$("#wizBtn").onclick = openWizard;
+
+// ---------- load ----------
+(async () => {
+  $("#grid").innerHTML = Cocky.spinner("Reading hosts and endpoints…");
+  try {
+    [hosts, endpoints, window._hostExc] = await Promise.all([Cocky.api.list("apihosts"), Cocky.api.list("apiaudit"), Cocky.api.list("hostexceptions").catch(() => [])]);
+  } catch (e) { $("#grid").innerHTML = ""; $("#grid").appendChild(Cocky.errorBox(e, () => location.reload())); return; }
+  hosts.sort((a, b) => hostName(a).localeCompare(hostName(b)));
+  // drop remembered choices that no longer exist
+  chosenHosts = new Set([...chosenHosts].filter(k => k === "none" ? endpoints.some(e => e.apiHostId == null) : hosts.some(h => String(h.id) === k)));
+  chosenEps = new Set([...chosenEps].filter(id => endpoints.some(e => e.id === id)));
+  const qh = new URLSearchParams(location.search).get("host");
+  if (qh) { chosenHosts = new Set([qh]); chosenEps = new Set(epsOfHost(qh).filter(e => isActive(e) && whereOf(e)).map(e => e.id)); }
+  draw();
+  openWizard();   // the wizard opens on load
+})();
+window.addEventListener("beforeunload", () => clearInterval(timer));
+</script>
+</body>
+</html>

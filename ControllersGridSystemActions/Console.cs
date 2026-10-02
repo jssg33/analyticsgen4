@@ -77,13 +77,9 @@ public class SystemConsoleController : ControllerBase
 
                 return Ok("Option 7 is currently disabled.");
 
+            //THIS API POWERS THE COCKYAUDITOR AND COCKYANALYTICS. THE AUDITOR TOOL CAN IMPORT THE ENTIRE TEXT FILE.
             case 8:
-                // using var context = new EnterpriseContext();
-                // var ratingService = new ParkRatingService(context);
-                // var result = ratingService.UpdateAverageRatingsForFirst500();
-                // return Ok(result);
-
-                return Ok("Option 8 is currently disabled.");
+                return Ok(SqlAzureSecurityAudit.RunAudit());
 
             case 9:
                 return Ok(BackendWebServerPoller.PollBackendServers());

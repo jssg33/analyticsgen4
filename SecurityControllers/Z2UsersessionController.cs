@@ -56,15 +56,40 @@ public static class UsersessionEndpoints
         group.MapPut("/{id}", async (int id, Usersession input) =>
         {
             using var context = new EnterpriseContext();
-            var session = context.Usersessions.FirstOrDefault(item => item.Id == id);
-            if (session is null)
+            var s = context.Usersessions.FirstOrDefault(item => item.Id == id);
+            if (s is null)
             {
                 return Results.NotFound();
             }
 
             if (input.Sessiondescription is not null)
             {
-                session.Sessiondescription = input.Sessiondescription;
+                if (input.Userid != null) s.Userid = input.Userid;
+                if (input.Token != null) s.Token = input.Token;
+                if (input.GoogleToken != null) s.GoogleToken = input.GoogleToken;
+                if (input.FacebookToken != null) s.FacebookToken = input.FacebookToken;
+                if (input.MicrosoftToken != null) s.MicrosoftToken = input.MicrosoftToken;
+                if (input.Targetcipher != null) s.Targetcipher = input.Targetcipher;
+                if (input.Acknowledged != null) s.Acknowledged = input.Acknowledged;
+                if (input.Actionpriority != null) s.Actionpriority = input.Actionpriority;
+                if (input.Sessionstart != null) s.Sessionstart = input.Sessionstart;
+                if (input.Sessionend != null) s.Sessionend = input.Sessionend;              // needed by User Sessions
+                if (input.Sessionrecorded != null) s.Sessionrecorded = input.Sessionrecorded;
+                if (input.Sessionrecordurl != null) s.Sessionrecordurl = input.Sessionrecordurl;
+                if (input.Sessiondescription != null) s.Sessiondescription = input.Sessiondescription;
+                if (input.Sessionusername != null) s.Sessionusername = input.Sessionusername;
+                if (input.Sessionemail != null) s.Sessionemail = input.Sessionemail;
+                if (input.Sessionfirstname != null) s.Sessionfirstname = input.Sessionfirstname;
+                if (input.Sessionlastname != null) s.Sessionlastname = input.Sessionlastname;
+                if (input.Sessionfullname != null) s.Sessionfullname = input.Sessionfullname;
+                if (input.Sessioncomplete != null) s.Sessioncomplete = input.Sessioncomplete;  // needed by User Sessions
+                if (input.Twofactorkey != null) s.Twofactorkey = input.Twofactorkey;
+                if (input.Twofactorkeysmsdestination != null) s.Twofactorkeysmsdestination = input.Twofactorkeysmsdestination;
+                if (input.Twofactorkeyemaildestination != null) s.Twofactorkeyemaildestination = input.Twofactorkeyemaildestination;
+                if (input.Twofactorprovider != null) s.Twofactorprovider = input.Twofactorprovider;
+                if (input.Twofactorprovidertoken != null) s.Twofactorprovidertoken = input.Twofactorprovidertoken;
+                if (input.Twofactorproviderauthstring != null) s.Twofactorproviderauthstring = input.Twofactorproviderauthstring;
+                if (input.Useridasstring != null) s.Useridasstring = input.Useridasstring;
             }
 
             await context.SaveChangesAsync();
