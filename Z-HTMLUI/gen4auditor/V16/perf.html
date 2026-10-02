@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  .perf-tiles .num { font-size: 1.7rem; }
+  .perf-tiles .unit { font-size: .9rem; font-weight: 500; color: #6c757d; margin-left: 2px; }
+  .v-ok   { color: #198754; } .v-warn { color: #9a6700; } .v-fail { color: #b02a37; } .v-na { color: #6c757d; }
+  .v-badge { white-space: nowrap; font-size: .8rem; font-weight: 600; }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable::after { content: " ↕"; color: #adb5bd; font-weight: 400; }
+  th.sortable.asc::after { content: " ↑"; color: #495057; } th.sortable.desc::after { content: " ↓"; color: #495057; }
+  #perfTable td { vertical-align: middle; }
+</style>
+</head>
+<body>
+<section data-page>
+  <h2>Performance</h2>
+  <div class="page-sub">API response times from Run Audit, measured from the auditor's browser when the run was saved (so they include that
+    person's network). Good for comparing endpoints and hosts; not an exact server time.</div>
+  <div id="banner"></div>
+
+  <div class="card mb-3"><div class="card-body py-2">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <select class="form-select form-select-sm" id="scope" style="max-width:320px"></select>
+      <select class="form-select form-select-sm" id="hostSel" style="max-width:240px"><option value="">All hosts</option></select>
+      <input class="form-control form-control-sm" id="q" style="max-width:220px" placeholder="Search endpoints…">
+      <span class="small text-muted ms-auto" id="scopeNote"></span>
+    </div>
+  </div></div>
+
+  <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-3 perf-tiles" id="tiles"></div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-xl-7"><div class="card h-100"><div class="card-body">
+      <h5 class="mb-1" id="slowTitle">Slowest endpoints</h5>
+      <div class="small text-muted mb-2">Dashed lines are the warning and fail thresholds (config.js <code>performance</code>). Click a bar to open the endpoint in Run Audit.</div>
+      <div id="slowChart"></div>
+    </div></div></div>
+    <div class="col-xl-5"><div class="card h-100"><div class="card-body">
+      <h5 class="mb-1">By host</h5>
+      <div class="small text-muted mb-2">Median and slowest response per host API. Click a host to filter.</div>
+      <div id="hostTable"></div>
+    </div></div></div>
+  </div>
+
+  <div class="card"><div class="card-body">
+    <h5 class="mb-2">All timed endpoints</h5>
+    <div id="allTable"></div>
+  </div></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="charts.js"></script>
+<script>
+Cocky.layout("perf");
+const { esc } = Cocky;
+const $ = id => document.getElementById(id);
+const PF = Object.assign({ warnMs: 2000, failMs: 5000, chartTop: 20 }, Cocky.CFG.performance || {});
+const params = new URLSearchParams(location.search);
+const pick = (o, name) => { const k = Object.keys(o || {}).find(x => x.toLowerCase() === name.toLowerCase()); return k ? o[k] : undefined; };
+const msOf = e => { const v = pick(e, "lastResponseMs"); return v == null || v === "" ? null : Number(v); };
+const stOf = e => { const v = pick(e, "lastStatusCode"); return v == null || v === "" ? null : Number(v); };
+const epLabel = e => e.description || e.url || "Endpoint #" + e.id;
+
+// Verdict for a timing: No response (status 0), Slow (> failMs), Warning (> warnMs), OK
+function verdict(e) {
+  const ms = msOf(e), st = stOf(e);
+  if (ms == null) return st === 0 ? { k: "fail", t: "No response", icon: "✕" } : { k: "na", t: "Not timed", icon: "–" };
+  if (ms > PF.failMs) return { k: "fail", t: "Slow", icon: "✕" };
+  if (ms > PF.warnMs) return { k: "warn", t: "Warning", icon: "!" };
+  return { k: "ok", t: "OK", icon: "✓" };
+}
+const vBadge = v => `<span class="v-badge v-${v.k}">${v.icon} ${esc(v.t)}</span>`;
+const fmtMs = ms => ms == null ? "—" : ms >= 10000 ? (ms / 1000).toFixed(1) + " s" : Math.round(ms).toLocaleString() + " ms";
+const quantile = (arr, q) => { if (!arr.length) return null; const s = arr.slice().sort((a, b) => a - b); const i = (s.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
+
+let D = { endpoints: [], hosts: [], results: [] };
+async function load() {
+  $("slowChart").innerHTML = $("hostTable").innerHTML = $("allTable").innerHTML = Cocky.spinner();
+  try {
+    const [endpoints, hosts, results] = await Promise.all([Cocky.api.list("apiaudit"), Cocky.api.list("apihosts"), Cocky.api.list("apiauditresults").catch(() => [])]);
+    D = { endpoints, hosts, results, hostById: new Map(hosts.map(h => [h.id, h])) };
+  } catch (e) { ["slowChart", "hostTable", "allTable"].forEach(id => $(id).innerHTML = ""); $("allTable").appendChild(Cocky.errorBox(e, load)); return; }
+
+  // Scope: the newest audit that stamped endpoints (default), or the latest time on every endpoint
+  const stamped = new Set(D.endpoints.map(e => e.auditResultId).filter(id => id != null && id !== 0));
+  const audits = D.results.filter(r => stamped.has(r.id)).sort((a, b) => Cocky.dateMs(b.auditDate) - Cocky.dateMs(a.auditDate) || b.id - a.id);
+  const want = $("scope").value || params.get("audit") || "";
+  $("scope").innerHTML = audits.slice(0, 15).map((r, i) => `<option value="${r.id}">${i === 0 ? "Last audit" : "Audit"} #${r.id} · ${esc(Cocky.parseDate(r.auditDate)?.toLocaleString() || "")}${r.auditorName ? " · " + esc(r.auditorName) : ""}</option>`).join("")
+    + `<option value="all">Latest time on every endpoint</option>`;
+  $("scope").value = [...$("scope").options].some(o => o.value === want) ? want : (audits[0] ? String(audits[0].id) : "all");
+
+  const hostWant = $("hostSel").value || params.get("host") || "";
+  $("hostSel").innerHTML = `<option value="">All hosts</option>` + D.hosts.slice().sort((a, b) => String(a.apiHostName || "").localeCompare(String(b.apiHostName || "")))
+    .map(h => `<option value="${h.id}">${esc(h.apiHostName || h.apiHostUrl || "#" + h.id)}</option>`).join("");
+  $("hostSel").value = hostWant;
+
+  // Banner: is the API returning the new fields yet?
+  const hasField = D.endpoints.some(e => pick(e, "lastResponseMs") !== undefined);
+  const anyTimed = D.endpoints.some(e => msOf(e) != null || stOf(e) === 0);
+  $("banner").innerHTML = !D.endpoints.length ? "" : !hasField
+    ? `<div class="alert alert-warning small"><strong>The API doesn't return response times yet.</strong> <code>GET ${esc(Cocky.CFG.endpoints.apiaudit)}</code> has no
+       <code>LastResponseMs</code> / <code>LastStatusCode</code>. Add them to the <code>Apiaudit</code> model and table, recompile and deploy, then run an audit.</div>`
+    : !anyTimed ? `<div class="alert alert-info small"><strong>No response times saved yet.</strong> Open <a href="apiaudit.html">Run Audit</a>, run it, and
+       <b>Save audit to History</b> with "Also stamp the audited endpoints" ticked. Times are saved from then on.</div>` : "";
+  draw();
+}
+
+function rowsInScope() {
+  const scope = $("scope").value, host = $("hostSel").value, q = $("q").value.trim().toLowerCase();
+  let rows = D.endpoints.filter(e => msOf(e) != null || stOf(e) === 0);
+  if (scope !== "all") rows = rows.filter(e => String(e.auditResultId) === scope);
+  if (host) rows = rows.filter(e => String(e.apiHostId) === host);
+  if (q) rows = rows.filter(e => [epLabel(e), e.url, D.hostById.get(e.apiHostId)?.apiHostName].some(v => String(v || "").toLowerCase().includes(q)));
+  return rows;
+}
+
+function draw() {
+  const scope = $("scope").value, rows = rowsInScope();
+  const audit = D.results.find(r => String(r.id) === scope);
+  const inAudit = scope === "all" ? null : D.endpoints.filter(e => String(e.auditResultId) === scope).length;
+  $("scopeNote").textContent = audit ? `${inAudit} endpoint${inAudit === 1 ? "" : "s"} in audit #${audit.id}` : "Each endpoint's most recent saved time";
+
+  // Tiles
+  const times = rows.map(msOf).filter(v => v != null);
+  const noResp = rows.filter(e => msOf(e) == null && stOf(e) === 0).length;
+  const warn = times.filter(v => v > PF.warnMs && v <= PF.failMs).length, fail = times.filter(v => v > PF.failMs).length;
+  const tile = (lbl, val, sub = "", cls = "") => `<div class="col"><div class="card stat h-100"><div class="card-body"><div class="lbl">${lbl}</div>
+    <div class="num ${cls}">${val}</div>${sub ? `<div class="small text-muted">${sub}</div>` : ""}</div></div></div>`;
+  const unitMs = v => v == null ? "—" : v >= 10000 ? `${(v / 1000).toFixed(1)}<span class="unit">s</span>` : `${Math.round(v).toLocaleString()}<span class="unit">ms</span>`;
+  $("tiles").innerHTML = [
+    tile("Endpoints timed", times.length, noResp ? `+ ${noResp} no response` : ""),
+    tile("Median", unitMs(quantile(times, 0.5))),
+    tile("95th percentile", unitMs(quantile(times, 0.95)), "95% answered faster"),
+    tile("Slowest", unitMs(times.length ? Math.max(...times) : null)),
+    tile("Warning", warn, `${PF.warnMs / 1000}–${PF.failMs / 1000} s`, warn ? "v-warn" : ""),
+    tile("Slow / no reply", fail + noResp, `over ${PF.failMs / 1000} s, or none`, fail + noResp ? "v-fail" : "")
+  ].join("");
+
+  // Slowest endpoints chart (D3)
+  const hostLbl = e => { const h = D.hostById.get(e.apiHostId); return h ? h.apiHostName || h.apiHostUrl : ""; };
+  const top = rows.filter(e => msOf(e) != null).sort((a, b) => msOf(b) - msOf(a)).slice(0, PF.chartTop);
+  $("slowTitle").textContent = `Slowest ${top.length || ""} endpoint${top.length === 1 ? "" : "s"}`.replace("  ", " ");
+  CockyCharts.hbars($("slowChart"), top.map(e => {
+    const v = verdict(e), st = stOf(e);
+    return { label: epLabel(e), sub: hostLbl(e), value: Math.round(msOf(e)), href: "apiaudit.html?id=" + e.id,
+      tip: `<b>${esc(epLabel(e))}</b><br>${esc(fmtMs(msOf(e)))} · ${vBadge(v)}<div class="n">${esc(hostLbl(e))}${st != null ? " · HTTP " + st : " · status not readable (CORS)"}</div>` };
+  }), { unit: "ms", format: v => fmtMs(v), tickFormat: v => v >= 1000 ? v / 1000 + " s" : v + " ms",
+        rules: [{ value: PF.warnMs, label: `${PF.warnMs / 1000} s warn`, color: "#9a6700" }, { value: PF.failMs, label: `${PF.failMs / 1000} s fail`, color: "#b02a37" }] });
+
+  // By host
+  const byHost = new Map();
+  rows.forEach(e => { const k = e.apiHostId ?? "none"; if (!byHost.has(k)) byHost.set(k, []); byHost.get(k).push(e); });
+  const hostRows = [...byHost].map(([id, eps]) => {
+    const t = eps.map(msOf).filter(v => v != null);
+    return { id, name: id === "none" ? "(no host)" : (D.hostById.get(id)?.apiHostName || "Host #" + id), n: eps.length,
+      med: quantile(t, 0.5), max: t.length ? Math.max(...t) : null, none: eps.filter(e => msOf(e) == null).length,
+      slow: t.filter(v => v > PF.warnMs).length };
+  }).sort((a, b) => (b.med ?? -1) - (a.med ?? -1));
+  const maxMed = Math.max(1, ...hostRows.map(h => h.med || 0));
+  $("hostTable").innerHTML = hostRows.length ? `<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Host</th><th class="text-end">Timed</th><th>Median</th><th class="text-end">Slowest</th><th class="text-end" title="Endpoints over ${PF.warnMs / 1000} s">Slow</th></tr></thead><tbody>
+    ${hostRows.map(h => `<tr class="clickable" data-host="${h.id}"><td>${esc(h.name)}</td><td class="text-end">${h.n}${h.none ? ` <span class="small v-fail" title="no response">(${h.none} ✕)</span>` : ""}</td>
+      <td><div class="d-flex align-items-center gap-2"><span class="text-nowrap" style="min-width:64px">${fmtMs(h.med)}</span>
+        <div class="perf-bar flex-grow-1"><div style="width:${h.med ? Math.max(2, h.med / maxMed * 100) : 0}%"></div></div></div></td>
+      <td class="text-end text-nowrap">${fmtMs(h.max)}</td><td class="text-end ${h.slow ? "v-warn fw-semibold" : "text-muted"}">${h.slow}</td></tr>`).join("")}
+    </tbody></table></div>` : '<div class="empty">No timed endpoints.</div>';
+  $("hostTable").querySelectorAll("tr[data-host]").forEach(tr => tr.onclick = () => { if (tr.dataset.host !== "none") { $("hostSel").value = tr.dataset.host; draw(); } });
+
+  drawAll(rows);
+}
+
+// Full table, sortable
+let sortKey = "ms", sortDir = -1;
+function drawAll(rows) {
+  const hostLbl = e => { const h = D.hostById.get(e.apiHostId); return h ? h.apiHostName || h.apiHostUrl : "—"; };
+  const keyFn = { ep: e => epLabel(e).toLowerCase(), host: e => String(hostLbl(e)).toLowerCase(), ms: e => msOf(e) ?? Infinity, st: e => stOf(e) ?? -1,
+    when: e => Cocky.dateMs(e.lastAuditDate) }[sortKey];
+  const sorted = rows.slice().sort((a, b) => { const x = keyFn(a), y = keyFn(b); return (x < y ? -1 : x > y ? 1 : 0) * sortDir; });
+  const maxMs = Math.max(1, ...rows.map(msOf).filter(v => v != null));
+  const th = (k, t, cls = "") => `<th class="sortable ${cls} ${sortKey === k ? (sortDir > 0 ? "asc" : "desc") : ""}" data-k="${k}">${t}</th>`;
+  $("allTable").innerHTML = rows.length ? `<div class="table-responsive"><table class="table table-sm table-hover mb-0" id="perfTable">
+    <thead><tr>${th("ep", "Endpoint")}${th("host", "Host")}${th("ms", "Response time")}<th>Result</th>${th("st", "HTTP", "text-end")}${th("when", "Audited")}</tr></thead><tbody>
+    ${sorted.map(e => { const ms = msOf(e), st = stOf(e), v = verdict(e);
+      return `<tr class="clickable" data-id="${e.id}"><td>${esc(epLabel(e))}${e.url && e.url !== e.description ? `<div class="small text-muted text-truncate" style="max-width:380px">${esc(e.url)}</div>` : ""}</td>
+        <td>${esc(hostLbl(e))}</td>
+        <td style="min-width:170px"><div class="d-flex align-items-center gap-2"><span class="text-nowrap" style="min-width:64px">${fmtMs(ms)}</span>
+          <div class="perf-bar flex-grow-1"><div style="width:${ms != null ? Math.max(2, ms / maxMs * 100) : 0}%"></div></div></div></td>
+        <td>${vBadge(v)}</td>
+        <td class="text-end">${st == null ? '<span class="text-muted small" title="The API doesn\'t allow this origin in CORS, so the status can\'t be read">n/a</span>' : st === 0 ? '<span class="v-fail">—</span>' : st}</td>
+        <td class="text-nowrap small">${esc(Cocky.parseDate(e.lastAuditDate)?.toLocaleString() || "—")}</td></tr>`; }).join("")}
+    </tbody></table></div>` : `<div class="empty">No timed endpoints${$("hostSel").value || $("q").value ? " match the filters" : " in this audit"}.</div>`;
+  $("allTable").querySelectorAll("th[data-k]").forEach(h => h.onclick = () => { const k = h.dataset.k; sortDir = sortKey === k ? -sortDir : (k === "ms" || k === "when" ? -1 : 1); sortKey = k; drawAll(rows); });
+  $("allTable").querySelectorAll("tr[data-id]").forEach(tr => tr.onclick = () => location.href = "apiaudit.html?id=" + tr.dataset.id);
+}
+
+["scope", "hostSel"].forEach(id => $(id).addEventListener("change", draw));
+$("q").addEventListener("input", draw);
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(draw, 200); });
+load();
+</script>
+</body>
+</html>

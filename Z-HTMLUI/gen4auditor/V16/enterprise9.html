@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enterprise(9) · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  /* +/- instead of Bootstrap's chevron */
+  .e9-acc .accordion-button::after { display: none; }
+  .e9-acc .accordion-button { gap: 12px; padding: 12px 16px; }
+  .e9-acc .pm { flex: 0 0 26px; height: 26px; border-radius: 6px; border: 1px solid #ced4da; display: grid; place-items: center;
+                font-weight: 700; font-size: 1.05rem; line-height: 1; background: #fff; color: #495057; }
+  .e9-acc .pm::before { content: "+"; }
+  .e9-acc .accordion-button:not(.collapsed) .pm { background: #f0a020; border-color: #f0a020; color: #1f2328; }
+  .e9-acc .accordion-button:not(.collapsed) .pm::before { content: "\2212"; }
+  .e9-acc .accordion-button:not(.collapsed) { background: #fff8eb; color: inherit; box-shadow: inset 0 -1px 0 #e3e6ea; }
+  .e9-acc .not-registered .accordion-button { opacity: .6; }
+  .e9-acc .accordion-body { background: #fff; }
+  .log-table td { font-size: .85rem; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-table th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #6c757d; white-space: nowrap; }
+  .detail-grid { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 4px 16px; font-size: .88rem; }
+  .detail-grid .k { color: #6c757d; word-break: break-word; }
+  .detail-grid .v { word-break: break-word; white-space: pre-wrap; }
+  .src-note { font-size: .8rem; color: #6c757d; }
+</style>
+</head>
+<body>
+<section data-page>
+  <h2>Enterprise(9) Logs</h2>
+  <div class="page-sub">Every endpoint with <b>log</b> in its path is part of Enterprise(9). Pick an application to see its log sets
+    (found among its registered endpoints) and the newest records of each; click a row for the full detail.</div>
+
+  <div class="card mb-3"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-end">
+      <div><label class="form-label small mb-1" for="appSel">Application</label>
+        <select class="form-select form-select-sm" id="appSel" style="min-width:260px"></select></div>
+      <div><label class="form-label small mb-1" for="token">Bearer token <span class="text-muted">(only if the logs need one)</span></label>
+        <input class="form-control form-control-sm" id="token" type="password" autocomplete="off" style="min-width:240px" placeholder="Not stored"></div>
+      <button class="btn btn-sm btn-outline-primary" id="reload" type="button">Reload</button>
+      <button class="btn btn-sm btn-outline-secondary" id="loadAll" type="button">Check all logs</button>
+    </div>
+  </div></div>
+
+  <div id="body"></div>
+</section>
+
+<div class="modal fade" id="detailModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="detail-grid" id="detailGrid"></div>
+    <details class="mt-3"><summary class="small text-muted">Raw JSON</summary><pre class="bg-light p-2 rounded small mb-0" id="detailRaw"></pre></details>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("logs");
+const { esc, api } = Cocky;
+const LOGS = Cocky.CFG.enterpriseLogs || { types: [], take: 25 };
+const TAKE = LOGS.take || 25;
+const body = document.getElementById("body"), appSel = document.getElementById("appSel"), tokenEl = document.getElementById("token");
+
+let apps = [], links = [], hosts = [], endpoints = [], rollup = [];
+let current = null;            // { app, hosts, endpoints }
+let wantedLog = null;          // ?log= on the address
+let types = [];               // this app's log sets (discovered + configured)
+const cache = new Map();       // `${appId}|${type}` -> result
+
+const blank = v => v == null || String(v).trim() === "" || String(v).trim().toLowerCase() === "string";
+const val = v => blank(v) ? "" : String(v).trim();
+const joinUrl = (base, path) => { const b = String(base || "").replace(/\/+$/, ""), s = String(path || "").replace(/^\/+/, ""); return s ? `${b}/${s}` : b; };
+const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+function methodOf(e) {
+  for (const v of [e.type, e.endpointType, String(e.description || "").trim().split(/\s+/)[0]]) {
+    const m = String(v || "").trim().toUpperCase(); if (METHODS.includes(m)) return m;
+  }
+  return "";
+}
+function pathOf(e) {
+  const u = val(e.url);
+  try { return /^https?:\/\//i.test(u) ? new URL(u).pathname : u; } catch { return u; }
+}
+// Same rules as Run Audit for turning an endpoint record into a URL
+function targetUrl(e) {
+  const u = val(e.url), root = val(e.apiRoot);
+  if (/^https?:\/\//i.test(u)) return u;
+  if (/^https?:\/\//i.test(root)) return joinUrl(root, u);
+  const h = hosts.find(x => x.id === e.apiHostId);
+  if (h && val(h.apiHostUrl)) return joinUrl(joinUrl(val(h.apiHostUrl), root), u);
+  const host = val(e.fqdn) || val(e.hostName);
+  if (!host) return "";
+  const port = e.primaryPort > 0 && ![80, 443].includes(e.primaryPort) ? ":" + e.primaryPort : "";
+  return joinUrl(joinUrl(`https://${host}${port}`, root), u);
+}
+
+// Which endpoints are Enterprise(9), and which set each belongs to: shared with the Apps page (app.js, Cocky.e9)
+const { segsOf, isParam, cfgFor, namesOf } = Cocky.e9;
+
+// Tabs for the chosen app: every set found among its registered endpoints, then any standard set from config.js
+// that this app hasn't registered (those are tried on their standard route)
+function discoverTypes() {
+  const found = Cocky.e9.sets(current.endpoints).map(x => ({ ...x, discovered: true }));
+  const have = new Set(found.map(x => x.name.toLowerCase()));
+  const extra = (LOGS.types || []).filter(t => !have.has(t.name.toLowerCase())).map(t => ({ ...t, endpoints: [], discovered: false }));
+  return found.concat(extra);
+}
+
+// Where to read a log set's records: its registered GET endpoint that lists them (path ends at the set name, no
+// {parameters}); else any GET without parameters in the set; else, for a set that isn't registered, /api/<Name>.
+function sourcesFor(type) {
+  const listable = e => e.isActive !== false && (methodOf(e) || "GET") === "GET" && !segsOf(e).some(isParam);
+  const names = cfgFor(type.name) ? namesOf(cfgFor(type.name)) : [type.name.toLowerCase()];
+  const endsAtSet = e => names.includes((segsOf(e).pop() || "").toLowerCase());
+  let found = type.endpoints.filter(e => listable(e) && endsAtSet(e));
+  if (!found.length) found = type.endpoints.filter(listable);
+  const byUrl = new Map();
+  found.forEach(e => { const u = targetUrl(e); if (u && !byUrl.has(u.toLowerCase())) byUrl.set(u.toLowerCase(), { url: u, endpoint: e, host: hosts.find(h => h.id === e.apiHostId) }); });
+  if (byUrl.size) return [...byUrl.values()];
+  if (type.discovered) return [];   // registered, but nothing that lists records (e.g. only POST or GET /{id})
+  return current.hosts.filter(h => val(h.apiHostUrl)).map(h => ({ url: joinUrl(val(h.apiHostUrl), (type.path || "/api/" + type.name)), endpoint: null, host: h, guessed: true }));
+}
+
+// Log APIs answer with a plain array, or wrap it ({ items: [...] }, { data: [...] }, OData { value: [...] }...)
+function rowsFrom(data) {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === "object") {
+    for (const k of ["items", "data", "value", "results", "records", "logs", "rows"]) if (Array.isArray(data[k])) return data[k];
+    const arr = Object.values(data).find(Array.isArray); if (arr) return arr;
+    return [data];
+  }
+  return [];
+}
+
+// Newest first: by the log's own date/time field if it has one, else by id
+const DATE_HINT = /(logged|created|timestamp|datetime|eventdate|logdate|actiondate|sessionstart|starttime|time|date|when)/i;
+function dateKeyOf(rows) {
+  const sample = rows.slice(0, 20);
+  const keys = [...new Set(sample.flatMap(r => Object.keys(r || {})))];
+  const isDate = k => sample.some(r => typeof r?.[k] === "string" && /^\d{4}-\d{2}-\d{2}/.test(r[k]) && !isNaN(Cocky.dateMs(r[k])));
+  const ranked = keys.filter(isDate).sort((a, b) => (DATE_HINT.test(b) ? 1 : 0) - (DATE_HINT.test(a) ? 1 : 0) ||
+    (/(created|logged|timestamp)/i.test(b) ? 1 : 0) - (/(created|logged|timestamp)/i.test(a) ? 1 : 0));
+  return ranked[0] || null;
+}
+const idKeyOf = rows => Object.keys(rows[0] || {}).find(k => /^id$/i.test(k)) || Object.keys(rows[0] || {}).find(k => /id$/i.test(k) && typeof rows[0][k] === "number") || null;
+
+async function fetchLog(src) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), Cocky.CFG.requestTimeoutMs || 30000);
+  const headers = { Accept: "application/json" };
+  if (tokenEl.value.trim()) headers.Authorization = "Bearer " + tokenEl.value.trim().replace(/^Bearer\s+/i, "");
+  try {
+    const res = await fetch(src.url, { headers, cache: "no-store", signal: ctrl.signal });
+    const text = await res.text();
+    if (!res.ok) throw Object.assign(new Error(`${res.status} ${res.statusText}${text && text.length < 200 ? " - " + text : ""}`), { status: res.status });
+    let data = null; try { data = text ? JSON.parse(text) : []; } catch { throw new Error("The answer wasn't JSON."); }
+    return rowsFrom(data).filter(r => r && typeof r === "object");
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Timed out.");
+    if (e instanceof TypeError) throw new Error(`Couldn't reach it (CORS or the API is down). The API must allow ${location.origin}.`);
+    throw e;
+  } finally { clearTimeout(t); }
+}
+
+async function loadType(type, force = false) {
+  const key = `${current.app.id}|${type.name}`;
+  if (!force && cache.has(key)) return cache.get(key);
+  const sources = sourcesFor(type), all = [], errors = [];
+  await Promise.all(sources.map(async s => {
+    try { (await fetchLog(s)).forEach(r => all.push({ row: r, src: s })); }
+    catch (e) { errors.push({ src: s, message: e.message, status: e.status }); }
+  }));
+  const rows = all.map(x => x.row);
+  const dk = rows.length ? dateKeyOf(rows) : null, ik = rows.length ? idKeyOf(rows) : null;
+  all.sort((a, b) => (dk ? Cocky.dateMs(b.row[dk]) - Cocky.dateMs(a.row[dk]) : 0) || (ik ? (+b.row[ik] || 0) - (+a.row[ik] || 0) : 0));
+  const result = { type, sources, total: all.length, latest: all.slice(0, TAKE), dateKey: dk, idKey: ik, errors,
+    multiHost: new Set(sources.map(s => s.host?.id)).size > 1 };
+  cache.set(key, result);
+  return result;
+}
+
+// ---- drawing: one accordion item per log category, each with a +/- toggle and a Bootstrap grid ----
+const itemId = t => "e9-" + types.indexOf(t);
+function countBadge(r) {
+  if (!r) return '<span class="badge text-bg-light border" title="Not loaded yet">…</span>';
+  if (!r.sources.length) return '<span class="badge text-bg-light border" title="Nothing to read">–</span>';
+  if (r.errors.length && !r.total) return `<span class="badge text-bg-danger" title="${esc(r.errors[0].message)}">!</span>`;
+  return `<span class="badge ${r.total ? "text-bg-primary" : "text-bg-light border"}" title="${r.total} record(s)">${r.total}</span>`;
+}
+const routeText = t => t.endpoints.length
+  ? [...new Set(t.endpoints.filter(e => (methodOf(e) || "GET") === "GET" && !segsOf(e).some(isParam)).map(e => pathOf(e)))][0] || pathOf(t.endpoints[0])
+  : (t.path || "/api/" + t.name);
+function drawShell() {
+  const nFound = types.filter(t => t.discovered).length, nEps = types.reduce((n, t) => n + t.endpoints.length, 0);
+  const summary = `<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <div class="small text-muted"><b>${nFound}</b> Enterprise(9) log categor${nFound === 1 ? "y" : "ies"} registered for <b>${esc(current.app.applicationName || "this application")}</b>
+        (${nEps} endpoint${nEps === 1 ? "" : "s"})${types.length > nFound ? `, plus ${types.length - nFound} standard categor${types.length - nFound === 1 ? "y" : "ies"} it hasn't registered (dimmed)` : ""}.</div>
+      <div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary" id="expandAll" type="button">+ Expand all</button>
+        <button class="btn btn-outline-secondary" id="collapseAll" type="button">− Collapse all</button></div></div>`;
+  const items = types.map(t => {
+    const id = itemId(t);
+    return `<div class="accordion-item${t.discovered ? "" : " not-registered"}">
+      <h2 class="accordion-header" id="${id}-h">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${id}" aria-expanded="false" aria-controls="${id}">
+          <span class="pm" aria-hidden="true"></span>
+          <span class="flex-grow-1"><span class="fw-semibold">${esc(t.label || t.name)}</span>
+            <span class="d-block small text-muted font-monospace">GET ${esc(routeText(t))}${t.discovered ? ` · ${t.endpoints.length} endpoint${t.endpoints.length === 1 ? "" : "s"}` : " · not registered"}</span></span>
+          <span class="ms-2 me-1" data-badge="${id}">${countBadge(cache.get(`${current.app.id}|${t.name}`))}</span>
+        </button>
+      </h2>
+      <div id="${id}" class="accordion-collapse collapse" aria-labelledby="${id}-h" data-name="${esc(t.name)}">
+        <div class="accordion-body" data-body="${id}"></div>
+      </div>
+    </div>`;
+  }).join("");
+  return summary + `<div class="accordion e9-acc" id="e9acc">${items}</div>`;
+}
+const setBadge = t => { const el = body.querySelector(`[data-badge="${itemId(t)}"]`); if (el) el.innerHTML = countBadge(cache.get(`${current.app.id}|${t.name}`)); };
+
+// Columns: id, date, then the most telling short fields; everything is in the detail view
+const PREFER = /^(level|severity|loglevel|type|logtype|eventtype|action|actiontype|category|event|message|msg|summary|description|detail|status|statuscode|user|username|userid|useremail|email|ip|ipaddress|method|endpoint|url|path|source|module)$/i;
+function columnsFor(rows, dk, ik) {
+  const keys = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  const simple = k => rows.every(r => r[k] == null || typeof r[k] !== "object");
+  const filled = k => rows.some(r => !blank(r[k]));
+  const rest = keys.filter(k => k !== dk && k !== ik && simple(k) && filled(k));
+  const pick = rest.filter(k => PREFER.test(k)).slice(0, 5);
+  rest.forEach(k => { if (pick.length < 5 && !pick.includes(k)) pick.push(k); });
+  return [ik, dk, ...pick].filter(Boolean);
+}
+function cell(k, v, dk) {
+  if (v == null || v === "") return '<span class="text-muted">—</span>';
+  if (k === dk) { const d = Cocky.parseDate(v); return d ? esc(d.toLocaleString()) : esc(v); }
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (/^(level|severity|loglevel)$/i.test(k)) {
+    const s = String(v).toLowerCase();
+    const cls = /(err|fatal|crit|fail)/.test(s) ? "danger" : /warn/.test(s) ? "warning" : /(info|notice)/.test(s) ? "info" : "secondary";
+    return `<span class="badge text-bg-${cls}">${esc(v)}</span>`;
+  }
+  return esc(String(v).slice(0, 200));
+}
+
+function drawResult(r) {
+  const setEps = r.type.endpoints.length ? `<details class="src-note mb-2"><summary>${r.type.endpoints.length} registered endpoint${r.type.endpoints.length === 1 ? "" : "s"} in this set</summary>
+      ${r.type.endpoints.map(e => `<div><code>${esc(methodOf(e) || "?")} ${esc(pathOf(e))}</code> <span class="text-muted">#${esc(e.id)}</span></div>`).join("")}</details>` : "";
+  const srcText = r.sources.length
+    ? r.sources.map(s => `<code>GET ${esc(s.url)}</code>${s.endpoint ? ` <span class="text-muted">(endpoint #${esc(s.endpoint.id)})</span>` : ' <span class="text-warning-emphasis">(not registered; tried the standard route)</span>'}`).join("<br>")
+    : r.type.discovered
+      ? `<span class="text-warning-emphasis">None of this set's endpoints lists records (a GET without {parameters}), so there's nothing to read.</span>`
+      : '<span class="text-warning-emphasis">This application has no hosts linked, so there is nowhere to read its logs from. Link hosts on the Apps page.</span>';
+  const errs = r.errors.map(e => `<div class="alert alert-${e.status === 401 || e.status === 403 ? "warning" : "danger"} small py-2 mb-2">
+      <b>${esc(e.src.host?.apiHostName || e.src.url)}</b>: ${esc(e.message)}
+      ${e.status === 401 || e.status === 403 ? " This log needs authentication. Paste a bearer token above and Reload." : ""}
+      ${e.status === 404 ? ` This application doesn't expose ${esc(r.type.name)} at that address.` : ""}</div>`).join("");
+  let table = "";
+  if (r.latest.length) {
+    const rows = r.latest.map(x => x.row), cols = columnsFor(rows, r.dateKey, r.idKey);
+    table = `<div class="table-responsive"><table class="table table-sm table-striped table-bordered table-hover align-middle log-table mb-0"><thead class="table-light"><tr>
+        ${r.multiHost ? "<th>Host</th>" : ""}${cols.map(k => `<th>${esc(Cocky.titleCase(k))}</th>`).join("")}</tr></thead><tbody>
+        ${r.latest.map((x, i) => `<tr class="clickable" data-i="${i}">${r.multiHost ? `<td>${esc(x.src.host?.apiHostName || "")}</td>` : ""}${cols.map(k => `<td>${cell(k, x.row[k], r.dateKey)}</td>`).join("")}</tr>`).join("")}
+      </tbody></table></div>`;
+  } else if (!r.errors.length && r.sources.length) table = `<div class="empty">No ${esc(r.type.name)} records yet.</div>`;
+  return `<div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+        <span class="small">${r.latest.length ? `Newest <b>${r.latest.length}</b> of <b>${r.total}</b> records` : ""}</span>
+        <span class="src-note">${r.dateKey ? `Sorted by ${esc(Cocky.titleCase(r.dateKey))}, newest first` : r.idKey ? `Sorted by ${esc(r.idKey)}, highest first` : ""}</span>
+      </div>
+      <div class="src-note mb-2">${srcText}</div>${setEps}${errs}${table}`;
+}
+
+// Load a category into its accordion body (when it's opened, or on Reload while open)
+async function fill(t, force = false) {
+  const el = body.querySelector(`[data-body="${itemId(t)}"]`); if (!el) return;
+  if (force || !cache.has(`${current.app.id}|${t.name}`)) el.innerHTML = Cocky.spinner(`Loading ${esc(t.label || t.name)}…`);
+  const appId = current.app.id, r = await loadType(t, force);
+  if (!current || current.app.id !== appId) return;           // app changed while loading
+  el.innerHTML = drawResult(r);
+  el.querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = () => detail(r, r.latest[+tr.dataset.i]));
+  setBadge(t);
+}
+
+function show() {
+  if (!current) return;
+  if (!types.length) { body.innerHTML = '<div class="empty">No Enterprise(9) logs for this application: none of its endpoints has "log" in its path, and no standard categories are listed in config.js.</div>'; return; }
+  body.innerHTML = drawShell();
+  body.querySelectorAll(".accordion-collapse").forEach(c => c.addEventListener("show.bs.collapse", () => {
+    const t = types.find(x => x.name === c.dataset.name); if (t) fill(t);
+  }));
+  const each = fn => body.querySelectorAll(".accordion-collapse").forEach(c => fn(bootstrap.Collapse.getOrCreateInstance(c, { toggle: false })));
+  document.getElementById("expandAll").onclick = () => each(c => c.show());
+  document.getElementById("collapseAll").onclick = () => each(c => c.hide());
+  // Open the requested category (?log=), else the first registered one
+  const first = types.find(t => t.name.toLowerCase() === String(wantedLog || "").toLowerCase()) || types.find(t => t.discovered);
+  wantedLog = null;
+  if (first) bootstrap.Collapse.getOrCreateInstance(document.getElementById(itemId(first)), { toggle: false }).show();
+}
+
+function detail(r, x) {
+  const m = document.getElementById("detailModal"), row = x.row;
+  const when = r.dateKey && Cocky.parseDate(row[r.dateKey]);
+  m.querySelector(".modal-title").textContent = `${r.type.label || r.type.name}${r.idKey ? " #" + row[r.idKey] : ""}${when ? " · " + when.toLocaleString() : ""}`;
+  const fmt = (k, v) => v == null || v === "" ? '<span class="text-muted">—</span>'
+    : typeof v === "object" ? `<pre class="mb-0 small">${esc(JSON.stringify(v, null, 2))}</pre>`
+    : typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v) && Cocky.parseDate(v) ? `${esc(Cocky.parseDate(v).toLocaleString())} <span class="text-muted small">${esc(v)}</span>`
+    : esc(v);
+  document.getElementById("detailGrid").innerHTML =
+    `<div class="k">Source</div><div class="v">${esc(x.src.host?.apiHostName || "")} <span class="text-muted small">${esc(x.src.url)}</span></div>` +
+    Object.entries(row).map(([k, v]) => `<div class="k">${esc(Cocky.titleCase(k))}</div><div class="v">${fmt(k, v)}</div>`).join("");
+  document.getElementById("detailRaw").textContent = JSON.stringify(row, null, 2);
+  bootstrap.Modal.getOrCreateInstance(m).show();
+}
+
+// Read every category and fill in the counts on the headers (opened ones show their grid)
+async function checkAll() {
+  const btn = document.getElementById("loadAll"); btn.disabled = true;
+  let n = 0;
+  await Promise.all(types.map(async t => {
+    await loadType(t, true); setBadge(t);
+    if (body.querySelector(`#${itemId(t)}.show`)) fill(t);
+    btn.textContent = `Checking… ${++n}/${types.length}`;
+  }));
+  btn.disabled = false; btn.textContent = "Check all logs";
+}
+
+// Reload: re-read the open categories, clear the rest
+function reloadAll() {
+  cache.clear();
+  types.forEach(t => { setBadge(t); if (body.querySelector(`#${itemId(t)}.show`)) fill(t, true); });
+}
+
+function selectApp(id) {
+  const x = rollup.find(r => String(r.app.id) === String(id));
+  current = x ? { app: x.app, hosts: x.hosts, endpoints: x.endpoints } : null;
+  if (current) { types = discoverTypes(); history.replaceState(null, "", "?app=" + current.app.id); }
+  show();
+}
+
+(async () => {
+  body.innerHTML = Cocky.spinner("Loading applications…");
+  try {
+    [apps, links, hosts, endpoints] = await Promise.all([api.list("apps"), api.list("apphosts"), api.list("apihosts"), api.list("apiaudit")]);
+  } catch (e) {
+    body.innerHTML = ""; body.appendChild(Cocky.errorBox(e, () => location.reload())); return;
+  }
+  rollup = Cocky.appRollup(apps, links, hosts, endpoints)
+    .sort((a, b) => String(a.app.applicationName || "").localeCompare(String(b.app.applicationName || "")));
+  if (!rollup.length) { body.innerHTML = '<div class="empty">No applications yet. Add one on the Apps page and link its hosts.</div>'; return; }
+  appSel.innerHTML = rollup.map(x => `<option value="${x.app.id}">${esc(x.app.applicationName || "App #" + x.app.id)}${x.hosts.length ? "" : " (no hosts linked)"}</option>`).join("");
+  const qs = new URLSearchParams(location.search);
+  const wanted = qs.get("app"); wantedLog = qs.get("log");
+  appSel.value = rollup.some(x => String(x.app.id) === wanted) ? wanted : String(rollup[0].app.id);
+  appSel.onchange = () => selectApp(appSel.value);
+  document.getElementById("reload").onclick = reloadAll;
+  document.getElementById("loadAll").onclick = checkAll;
+  selectApp(appSel.value);
+})();
+</script>
+</body>
+</html>

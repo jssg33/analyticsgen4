@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL Columns · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <nav class="small mb-1"><a href="sqlservers.html">SQL Catalog</a> › <a href="sqltables.html" id="srvCrumb">Tables</a> › <span id="crumb">Columns</span></nav>
+  <h2 id="title">Columns</h2>
+  <div class="page-sub">Columns in the SQL catalog (AuditSqlFields). Flag PHI and PII columns and record whether they're encrypted:
+    unencrypted PHI fails, unencrypted PII warns. Columns whose names look sensitive but aren't flagged are noted;
+    <b>Flag suggested</b> marks them in one go after you confirm.</div>
+  <div id="setup"></div>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="sqlcatalog.js"></script>
+<script>
+const main = Cocky.layout("sqlcatalog");
+const { esc, api } = Cocky, SQ = SqlCatalog;
+const qs = new URLSearchParams(location.search), tableId = qs.get("table") ? +qs.get("table") : null;
+let d = SQ.index({ sqlservers: [], sqltables: [], sqlfields: [], missing: [] });
+async function loadCatalog() {
+  d = await SQ.loadAll();
+  const t = d.tableById.get(tableId), s = t && d.serverById.get(SQ.num(t, "sqlServerId"));
+  document.getElementById("crumb").textContent = t ? SQ.tableName(t) : tableId ? `Table #${tableId} (not found)` : "All columns";
+  const sc = document.getElementById("srvCrumb");
+  if (s) { sc.textContent = SQ.serverName(s); sc.href = "sqltables.html?server=" + s.id; }
+  document.getElementById("title").textContent = t ? `Columns · ${SQ.tableName(t)}` : "Columns";
+  if (t) { const tf = SQ.tableFindings(t, d).filter(f => f.level !== "info");
+    document.getElementById("setup").innerHTML = tf.length ? `<div class="alert alert-${tf.some(f => f.level === "fail") ? "danger" : "warning"} small py-2">${tf.map(f => esc(f.text)).join(" · ")}</div>` : ""; }
+}
+const yesNo = (v, good) => v ? `<span class="badge ${good ? "text-bg-success" : "text-bg-secondary"}">Yes</span>` : '<span class="text-muted small">No</span>';
+Cocky.SCHEMA.sqlfields.format = {
+  columnName: (v, f) => `<b class="font-monospace">${esc(v || "")}</b>` + (tableId ? "" : `<div class="small text-muted">${esc(SQ.tableName(d.tableById.get(SQ.num(f, "sqlTableId")) || {}) )}</div>`),
+  type: (v, f) => { const ml = SQ.num(f, "maxLength"); return `<span class="font-monospace small">${esc(SQ.str(f, "dataType"))}${ml != null && ml !== 0 ? `(${ml === -1 ? "max" : ml})` : ""}</span>`; },
+  keys: (v, f) => (SQ.yes(f, "isPrimaryKey") ? '<span class="badge text-bg-primary me-1">PK</span>' : "") + (SQ.yes(f, "isForeignKey") ? '<span class="badge text-bg-light border">FK</span>' : "") || '<span class="text-muted small">—</span>',
+  isNullable: v => v ? '<span class="small">Yes</span>' : '<span class="small text-muted">No</span>',
+  sensitivity: (v, f) => { const g = SQ.guess(SQ.str(f, "columnName"));
+    const s = (SQ.yes(f, "containsPHI") ? '<span class="badge text-bg-danger me-1">PHI</span>' : "") + (SQ.yes(f, "containsPII") ? '<span class="badge text-bg-warning">PII</span>' : "");
+    return s || ((g.phi || g.pii) ? `<span class="small text-muted" title="The name looks like ${g.phi ? "PHI" : "PII"}">looks ${g.phi ? "PHI" : "PII"}?</span>` : '<span class="text-muted small">—</span>'); },
+  isEncrypted: (v, f) => ((SQ.yes(f, "containsPHI") || SQ.yes(f, "containsPII")) && !v ? '<span class="badge text-bg-danger">No</span>' : yesNo(v, true)) +
+    (SQ.str(f, "maskingRule") ? ` <span class="badge text-bg-info fw-normal" title="${esc(SQ.str(f, "maskingRule"))}">masked</span>` : "") +
+    (SQ.str(f, "sensitivityLabel") ? `<div class="small text-muted">${esc(SQ.str(f, "sensitivityLabel"))}</div>` : ""),
+  description: v => v ? `<span class="small">${esc(String(v).slice(0, 80))}</span>` : '<span class="text-muted small">—</span>',
+  findings: (v, f) => SQ.badge(SQ.fieldFindings(f))
+};
+let view = qs.get("show") || "";
+const looks = f => { const g = SQ.guess(SQ.str(f, "columnName")); return (g.phi && !SQ.yes(f, "containsPHI")) || (g.pii && !SQ.yes(f, "containsPII") && !SQ.yes(f, "containsPHI")); };
+const filterRows = rows => rows.filter(f => (tableId == null || SQ.num(f, "sqlTableId") === tableId) && (!view ||
+  (view === "sensitive" ? SQ.yes(f, "containsPHI") || SQ.yes(f, "containsPII") : view === "unenc" ? (SQ.yes(f, "containsPHI") || SQ.yes(f, "containsPII")) && !SQ.yes(f, "isEncrypted") : view === "looks" ? looks(f) : true)));
+const page = Cocky.crudPage("sqlfields", {
+  mount: main,
+  columns: Cocky.SCHEMA.sqlfields.columns,
+  beforeLoad: loadCatalog,
+  toolbarExtra: `<select class="form-select form-select-sm" id="show" style="max-width:230px"><option value="">All columns</option><option value="sensitive">PHI / PII</option><option value="unenc">PHI / PII not encrypted</option><option value="looks">Look sensitive, not flagged</option></select>
+    <button class="btn btn-sm btn-outline-warning" id="flagAll" type="button">Flag suggested</button>`,
+  filter: filterRows,
+  // keys first, then the table's own order isn't known, so by name
+  sort: rows => rows.slice().sort((a, b) => (SQ.yes(b, "isPrimaryKey") - SQ.yes(a, "isPrimaryKey")) || SQ.str(a, "columnName").localeCompare(SQ.str(b, "columnName"))),
+  addDefaults: () => tableId ? { sqlTableId: tableId, isNullable: true } : { isNullable: true }
+});
+document.getElementById("show").value = view;
+document.getElementById("show").onchange = e => { view = e.target.value; page.redraw(); };
+// Flag the columns whose names look like PHI / PII (shown in this view), then flag their tables to match
+document.getElementById("flagAll").onclick = async () => {
+  const list = filterRows(page.rows()).filter(looks);
+  if (!list.length) { Cocky.toast("No unflagged columns with sensitive-looking names here.", "info"); return; }
+  if (!confirm(`Flag ${list.length} column(s) from their names?\n\n${list.slice(0, 25).map(f => { const g = SQ.guess(SQ.str(f, "columnName")); return `${SQ.str(f, "columnName")} → ${g.phi ? "PHI" : "PII"}`; }).join("\n")}${list.length > 25 ? "\n…" : ""}\n\nTheir tables are flagged Contains PHI / PII to match.`)) return;
+  const fails = await SQ.runJobs(list.map(f => async () => { const g = SQ.guess(SQ.str(f, "columnName"));
+    await api.update("sqlfields", f.id, { ...f, containsPHI: SQ.yes(f, "containsPHI") || g.phi, containsPII: SQ.yes(f, "containsPII") || (g.pii && !g.phi) }); }));
+  // tables: set the flags their columns now need
+  const tables = [...new Set(list.map(f => SQ.num(f, "sqlTableId")))].map(id => d.tableById.get(id)).filter(Boolean);
+  await SQ.runJobs(tables.map(t => async () => { const fs = list.filter(f => SQ.num(f, "sqlTableId") === t.id).map(f => SQ.guess(SQ.str(f, "columnName")));
+    const phi = SQ.yes(t, "containsPHI") || fs.some(g => g.phi), pii = SQ.yes(t, "containsPII") || fs.some(g => g.pii && !g.phi);
+    if (phi !== SQ.yes(t, "containsPHI") || pii !== SQ.yes(t, "containsPII")) await api.update("sqltables", t.id, { ...t, containsPHI: phi, containsPII: pii }); }));
+  Cocky.toast(`${list.length - fails.length} column(s) flagged${fails.length ? `, ${fails.length} failed: ${fails[0]}` : "."}`, fails.length ? "warning" : "success");
+  page.reload();
+};
+</script>
+</body>
+</html>
