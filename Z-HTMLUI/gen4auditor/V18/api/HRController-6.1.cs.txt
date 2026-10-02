@@ -1,0 +1,175 @@
+// Build 6.1: hardened HRController (replaces MapHREndpoints).
+//
+// What changed from the original:
+//  1. Every route needs a signed-in user (JWT) AND a live Usersession for that token: the session must exist,
+//     not be ended (Sessionend blank) and have finished the sign-in flow, i.e. the 6-digit two-factor code was
+//     accepted (Sessioncomplete = 1 and Acknowledged = 1). So a session closed on CockyAuditor's User Sessions page, or one that never finished 2FA,
+//     can't read HR data even though its JWT hasn't expired.
+//  2. Reading HR records needs the "HRRead" policy: Role 2 Auditor or Accountant, or Role 1 Admin / SuperUser.
+//     Salary and TotalStockOptions are returned only to "HRFull" (Role 2 Accountant, or Role 1 SuperUser).
+//     Everyone else gets them as null.
+//  3. SocialSecurityNo is never returned in full: only the last 4 digits ("***-**-6789").
+//  4. /api/hr/whoami (which SQL login the API uses) is admin-only ("HRAdmin": Role 1 admin / superuser).
+//  5. Records are projected to a DTO instead of returning the EF entity, so a column added to the view later
+//     isn't handed out automatically.
+//  6. Every call is logged with ApiLogger, like the other controllers, including who asked.
+//  7. whoami is mapped before {username}, and {username} has a length limit.
+//
+// Needs the authentication and policies in Program-HR-auth-6.1.cs.
+
+using System;
+using System.Linq;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using Enterprise.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+
+namespace somecontrollers.Controllers;
+
+public static class HRController
+{
+    // Sessioncomplete = 1 and Acknowledged = 1 are set when the 6-digit two-factor code is accepted.
+    // Set false only while 2FA isn't rolled out yet.
+    private const bool RequireTwoFactor = true;
+    // The session token comes from "Authorization: Bearer <token>", else from this cookie (the session cookie your
+    // sign-in issues after 2FA). Put your cookie's name here.
+    private const string SessionCookieName = "SessionToken";
+
+    // What the API hands out. Salary / stock options stay null unless the caller has HRFull.
+    public record EmployeeHRView(int EmployeeId, string? Username, string? SsnLast4, decimal? Salary, int? TotalStockOptions);
+
+    private static string MaskSsn(string? ssn)
+    {
+        if (string.IsNullOrWhiteSpace(ssn)) return "";
+        var digits = new string(ssn.Where(char.IsDigit).ToArray());
+        return digits.Length >= 4 ? "***-**-" + digits[^4..] : "***-**-****";
+    }
+
+    private static string Who(ClaimsPrincipal user) =>
+        user.FindFirst("sub")?.Value ?? user.Identity?.Name ?? "unknown";
+
+    private static void Log(string action, ClaimsPrincipal user) =>
+        Enterpriseservices.ApiLogger.logapi("HRAPI", "061", action, 1, Who(user), "HR");
+
+    public static void MapHREndpoints(this WebApplication app)
+    {
+        var hr = app.MapGroup("/api/hr")
+                    .WithTags("HR")
+                    .RequireAuthorization("HRRead");
+
+        // The token must belong to a live, two-factor-checked Usersession (runs after the JWT and policy checks).
+        hr.AddEndpointFilter(async (ctx, next) =>
+        {
+            var http = ctx.HttpContext;
+            var header = http.Request.Headers.Authorization.ToString();
+            var token = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header[7..].Trim()
+                      : http.Request.Cookies[SessionCookieName] ?? "";
+            if (token.Length == 0)
+                return Results.Unauthorized();
+
+            using var sessions = new LunaContext();
+            var s = await sessions.Usersessions
+                .AsNoTracking()
+                .Where(x => x.Token == token)
+                .OrderByDescending(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            // Closed: Sessionend is set (sign-out, or expired on CockyAuditor's User Sessions page)
+            if (s == null || !string.IsNullOrWhiteSpace(s.Sessionend))
+            {
+                Log("SESSIONCLOSED", http.User);
+                return Results.Unauthorized();
+            }
+            // Sign-in not finished: the 6-digit code hasn't been accepted yet
+            if (RequireTwoFactor && (s.Sessioncomplete != 1 || s.Acknowledged != 1))
+            {
+                Log("NO2FA", http.User);
+                return Results.Problem("Two-factor verification is required for HR data.", statusCode: StatusCodes.Status403Forbidden);
+            }
+            // The session must be the signed-in user's own
+            var sub = http.User.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(sub) && !string.IsNullOrEmpty(s.Sessionusername) &&
+                !string.Equals(sub, s.Sessionusername, StringComparison.OrdinalIgnoreCase))
+            {
+                Log("SESSIONMISMATCH", http.User);
+                return Results.Unauthorized();
+            }
+            return await next(ctx);
+        });
+
+        // Admin-only: which SQL identity the API connects as. Mapped before {username} so it can't be shadowed.
+        hr.MapGet("/whoami", async (ClaimsPrincipal user) =>
+        {
+            using var db = new EnterpriseContext();
+            var connection = db.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+                await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT CURRENT_USER, USER_NAME(), ORIGINAL_LOGIN()";
+            using var reader = await command.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+                return Results.BadRequest();
+
+            Log("WHOAMI", user);
+            return Results.Ok(new
+            {
+                CurrentUser = reader[0]?.ToString(),
+                UserName = reader[1]?.ToString(),
+                OriginalLogin = reader[2]?.ToString()
+            });
+        })
+        .RequireAuthorization("HRAdmin")
+        .WithName("HRWhoAmI")
+        .WithOpenApi();
+
+        hr.MapGet("/", async (ClaimsPrincipal user, IAuthorizationService auth) =>
+        {
+            var full = (await auth.AuthorizeAsync(user, "HRFull")).Succeeded;
+            using var db = new EnterpriseContext();
+
+            var rows = await db.EmployeeHR
+                .AsNoTracking()
+                .Select(x => new { x.EmployeeId, x.Username, x.SocialSecurityNo, x.Salary, x.TotalStockOptions })
+                .ToListAsync();
+
+            Log(full ? "GETALL-FULL" : "GETALL", user);
+            return Results.Ok(rows.Select(x => new EmployeeHRView(
+                x.EmployeeId, x.Username, MaskSsn(x.SocialSecurityNo),
+                full ? x.Salary : (decimal?)null,
+                full ? x.TotalStockOptions : (int?)null)));
+        })
+        .WithName("HR")
+        .WithOpenApi();
+
+        hr.MapGet("/{username:maxlength(100)}", async (string username, ClaimsPrincipal user, IAuthorizationService auth) =>
+        {
+            var full = (await auth.AuthorizeAsync(user, "HRFull")).Succeeded;
+            using var db = new EnterpriseContext();
+
+            var x = await db.EmployeeHR
+                .AsNoTracking()
+                .Where(e => e.Username == username)
+                .Select(e => new { e.EmployeeId, e.Username, e.SocialSecurityNo, e.Salary, e.TotalStockOptions })
+                .FirstOrDefaultAsync();
+
+            Log("GETBYUSER", user);
+            if (x == null)
+                return Results.NotFound();
+
+            return Results.Ok(new EmployeeHRView(
+                x.EmployeeId, x.Username, MaskSsn(x.SocialSecurityNo),
+                full ? x.Salary : (decimal?)null,
+                full ? x.TotalStockOptions : (int?)null));
+        })
+        .WithName("HRByUser")
+        .WithOpenApi();
+    }
+}
+
+// Types match Enterprise.Models.EmployeeHR (EmployeeId int, Salary decimal, TotalStockOptions int).
+// Add "using Microsoft.AspNetCore.Authorization;" for IAuthorizationService
+// if your global usings don't include it.

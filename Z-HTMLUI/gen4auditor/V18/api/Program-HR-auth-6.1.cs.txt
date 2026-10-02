@@ -1,0 +1,58 @@
+// Build 6.1: what Program.cs needs for the hardened HRController (HRController-6.1.cs).
+// Package: Microsoft.AspNetCore.Authentication.JwtBearer (same major version as your ASP.NET Core).
+//
+// The token is the one /api/Auth/signin already issues. Use the SAME key, issuer and audience that
+// Auth.GenerateJwtToken uses (the CockyAuditor test token says issuer and audience https://www.590team1.info).
+
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
+// ---------- services (before builder.Build()) ----------
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.MapInboundClaims = false;   // keep "role" / "role2" / "sub" as they are in the token
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
+            ClockSkew = TimeSpan.FromMinutes(2)
+        };
+    });
+
+// Roles (compared without case): Role 1 User / SuperUser / Admin in the "role" claim, Role 2 Auditor / Accountant in
+// "role2". Role 3 (SwaggerAdmin) is for the Swagger workflow and gives no HR access.
+static bool HasRole(System.Security.Claims.ClaimsPrincipal u, params string[] roles) =>
+    u.Claims.Any(c => (c.Type == "role" || c.Type == "role2") &&
+                      roles.Any(r => string.Equals(r, c.Value, StringComparison.OrdinalIgnoreCase)));
+
+builder.Services.AddAuthorization(o =>
+{
+    // HR records (SSN always masked): auditors and accountants, plus admins and superusers
+    o.AddPolicy("HRRead",  p => p.RequireAuthenticatedUser().RequireAssertion(c => HasRole(c.User, "auditor", "accountant", "admin", "superuser")));
+    // Salary and TotalStockOptions: accountants and superusers only
+    o.AddPolicy("HRFull",  p => p.RequireAuthenticatedUser().RequireAssertion(c => HasRole(c.User, "accountant", "superuser")));
+    // /api/hr/whoami (the SQL login the API uses)
+    o.AddPolicy("HRAdmin", p => p.RequireAuthenticatedUser().RequireAssertion(c => HasRole(c.User, "admin", "superuser")));
+});
+
+// ---------- pipeline (after app.UseCors(...), before mapping endpoints) ----------
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapHREndpoints();
+
+// ---------- Auth controller: put Role 2 in the token ----------
+// Today the token only carries "role" = User.Role (Role 1), so Auditor / Accountant (Role 2) can't be checked.
+// In Auth.GenerateJwtToken add the second claim:
+//
+//     new Claim("role", user.Role ?? string.Empty),
+//     new Claim("role2", user.Role2 ?? string.Empty),     // <- add
+//
+// Users must sign in again to get a token with role2.

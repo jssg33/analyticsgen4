@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infra Audit · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+      <h2>Infra Audit</h2>
+      <div class="page-sub mb-3">Checks every web server, web farm, database server, database and application link against the policy in <code>config.js</code>.
+        It reads the inventory records only and never connects to the servers. Inactive servers and databases, and disabled farms, aren't audited.</div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" id="refresh" type="button">Re-run</button>
+      <button class="btn btn-sm btn-outline-secondary" id="copy" type="button">Copy report</button>
+      <button class="btn btn-sm btn-primary" id="csv" type="button">Download CSV</button>
+    </div>
+  </div>
+
+  <div id="notes"></div>
+  <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-3" id="tiles"></div>
+
+  <div class="card"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+      <select class="form-select form-select-sm" id="fKind" style="max-width:190px"></select>
+      <select class="form-select form-select-sm" id="fStatus" style="max-width:190px">
+        <option value="problems">Fail + warn</option><option value="fail">Fail only</option><option value="warn">Warn only</option>
+        <option value="pass">OK only</option><option value="all">Everything</option>
+      </select>
+      <select class="form-select form-select-sm" id="fEnv" style="max-width:170px"></select>
+      <input class="form-control form-control-sm" id="fText" style="max-width:240px" placeholder="Search name, owner, finding…">
+      <span class="small text-muted" id="count"></span>
+      <span id="single"></span>
+    </div>
+    <div id="table"></div>
+  </div></div>
+
+  <details class="card mt-3"><summary class="card-body py-2 fw-semibold">What's checked</summary><div class="card-body pt-0 small" id="policy"></div></details>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="infra.js"></script>
+<script>
+Cocky.layout("infraaudit");
+const $ = s => document.querySelector(s);
+const esc = Cocky.esc;
+const KINDS = Infra.KINDS;
+const params = new URLSearchParams(location.search);
+let data = {}, audit = null;
+let single = params.get("id") ? { kind: params.get("kind"), id: params.get("id") } : null;   // ?kind=&id= shows one record
+
+$("#fKind").innerHTML = `<option value="">All kinds</option>` + Object.entries(KINDS).map(([k, v]) => `<option value="${k}">${v.plural}</option>`).join("");
+if (params.get("kind")) $("#fKind").value = params.get("kind");
+if (params.get("status")) $("#fStatus").value = params.get("status");
+
+async function run() {
+  $("#table").innerHTML = Cocky.spinner("Auditing…");
+  data = await Infra.loadAll();
+  audit = Infra.evaluate(data);
+  // Notes: routes the API doesn't have yet, and anything that failed to load
+  const notes = [];
+  if (data.missing.length) notes.push(`<div class="alert alert-warning small">The API didn't answer (404) on ${data.missing.map(r => `<code>${esc(Cocky.CFG.endpoints[r])}</code>`).join(", ")}, so ${data.missing.length === 1 ? "that table was" : "those tables were"} treated as empty. Check they're deployed, or set the routes in <code>config.js</code>.</div>`);
+  if (data.errors.length) notes.push(`<div class="alert alert-danger small"><strong>Some tables couldn't be loaded</strong>, so their checks are incomplete:<ul class="mb-0">${data.errors.map(e => `<li>${esc(e.message)}</li>`).join("")}</ul></div>`);
+  $("#notes").innerHTML = notes.join("");
+  // Environment filter from what's recorded
+  const envs = [...new Set(audit.results.map(r => r.environment).filter(Boolean).map(e => e.trim()))].sort();
+  const keep = $("#fEnv").value;
+  $("#fEnv").innerHTML = `<option value="">All environments</option>` + envs.map(e => `<option ${e === keep ? "selected" : ""}>${esc(e)}</option>`).join("");
+  tiles(); draw();
+}
+
+function tiles() {
+  $("#tiles").innerHTML = Object.entries(KINDS).map(([k, v]) => {
+    const s = audit.summary[k];
+    const audited = s.total - s.inactive;
+    return `<div class="col"><div class="card stat infra-stat h-100 clickable" data-kind="${k}" role="button"><div class="card-body">
+      <div class="lbl">${v.plural}</div>
+      <div class="num">${s.total}</div>
+      <div class="small">${s.fail ? `<span class="badge text-bg-danger">${s.fail} fail</span> ` : ""}${s.warn ? `<span class="badge text-bg-warning">${s.warn} warn</span> ` : ""}${s.pass ? `<span class="badge text-bg-success">${s.pass} OK</span> ` : ""}${!audited && s.total ? '<span class="text-muted">none active</span>' : ""}${!s.total ? `<span class="text-muted">${data.missing.includes(k) ? "not deployed" : "none recorded"}</span>` : ""}</div>
+      ${s.inactive ? `<div class="small text-muted mt-1">${s.inactive} inactive, not audited</div>` : ""}
+    </div></div></div>`;
+  }).join("");
+  $("#tiles").querySelectorAll("[data-kind]").forEach(el => el.onclick = () => { single = null; $("#fKind").value = el.dataset.kind; $("#fStatus").value = "problems"; draw(); });
+}
+
+// Web servers are labelled by role: Proxy server, Proxy slave, or Web server
+const kindLabel = r => r.kind === "webservers" ? Infra.WEB_ROLES[Infra.webRole(r.record)].label : KINDS[r.kind].label;
+
+function shown() {
+  if (single) return audit.results.filter(r => r.kind === single.kind && String(r.id) === String(single.id));
+  const kind = $("#fKind").value, st = $("#fStatus").value, env = $("#fEnv").value, q = $("#fText").value.trim().toLowerCase();
+  const order = { fail: 0, warn: 1, pass: 2, inactive: 3 };
+  return audit.results.filter(r =>
+      (!kind || r.kind === kind) &&
+      (st === "all" || (st === "problems" ? ["fail", "warn"].includes(r.status) : r.status === st)) &&
+      (!env || r.environment === env) &&
+      (!q || [r.name, r.owner, r.environment, kindLabel(r), ...r.findings.map(f => f.text)].some(x => String(x || "").toLowerCase().includes(q))))
+    .sort((a, b) => order[a.status] - order[b.status] || b.findings.filter(f => f.level === "fail").length - a.findings.filter(f => f.level === "fail").length || a.name.localeCompare(b.name));
+}
+
+function draw() {
+  const rows = shown();
+  $("#single").innerHTML = single ? `<span class="badge text-bg-primary">Showing one record</span> <a href="#" id="showAll" class="small">Show all</a>` : "";
+  if (single) $("#showAll").onclick = e => { e.preventDefault(); single = null; history.replaceState(null, "", "infraaudit.html"); draw(); };
+  $("#count").textContent = single ? "" : `${rows.length} of ${audit.results.length}`;
+  if (!rows.length) {
+    $("#table").innerHTML = `<div class="empty">${audit.results.length ? "Nothing matches these filters." + ($("#fStatus").value === "problems" ? " No problems found." : "") : "Nothing recorded yet. Add web servers, farms, database servers and databases on their pages."}</div>`;
+    return;
+  }
+  $("#table").innerHTML = `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+    <thead><tr><th>Status</th><th>Kind</th><th>Name</th><th>Environment</th><th>Owner</th><th style="width:45%">Findings</th><th></th></tr></thead>
+    <tbody>${rows.map((r, i) => `<tr>
+      <td><span class="badge ${Infra.STATUS_BADGE[r.status]}">${r.status === "pass" ? "OK" : r.status === "inactive" ? "Inactive" : r.status.toUpperCase()}</span></td>
+      <td class="small text-nowrap">${esc(kindLabel(r))}</td>
+      <td class="fw-semibold"><a href="${KINDS[r.kind].page}" class="text-decoration-none">${esc(r.name)}</a> <span class="small text-muted fw-normal">#${esc(r.id)}</span></td>
+      <td class="small">${esc(r.environment) || '<span class="text-muted">—</span>'}</td>
+      <td class="small">${esc(r.owner) || '<span class="text-muted">—</span>'}</td>
+      <td>${r.status === "inactive" ? '<span class="small text-muted">Not audited while inactive</span>' : Infra.findingList(r.findings)}</td>
+      <td class="text-end"><button class="btn btn-sm btn-outline-secondary" data-edit="${i}" type="button">Edit</button></td></tr>`).join("")}</tbody>
+  </table></div>`;
+  // Fix it in place: edit the record, then re-run the audit
+  $("#table").querySelectorAll("[data-edit]").forEach(b => b.onclick = async () => {
+    const r = rows[+b.dataset.edit];
+    if (await Cocky.openRecordForm(r.kind, r.record, data[r.kind])) run();
+  });
+}
+
+// ---- report ----
+function reportRows() {
+  const out = [];
+  for (const r of shown()) {
+    const fs = r.findings.length ? r.findings : [{ level: r.status === "inactive" ? "inactive" : "ok", text: "" }];
+    fs.forEach(f => out.push([kindLabel(r), r.id, r.name, r.environment, r.owner, r.status, f.level, f.text]));
+  }
+  return out;
+}
+$("#csv").onclick = () => {
+  const cell = v => /[",\n]/.test(String(v ?? "")) ? `"${String(v).replace(/"/g, '""')}"` : String(v ?? "");
+  const csv = [["Kind", "Id", "Name", "Environment", "Owner", "Status", "Level", "Finding"], ...reportRows()].map(r => r.map(cell).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
+  a.download = `infra-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$("#copy").onclick = async () => {
+  const user = window.CockyAuth?.current().username || "";
+  const lines = [`Infra Audit ${new Date().toLocaleString()}${user ? " by " + user : ""}`,
+    ...Object.entries(KINDS).map(([k, v]) => { const s = audit.summary[k]; return `${v.plural}: ${s.total} (${s.fail} fail, ${s.warn} warn, ${s.pass} OK, ${s.inactive} inactive)`; }),
+    ...Object.entries(Infra.WEB_ROLES).map(([k, v]) => { const s = audit.summary.webRoles[k]; return `  of which ${v.plural.toLowerCase()}${k === "slave" ? " (backend, behind a proxy)" : ""}: ${s.total} (${s.fail} fail, ${s.warn} warn)`; }), ""];
+  shown().filter(r => r.findings.some(f => f.level !== "info")).forEach(r => {
+    lines.push(`[${r.status.toUpperCase()}] ${kindLabel(r)} ${r.name} (#${r.id})${r.environment ? " · " + r.environment : ""}`);
+    r.findings.filter(f => f.level !== "info").forEach(f => lines.push(`   ${f.level.toUpperCase()}: ${f.text}`));
+  });
+  try { await navigator.clipboard.writeText(lines.join("\n")); Cocky.toast("Report copied."); }
+  catch { Cocky.toast("Couldn't copy to the clipboard. Use Download CSV instead.", "warning"); }
+};
+
+// ---- policy reference ----
+(() => {
+  const P = Cocky.CFG.infraAudit || {};
+  const eos = (P.endOfSupport && Object.entries(P.endOfSupport).flatMap(([k, rules]) => rules.map(r => `<li><span class="lvl-${r.level}">${r.level}</span>: ${esc(r.text)} <span class="text-muted">(${k})</span></li>`)).join("")) || "";
+  $("#policy").innerHTML = `
+    <div class="row g-4">
+      <div class="col-lg-6"><h6>Every active item</h6><ul>
+        <li>Warn if any of these is blank: ${(P.requiredFields || []).map(esc).join(", ")} (databases: owner, support team, inventory id)</li>
+        <li>TLS below ${esc(P.minTlsVersion || 1.2)} or any SSL: <span class="lvl-fail">fail</span>. Not recorded: <span class="lvl-warn">warn</span></li>
+        <li>Plain <code>http://</code> URLs: <span class="lvl-fail">fail</span> when public facing, otherwise <span class="lvl-warn">warn</span></li></ul>
+        <h6>Web farms</h6><ul><li>No members (fail), backend pool count ≠ members, inactive/missing/duplicate members, members in another environment,
+          members allowing old TLS (fail), no health probe, no load balancer</li></ul>
+        <h6>Database servers</h6><ul><li>Public facing (fail); no backup solution (fail if a database on it requires backup); SIMPLE recovery model with backups required</li></ul>
+        <h6>Databases</h6><ul><li>PII/PHI/PCI without encryption (fail), without a classification (fail) or with a public classification (fail); on a public-facing server (fail);
+          backup required but the server has none (fail); server missing or inactive</li></ul>
+        <h6>Applications</h6><ul><li>Points to a missing or inactive server, farm or database; web server not in the app's farm; database server in a different environment</li></ul>
+      </div>
+      <div class="col-lg-6"><h6>End of support (<code>config.js</code> → <code>infraAudit.endOfSupport</code>)</h6><ul>${eos}</ul></div>
+    </div>`;
+})();
+
+["#fKind", "#fStatus", "#fEnv"].forEach(s => $(s).onchange = () => { single = null; draw(); });
+$("#fText").oninput = () => { single = null; draw(); };
+$("#refresh").onclick = run;
+run().catch(e => { $("#table").innerHTML = ""; $("#table").appendChild(Cocky.errorBox(e, run)); });
+</script>
+</body>
+</html>
