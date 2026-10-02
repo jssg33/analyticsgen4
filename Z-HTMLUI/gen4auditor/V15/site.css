@@ -1,0 +1,87 @@
+body { background: #f4f6f8; }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 210px; flex-shrink: 0; background: #1f2328; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.sidebar .brand { color: #fff; font-weight: 700; font-size: 1.25rem; padding: 18px 16px; letter-spacing: .3px; border-bottom: 1px solid #343a40; }
+.sidebar a { color: #cfd4da; display: block; padding: 10px 16px; text-decoration: none; border-left: 3px solid transparent; }
+.sidebar a:hover { background: #343a40; color: #fff; }
+.sidebar a.active { background: #2b3137; color: #fff; border-left-color: #f0a020; }
+.sidebar .api-note { margin-top: auto; padding: 12px 16px; font-size: .75rem; color: #868e96; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.content { flex: 1; padding: 24px; min-width: 0; }
+.content h2 { margin-bottom: 4px; }
+.page-sub { color: #6c757d; margin-bottom: 20px; }
+.empty { padding: 32px; text-align: center; color: #6c757d; background: #fafbfc; border: 1px dashed #ced4da; border-radius: 6px; }
+tr.clickable { cursor: pointer; }
+.stat { border: 0; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.stat .num { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.stat .lbl { color: #6c757d; font-size: .85rem; text-transform: uppercase; letter-spacing: .5px; }
+.stat a { text-decoration: none; color: inherit; }
+.card { border: 0; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.check-list li { padding: 2px 0; }
+.lvl-pass { color: #198754; } .lvl-warn { color: #b7791f; } .lvl-fail { color: #dc3545; } .lvl-info { color: #6c757d; }
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
+  .sidebar .brand { width: 100%; }
+  .sidebar .api-note { display: none; }
+  .content { padding: 16px; }
+}
+
+.badge[class*="method-"] { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; min-width: 58px; }
+.method-get { background: #0d6efd; } .method-post { background: #198754; } .method-put, .method-patch { background: #b7791f; }
+.method-delete { background: #dc3545; } .method-head, .method-options { background: #6c757d; }
+.sidebar a.brand { color: #fff; }
+.form-section { border: 1px solid #e3e6ea; border-radius: 8px; padding: 8px 12px; }
+.form-section > summary { font-weight: 600; cursor: pointer; }
+.form-section[open] > summary { margin-bottom: 4px; }
+
+.sidebar .user-box { margin-top: auto; padding: 12px 16px 0; color: #e9ecef; font-size: .85rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid #343a40; }
+.sidebar .user-box a { display: inline; padding: 0; border: 0; color: #f0a020; font-size: .8rem; }
+.sidebar .user-box a:hover { background: none; color: #ffb534; }
+.sidebar .user-box + .api-note { margin-top: 0; }
+.sidebar .api-note { white-space: normal; }
+.sidebar .api-note .copy { color: #6c757d; }
+@media (max-width: 768px) { .sidebar .user-box { width: 100%; padding-bottom: 10px; } }
+
+/* Infrastructure section in the sidebar (build 4.9) */
+.sidebar .nav-section { color: #868e96; font-size: .7rem; text-transform: uppercase; letter-spacing: .8px; padding: 14px 16px 4px; border-top: 1px solid #343a40; margin-top: 6px; }
+.sidebar a.sub { padding-top: 7px; padding-bottom: 7px; font-size: .92rem; }
+.finding-list { margin: 0; padding-left: 1.1rem; }
+.finding-list li { padding: 1px 0; }
+.infra-stat .num { font-size: 1.6rem; }
+@media (max-width: 768px) { .sidebar .nav-section { width: 100%; } }
+
+/* ---- Charts (build 5.4, charts.js) ---- */
+.viz-card { background: #fcfcfb; border-radius: 8px; padding: 14px 16px; height: 100%; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.viz-title { font-weight: 600; font-size: .95rem; color: #0b0b0b; margin-bottom: 8px; }
+.viz-body { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.viz-plot { flex: 0 0 auto; }
+.viz-plot svg { display: block; overflow: visible; }
+.viz-total { font-size: 28px; font-weight: 700; fill: #0b0b0b; }
+.viz-unit { font-size: 11px; fill: #52514e; text-transform: uppercase; letter-spacing: .5px; }
+.viz-empty { width: 168px; height: 168px; border-radius: 50%; border: 18px solid #ecebe6; display: flex; align-items: center; justify-content: center; text-align: center; font-size: .8rem; color: #6c757d; padding: 8px; }
+.viz-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 150px; font-size: .88rem; }
+.viz-legend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #efeeea; transition: opacity .12s; }
+.viz-legend li:last-child { border-bottom: 0; }
+.viz-legend li.dim { opacity: .45; }
+.viz-legend li.clickable { cursor: pointer; }
+.viz-legend .sw { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 12px; }
+.viz-legend .nm { flex: 1; color: #0b0b0b; }
+.viz-legend .vl { font-weight: 600; color: #0b0b0b; font-variant-numeric: tabular-nums; }
+.viz-legend .pc { color: #52514e; width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.viz-note { margin-top: 10px; font-size: .78rem; color: #52514e; }
+.viz-tip { position: fixed; display: none; z-index: 2000; pointer-events: none; background: #fff; color: #0b0b0b; border: 1px solid #dddcd6; border-radius: 6px; padding: 6px 9px; font-size: .8rem; box-shadow: 0 4px 12px rgba(0,0,0,.12); max-width: 260px; }
+.viz-tip .n { color: #52514e; margin-top: 2px; }
+.viz-hbars text { font-size: 12px; }
+.viz-hbars .viz-lbl { fill: #0b0b0b; }
+.viz-hbars .viz-sub { fill: #6c757d; font-size: 10.5px; }
+.viz-hbars .viz-val { fill: #0b0b0b; font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-hbars .viz-axis { fill: #6c757d; font-size: 11px; }
+.viz-hbars .viz-rule { font-size: 11px; font-weight: 600; }
+.perf-bar { height: 6px; background: #ecebe6; border-radius: 3px; min-width: 70px; }
+.perf-bar > div { height: 6px; border-radius: 3px; background: #2a78d6; }
+
+/* Stacked ticket bars (build 5.8) */
+.viz-legend-row { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 10px; }
+.viz-legend-row li { border-bottom: 0; padding: 2px 0; }
+.viz-legend-row .nm { flex: 0 0 auto; }
+.viz-stack svg { display: block; overflow: visible; }

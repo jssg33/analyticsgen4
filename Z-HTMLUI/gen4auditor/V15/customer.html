@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Troubles · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Customer Troubles</h2>
+  <div class="page-sub">Trouble tickets raised by customers (the Userhelp table, the same tickets as Help on the Welcome page). Read-only here;
+    they're worked by the support team. Click a ticket for every field. Endpoint problems found by audits are under
+    <a href="tickets.html">Surveillance Tickets</a>.</div>
+  <div class="row row-cols-2 row-cols-md-4 g-3 mb-3" id="tiles"></div>
+  <div class="card"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <input class="form-control form-control-sm" id="search" style="max-width:260px" placeholder="Search tickets…">
+      <select class="form-select form-select-sm d-none" id="statusFilter" style="max-width:200px"></select>
+      <select class="form-select form-select-sm d-none" id="prioFilter" style="max-width:180px"></select>
+      <select class="form-select form-select-sm d-none" id="tenantFilter" style="max-width:180px"></select>
+      <span class="small text-muted" id="count"></span>
+      <div class="ms-auto d-flex gap-2 align-items-center">
+        <select class="form-select form-select-sm" id="pageSize" style="width:auto" title="Rows per page"></select>
+        <button class="btn btn-outline-secondary btn-sm" id="reload" type="button">Refresh</button>
+      </div>
+    </div>
+    <div id="grid"></div>
+    <nav class="d-flex justify-content-between align-items-center mt-2" id="pager"></nav>
+  </div></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+Cocky.layout("customer");
+const { esc } = Cocky, $ = s => document.querySelector(s);
+const CT = Object.assign({ columns: [], closedMatch: "^(closed|resolved|done|complete|completed|cancel+ed|fixed)$", pageSizes: [25, 50, 100] }, Cocky.CFG.customerTroubles || {});
+const CLOSED = new RegExp(CT.closedMatch, "i");
+const qs = new URLSearchParams(location.search);
+let rows = [], keys = {}, cols = [], page = 1, sortKey = null, sortDir = -1;
+// Customers (Customer: id, tenantid, userId, fullName, createdAt), matched to tickets by user id
+let customers = [], byUser = new Map(), byId = new Map();
+async function loadCustomers() {
+  for (const key of ["customers", "customersAlt"]) {
+    if (!Cocky.CFG.endpoints[key]) continue;
+    try { customers = rowsFrom(await Cocky.api.list(key)); break; } catch (e) { customers = []; if (e.status !== 404 && e.status !== 405) break; }
+  }
+  const f = (o, n) => { const k = Object.keys(o).find(x => x.toLowerCase().replace(/_/g, "") === n); return k ? o[k] : undefined; };
+  byUser = new Map(); byId = new Map();
+  customers.forEach(c => { const u = f(c, "userid"); if (u != null && u !== "") byUser.set(String(u).trim().toLowerCase(), c); byId.set(String(c.id), c); });
+}
+const cf = (c, n) => { if (!c) return ""; const k = Object.keys(c).find(x => x.toLowerCase().replace(/_/g, "") === n); return k && c[k] != null ? String(c[k]) : ""; };
+function customerOf(r) {
+  if (!keys.userRef || r[keys.userRef] == null || r[keys.userRef] === "") return null;
+  const v = String(r[keys.userRef]).trim().toLowerCase();
+  return byUser.get(v) || (/customer/i.test(keys.userRef) ? byId.get(v) : null) || null;
+}
+
+// ---------- working out the fields (the Userhelp model isn't fixed here) ----------
+const rowsFrom = d => Array.isArray(d) ? d : d && typeof d === "object" ? (["items", "data", "value", "results", "records", "rows"].map(k => d[k]).find(Array.isArray) || [d]) : [];
+const isDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && !!Cocky.parseDate(v);
+function detectKeys(rs) {
+  const all = [...new Set(rs.slice(0, 50).flatMap(r => Object.keys(r)))];
+  const scalar = all.filter(k => rs.every(r => r[k] == null || typeof r[k] !== "object"));
+  const find = re => scalar.find(k => re.test(k));
+  const dated = scalar.filter(k => rs.some(r => isDate(r[k])));
+  return {
+    all: scalar,
+    id: find(/^id$/i) || scalar.find(k => /id$/i.test(k) && typeof rs[0]?.[k] === "number"),
+    ticket: find(/^(ticket_?(no|number|num|id)|case_?(no|number)|reference|ref)$/i),
+    date: dated.find(k => /(created|opened|posted|logged|reported|submitted|date)/i.test(k) && !/(resolv|clos|modif|updat)/i.test(k)) || dated[0],
+    closedDate: dated.find(k => /(resolv|clos)/i.test(k)),
+    subject: find(/^(subject|title|summary|issue|problem|topic|helptitle|help_?subject)$/i) || find(/(subject|title|summary|issue)/i),
+    body: find(/^(description|message|details|body|comments?|helptext|help_?message|question)$/i) || find(/(description|message|detail)/i),
+    customer: find(/^(customer|customer_?name|requester|reported_?by|fullname|user_?name|username|name)$/i) || find(/(customer|requester|username|fullname)/i),
+    email: find(/^(e_?mail|user_?email|customer_?email|contact_?email)$/i) || find(/email/i),
+    status: find(/^(status|state|ticket_?status|help_?status)$/i) || find(/status/i),
+    priority: find(/^(priority|severity|urgency|impact)$/i) || find(/(priority|severity|urgency)/i),
+    category: find(/^(category|type|help_?type|topic|area|product|application|app_?name)$/i),
+    assigned: find(/(assigned|owner|agent|technician)/i),
+    userRef: (CT.userField && scalar.find(k => k.toLowerCase() === CT.userField.toLowerCase())) || find(/^(user_?id|customer_?id|userid)$/i)
+  };
+}
+function pickColumns(rs, k) {
+  if (CT.columns?.length) return CT.columns.map(c => k.all.find(x => x.toLowerCase() === c.toLowerCase())).filter(Boolean);
+  const linked = k.userRef && rs.some(r => customerOf(r));
+  const base = [k.ticket || k.id, k.date, k.subject, linked ? "_customer" : null, k.customer || k.email, k.category, k.status, k.priority, k.assigned].filter(Boolean);
+  const filled = x => x === "_customer" || rs.some(r => r[x] != null && r[x] !== "");
+  const out = [...new Set(base)].filter(filled);
+  // top up with other short fields so a table with unusual names still shows something useful
+  k.all.filter(x => !out.includes(x) && x !== k.body && x !== k.id && filled(x) && rs.every(r => r[x] == null || String(r[x]).length <= 80))
+    .forEach(x => { if (out.length < 7) out.push(x); });
+  return out;
+}
+
+// ---------- formatting ----------
+const isOpen = r => !keys.status || !CLOSED.test(String(r[keys.status] ?? "").trim()) && !(keys.closedDate && r[keys.closedDate]);
+const statusBadge = v => { const s = String(v ?? "").trim(); if (!s) return '<span class="text-muted">—</span>';
+  const cls = CLOSED.test(s) ? "text-bg-success" : /(progress|working|assigned|pending|wait|hold)/i.test(s) ? "text-bg-primary" : "text-bg-danger";
+  return `<span class="badge ${cls}">${esc(s)}</span>`; };
+const prioBadge = v => { const s = String(v ?? "").trim(); if (!s) return '<span class="text-muted">—</span>';
+  const cls = /^(1|critical|urgent|p1|highest|sev ?1)$/i.test(s) ? "text-bg-danger" : /^(2|high|p2|sev ?2)$/i.test(s) ? "text-bg-warning"
+    : /^(3|medium|normal|p3|moderate)$/i.test(s) ? "text-bg-info" : "text-bg-secondary";
+  return `<span class="badge ${cls}">${esc(s)}</span>`; };
+const fmtDate = v => { const d = Cocky.parseDate(v); return d ? `<span class="text-nowrap" title="${esc(d.toLocaleString())}">${esc(d.toLocaleDateString())}</span><div class="small text-muted text-nowrap">${esc(d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}</div>` : esc(v); };
+function cell(r, k) {
+  if (k === "_customer") {
+    const c = customerOf(r);
+    if (!c) return r[keys.userRef] != null && r[keys.userRef] !== "" ? `<span class="small text-muted" title="No customer with this user id">${esc(r[keys.userRef])}</span>` : '<span class="text-muted">—</span>';
+    return `<div class="fw-semibold">${esc(cf(c, "fullname") || "Customer #" + c.id)}</div>${cf(c, "tenantid") ? `<span class="badge text-bg-light border fw-normal">Tenant ${esc(cf(c, "tenantid"))}</span>` : ""}`;
+  }
+  const v = r[k];
+  if (k === keys.status) return statusBadge(v);
+  if (k === keys.priority) return prioBadge(v);
+  if (v == null || v === "") return '<span class="text-muted">—</span>';
+  if (typeof v === "boolean") return v ? '<span class="badge text-bg-success">Yes</span>' : '<span class="badge text-bg-secondary">No</span>';
+  if (isDate(v)) return fmtDate(v);
+  if (k === keys.ticket || k === keys.id) return `<b class="text-nowrap">${esc(v)}</b>`;
+  if (k === keys.subject) return `<div class="fw-semibold">${esc(String(v).slice(0, 120))}</div>${keys.body && r[keys.body] ? `<div class="small text-muted text-truncate" style="max-width:420px">${esc(String(r[keys.body]).slice(0, 200))}</div>` : ""}`;
+  if (k === keys.customer && keys.email && r[keys.email] && keys.email !== k) return `${esc(v)}<div class="small text-muted">${esc(r[keys.email])}</div>`;
+  const s = String(v);
+  return s.length > 80 ? `<span title="${esc(s)}">${esc(s.slice(0, 77))}…</span>` : esc(s);
+}
+const detailFmt = v => v == null || v === "" ? '<span class="text-muted">—</span>' : typeof v === "object" ? `<pre class="mb-0 small">${esc(JSON.stringify(v, null, 2))}</pre>`
+  : typeof v === "boolean" ? (v ? "Yes" : "No") : isDate(v) ? esc(Cocky.parseDate(v).toLocaleString()) : `<span style="white-space:pre-wrap">${esc(v)}</span>`;
+const detail = r => `<div class="detail-grid">${Object.entries(r).map(([k, v]) => `<div class="k">${esc(Cocky.titleCase(k))}</div><div class="v">${detailFmt(v)}</div>`).join("")}</div>`;
+
+// ---------- filters, sort, paging ----------
+function filtered() {
+  const q = $("#search").value.trim().toLowerCase(), st = $("#statusFilter").value, pr = $("#prioFilter").value, tn = $("#tenantFilter").value;
+  let out = rows.filter(r => (!q || Object.values(r).some(v => v != null && typeof v !== "object" && String(v).toLowerCase().includes(q)) || cf(customerOf(r), "fullname").toLowerCase().includes(q)) &&
+    (!tn || (tn === "__none" ? !customerOf(r) : cf(customerOf(r), "tenantid") === tn)) &&
+    (!st || (st === "__open" ? isOpen(r) : st === "__closed" ? !isOpen(r) : String(r[keys.status] ?? "") === st)) &&
+    (!pr || String(r[keys.priority] ?? "") === pr));
+  const sk = sortKey || keys.date || keys.id;
+  const sv = (r, k) => k === "_customer" ? cf(customerOf(r), "fullname") : r[k];
+  if (sk) out = out.slice().sort((a, b) => {
+    const x = sv(a, sk), y = sv(b, sk);
+    const c = isDate(x) || isDate(y) ? Cocky.dateMs(x) - Cocky.dateMs(y) : typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""), undefined, { numeric: true });
+    return c * sortDir;
+  });
+  return out;
+}
+function drawTiles() {
+  const open = rows.filter(isOpen), day = Date.now() - 864e5, week = Date.now() - 7 * 864e5;
+  const tile = (lbl, n, f, cls = "") => `<div class="col"><div class="card stat h-100"><div class="card-body">${f ? `<a href="#" data-f="${f}">` : ""}
+    <div class="lbl">${lbl}</div><div class="num ${n && cls ? cls : ""}">${n}</div>${f ? "</a>" : ""}</div></div></div>`;
+  $("#tiles").innerHTML = tile("Customer tickets", rows.length, "__all") +
+    (keys.status ? tile("Open", open.length, "__open", "text-danger") : "") +
+    (keys.priority ? tile("High priority, open", open.filter(r => /^(1|2|critical|urgent|high|p1|p2|highest|sev ?[12])$/i.test(String(r[keys.priority] ?? "").trim())).length, "", "text-warning") : "") +
+    (keys.date ? tile("Last 24 hours", rows.filter(r => Cocky.dateMs(r[keys.date]) > day).length, "") + (keys.status ? "" : tile("Last 7 days", rows.filter(r => Cocky.dateMs(r[keys.date]) > week).length, "")) : "");
+  document.querySelectorAll("#tiles [data-f]").forEach(a => a.onclick = ev => { ev.preventDefault(); $("#statusFilter").value = a.dataset.f === "__all" ? "" : a.dataset.f; page = 1; draw(); });
+}
+function draw() {
+  const list = filtered(), size = +$("#pageSize").value || 25, pages = Math.max(1, Math.ceil(list.length / size));
+  page = Math.min(page, pages);
+  const shown = list.slice((page - 1) * size, page * size);
+  $("#count").textContent = `${list.length} of ${rows.length}`;
+  if (!rows.length) { $("#grid").innerHTML = '<div class="empty">No customer tickets.</div>'; $("#pager").innerHTML = ""; return; }
+  if (!list.length) { $("#grid").innerHTML = '<div class="empty">No tickets match.</div>'; $("#pager").innerHTML = ""; return; }
+  const sk = sortKey || keys.date || keys.id;
+  $("#grid").innerHTML = `<div class="table-responsive"><table class="table table-sm table-striped table-bordered table-hover align-middle mb-0">
+    <thead class="table-light"><tr>${cols.map(k => `<th class="small text-uppercase text-muted text-nowrap sortable" data-k="${esc(k)}" role="button">${esc(k === "_customer" ? "Customer" : Cocky.titleCase(k))}${k === sk ? (sortDir > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr></thead>
+    <tbody>${shown.map((r, i) => `<tr class="clickable${isOpen(r) ? "" : " text-muted"}" data-i="${i}">${cols.map(k => `<td>${cell(r, k)}</td>`).join("")}</tr>
+      <tr class="d-none" data-d="${i}"><td colspan="${cols.length}" class="bg-light">${detail(r)}</td></tr>`).join("")}</tbody></table></div>`;
+  $("#grid").querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = () => $(`#grid tr[data-d="${tr.dataset.i}"]`).classList.toggle("d-none"));
+  $("#grid").querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; sortDir = sortKey === k ? -sortDir : (isDate(rows[0]?.[k]) ? -1 : 1); sortKey = k; draw(); });
+  // Bootstrap pagination
+  const btn = (p, label, dis, act) => `<li class="page-item${dis ? " disabled" : ""}${act ? " active" : ""}"><a class="page-link" href="#" data-p="${p}">${label}</a></li>`;
+  const nums = [...new Set([1, page - 1, page, page + 1, pages].filter(p => p >= 1 && p <= pages))].sort((a, b) => a - b);
+  $("#pager").innerHTML = `<div class="small text-muted">Showing ${(page - 1) * size + 1}–${Math.min(page * size, list.length)} of ${list.length}</div>
+    <ul class="pagination pagination-sm mb-0">${btn(page - 1, "‹", page === 1)}${nums.map((p, i) => (i && p - nums[i - 1] > 1 ? '<li class="page-item disabled"><span class="page-link">…</span></li>' : "") + btn(p, p, false, p === page)).join("")}${btn(page + 1, "›", page === pages)}</ul>`;
+  $("#pager").querySelectorAll("[data-p]").forEach(a => a.onclick = ev => { ev.preventDefault(); const p = +a.dataset.p; if (p >= 1 && p <= pages) { page = p; draw(); } });
+}
+
+async function load() {
+  $("#grid").innerHTML = Cocky.spinner(); $("#pager").innerHTML = "";
+  try { [rows] = await Promise.all([Cocky.api.list("customertroubles").then(d => rowsFrom(d).filter(r => r && typeof r === "object")), loadCustomers()]); }
+  catch (e) {
+    $("#grid").innerHTML = "";
+    const box = Cocky.errorBox(e, load);
+    if (e.status === 404) box.insertAdjacentHTML("beforeend", `<div class="small">The API didn't answer on <code>${esc(Cocky.CFG.endpoints.customertroubles)}</code> (set in config.js → endpoints.customertroubles).</div>`);
+    $("#grid").appendChild(box); return;
+  }
+  keys = detectKeys(rows); cols = pickColumns(rows, keys);
+  const opt = (sel, key, extra) => {
+    const el = $(sel);
+    if (!key) { el.classList.add("d-none"); return; }
+    const vals = [...new Set(rows.map(r => r[key]).filter(v => v != null && v !== "").map(String))].sort();
+    el.innerHTML = extra + vals.map(v => `<option value="${esc(v)}">${esc(v)} (${rows.filter(r => String(r[key]) === v).length})</option>`).join("");
+    el.classList.remove("d-none");
+  };
+  opt("#statusFilter", keys.status, `<option value="">All statuses</option><option value="__open">Open (${rows.filter(isOpen).length})</option><option value="__closed">Closed (${rows.filter(r => !isOpen(r)).length})</option>`);
+  opt("#prioFilter", keys.priority, `<option value="">All priorities</option>`);
+  const tenants = [...new Set(rows.map(r => cf(customerOf(r), "tenantid")).filter(Boolean))].sort();
+  const tf = $("#tenantFilter");
+  tf.classList.toggle("d-none", !tenants.length);
+  tf.innerHTML = `<option value="">All tenants</option>` + tenants.map(t => `<option value="${esc(t)}">Tenant ${esc(t)} (${rows.filter(r => cf(customerOf(r), "tenantid") === t).length})</option>`).join("") +
+    `<option value="__none">No customer match (${rows.filter(r => !customerOf(r)).length})</option>`;
+  if (qs.get("q")) $("#search").value = qs.get("q");
+  if (qs.get("status")) $("#statusFilter").value = qs.get("status") === "open" ? "__open" : qs.get("status");
+  drawTiles(); draw();
+}
+
+$("#pageSize").innerHTML = CT.pageSizes.map(n => `<option value="${n}">${n} per page</option>`).join("");
+["#search", "#statusFilter", "#prioFilter", "#tenantFilter", "#pageSize"].forEach(s => $(s).addEventListener(s === "#search" ? "input" : "change", () => { page = 1; draw(); }));
+$("#reload").onclick = load;
+load();
+</script>
+</body>
+</html>
