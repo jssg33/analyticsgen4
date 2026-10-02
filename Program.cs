@@ -134,9 +134,11 @@ app.MapApplicationAccessEndpoints();
 app.MapSitesEndpoints();
 app.MapSiteAccessPermissionsEndpoints();
 app.MapApiAccessPermissionsEndpoints();
+app.MapAuditSqlEndpoints();
 
 // ADD Weather Default Controller
 app.MapWeatherForecastEndpoints();
+
 
 // TWO FACTOR
 app.MapTwofactorEndpoints();
