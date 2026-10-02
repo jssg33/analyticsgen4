@@ -46,5 +46,21 @@ namespace Enterprise.Models
         public bool IsHardDown { get; set; }
 
         public int IncidentCount { get; set; } = 1;
+        public int? ImpactedUsers { get; set; }
+ 
+        [MaxLength(100)]
+        public string? BusinessUnit { get; set; }
+ 
+        [MaxLength(2000)]
+        public string? RootCause { get; set; }
+    
+        [MaxLength(1000)]
+        public string? EvidenceUrl { get; set; }
+ 
+        [MaxLength(4000)]
+        public string? AuditorNotes { get; set; }
+ 
+        [MaxLength(200)]
+        public string? ApplicationOwner { get; set; }
     }
 }

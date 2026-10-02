@@ -115,6 +115,12 @@ namespace somecontrollers.Controllers;
                 existing.ResolvedOn = input.ResolvedOn;
                 existing.IsHardDown = input.IsHardDown;
                 existing.IncidentCount = input.IncidentCount;
+                existing.ImpactedUsers = input.ImpactedUsers;
+                existing.BusinessUnit = input.BusinessUnit;
+                existing.RootCause = input.RootCause;
+                existing.EvidenceUrl = input.EvidenceUrl;
+                existing.AuditorNotes = input.AuditorNotes;
+                existing.ApplicationOwner = input.ApplicationOwner;
 
                 await context.SaveChangesAsync();
 
