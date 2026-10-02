@@ -16,6 +16,14 @@ public int? WebServerId { get; set; }
 public int? WebFarmId { get; set; }
 public int? DatabaseId { get; set; }
 public bool? IsActive { get; set; } = true;
+public string? UI_Codebase { get; set; }
+public string? APIVendor { get; set; }
+public string? UI_HTMLVendor { get; set; }
+public string? UI_REACTVendor { get; set; }
+public string? OS_UIHTML { get; set; }
+public string? OS_UIREACT { get; set; }
+public string? OS_API { get; set; }
+
 public DateTime CreatedDate { get; set; }
 
 public DateTime? ModifiedDate { get; set; }

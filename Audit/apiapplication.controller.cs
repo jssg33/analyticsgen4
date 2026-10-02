@@ -117,6 +117,13 @@ public static class ApplicationController
                 item.WebFarmId = input.WebFarmId;
                 item.ModifiedDate = DateTime.UtcNow;
                 item.DatabaseId = input.DatabaseId;
+                item.UI_Codebase = input.UI_Codebase;
+                item.APIVendor = input.APIVendor;
+                item.UI_HTMLVendor = input.UI_HTMLVendor;
+                item.UI_REACTVendor = input.UI_REACTVendor; 
+                item.OS_UIHTML = input.OS_UIHTML; 
+                item.OS_UIREACT = input.OS_UIREACT;
+                item.OS_API = input.OS_API;
 
                 await context.SaveChangesAsync();
 
