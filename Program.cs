@@ -138,7 +138,7 @@ app.MapAuditSqlEndpoints();
 app.MapApiServicesEndpoints();
 // ADD Weather Default Controller
 app.MapWeatherForecastEndpoints();
-
+app.MapEnterprise9Endpoints();
 
 // TWO FACTOR
 app.MapTwofactorEndpoints();

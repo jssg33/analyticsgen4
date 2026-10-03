@@ -106,6 +106,7 @@ public partial class EnterpriseContext : DbContext
     public DbSet<AuditServerPermission> AuditServerPermissions { get; set; }
     public DbSet<AuditTablePermission> AuditTablePermissions { get; set; }
     public DbSet<AuditFieldPermission> AuditFieldPermissions { get; set; }
+    public virtual DbSet<Enterprise9> Enterprise9s { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -172,6 +173,30 @@ public partial class EnterpriseContext : DbContext
         entity.Property(e => e.Fiveyeardivproj);
         entity.Property(e => e.Totalfiveyearview);
 });
+
+modelBuilder.Entity<Enterprise9>(entity =>
+{
+entity.ToTable("Enterprise9");
+ 
+entity.HasKey(e => e.Id);
+ 
+entity.Property(e => e.ApiHostName)
+.HasMaxLength(255);
+ 
+entity.Property(e => e.LogName)
+.HasMaxLength(200);
+ 
+entity.Property(e => e.HttpMethod)
+.HasMaxLength(20);
+ 
+entity.Property(e => e.EndpointUrl)
+.HasMaxLength(1000);
+ 
+entity.Property(e => e.CreatedDate);
+entity.Property(e => e.ModifiedDate);
+});
+
+
 
         modelBuilder.Entity<CipherSupport>(entity =>
         {
