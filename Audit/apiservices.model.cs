@@ -30,5 +30,8 @@ public bool IsActive { get; set; } = true;
 public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
  
 public DateTime? ModifiedDate { get; set; }
+
+public int? ApiHostId {get; set;} 
+public string? ApiHostName {get; set;}
 }
 }

@@ -95,6 +95,8 @@ public static class ApiServicesController
             existing.ServiceType = input.ServiceType;
             existing.ServiceOwner = input.ServiceOwner;
             existing.IsActive = input.IsActive;
+            existing.ApiHostName = input.ApiHostName;
+            existing.ApiHostId = input.ApiHostId;
             existing.ModifiedDate = DateTime.UtcNow;
 
             await context.SaveChangesAsync();

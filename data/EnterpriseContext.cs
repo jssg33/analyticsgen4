@@ -498,7 +498,9 @@ modelBuilder.Entity<ApiService>(entity =>
 
     entity.Property(e => e.ServiceOwner)
         .HasMaxLength(200);
-
+    entity.Property(e => e.ApiHostId);
+    entity.Property(e => e.ApiHostName)
+        .HasMaxLength(200);
     entity.Property(e => e.CreatedDate);
 
     entity.Property(e => e.ModifiedDate);
