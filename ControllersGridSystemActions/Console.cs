@@ -70,12 +70,7 @@ public class SystemConsoleController : ControllerBase
                 return Ok("Option 6 is currently disabled.");
 
             case 7:
-                // using var context = new EnterpriseContext();
-                // var ratingService = new ParkRatingService(context);
-                // var result = ratingService.UpdateAverageParkRating(value);
-                // return Ok(result);
-
-                return Ok("Option 7 is currently disabled.");
+                return Ok(SqlAzureTableAudit.RunAudit());
 
             //THIS API POWERS THE COCKYAUDITOR AND COCKYANALYTICS. THE AUDITOR TOOL CAN IMPORT THE ENTIRE TEXT FILE.
             case 8:

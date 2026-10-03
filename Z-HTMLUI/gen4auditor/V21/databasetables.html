@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database Tables · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  .dt-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  @media(max-width:700px){.dt-tiles{grid-template-columns:repeat(2,1fr)}}
+  .dt-tile{background:var(--bs-body-bg,#fff);border:1px solid var(--bs-border-color,#dee2e6);border-radius:10px;padding:12px 14px}
+  .dt-tile .n{font-size:1.6rem;font-weight:700;line-height:1.1}
+  .dt-tile .l{color:#6c757d;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  th.sortable{cursor:pointer;white-space:nowrap}
+  th.sortable .ar{color:#adb5bd;font-size:.8em}
+</style>
+</head>
+<body>
+<section data-page>
+  <h2>Database Tables</h2>
+  <div class="page-sub">The EF tables discovered on each API by the host-side table audit (<code>SqlAzureTableAudit</code>, written to the
+    <code>DatabaseTable</code> table). Pick a source to read its <code>/api/databasetables</code>. CockyAuditor only reads this inventory;
+    discovery is run on the host side.</div>
+  <div id="setup"></div>
+
+  <div id="dt" class="d-none">
+    <div class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+      <label class="small text-muted mb-0">Source</label>
+      <select class="form-select form-select-sm dt-source" style="max-width:340px"></select>
+      <input class="form-control form-control-sm dt-search" style="max-width:220px" placeholder="Filter tables…">
+      <span class="dt-count text-muted small ms-1"></span>
+      <button class="btn btn-sm btn-outline-secondary ms-auto dt-refresh" type="button">Refresh</button>
+    </div></div>
+    <div class="dt-tiles" id="dtTiles"></div>
+    <div class="card"><div class="card-body"><div class="dt-table"></div></div></div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("dbtables");
+const { esc } = Cocky;
+const me = window.CockyAuth?.current() || {};
+const PATH = Cocky.CFG.endpoints.databasetables || "/api/databasetables";
+const trim = u => String(u || "").replace(/\/+$/, "");
+const hostName = h => h.apiHostName || h.apiHostUrl || ("#" + h.id);
+
+let rows = [], hosts = [], sort = { key: "tableName", dir: 1 };
+
+function sourceUrl() {
+  const sel = main.querySelector(".dt-source"), base = sel.value;
+  return (base ? trim(base) : trim(Cocky.CFG.apiBaseUrl)) + PATH;
+}
+
+async function fetchTables(url) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), Cocky.CFG.requestTimeoutMs || 30000);
+  const headers = { Accept: "application/json" };
+  if (me.token) headers.Authorization = "Bearer " + String(me.token).replace(/^Bearer\s+/i, "");
+  try {
+    const res = await fetch(url, { headers, cache: "no-store", signal: ctrl.signal });
+    const text = await res.text();
+    if (!res.ok) { const e = new Error(`${res.status} ${res.statusText}${text && text.length < 200 ? " - " + text : ""}`); e.status = res.status; throw e; }
+    let data = null; try { data = text ? JSON.parse(text) : []; } catch { data = []; }
+    return Array.isArray(data) ? data : (data && typeof data === "object" ? [data] : []);
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Timed out.");
+    if (e instanceof TypeError) throw new Error(`Couldn't reach it (CORS or the API is down). It must allow ${location.origin}.`);
+    throw e;
+  } finally { clearTimeout(t); }
+}
+
+function tiles() {
+  const n = rows.length, cols = rows.reduce((s, r) => s + (+r.columnCount || 0), 0);
+  const largest = rows.reduce((m, r) => (+r.columnCount || 0) > (+m.columnCount || 0) ? r : m, { columnCount: 0 });
+  const inactive = rows.filter(r => r.isActive === false).length;
+  const tile = (n, l) => `<div class="dt-tile"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`;
+  main.querySelector("#dtTiles").innerHTML =
+    tile(n, "Tables") + tile(cols, "Total columns") +
+    tile(largest.columnCount ? `${largest.columnCount}` : "–", largest.columnCount ? `Largest: ${largest.tableName}` : "Largest") +
+    tile(inactive, "Inactive");
+}
+
+function draw() {
+  const q = main.querySelector(".dt-search").value.trim().toLowerCase();
+  let shown = q ? rows.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(q))) : rows.slice();
+  const k = sort.key, dir = sort.dir;
+  shown.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (k === "columnCount") return ((+av || 0) - (+bv || 0)) * dir;
+    if (k === "lastAuditDate") return (Cocky.dateMs(av) - Cocky.dateMs(bv)) * dir;
+    return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
+  });
+  main.querySelector(".dt-count").textContent = rows.length ? `${shown.length} of ${rows.length}` : "";
+  const host = main.querySelector(".dt-table");
+  if (!shown.length) { host.innerHTML = `<div class="empty">${rows.length ? "Nothing matches your filter." : "No tables returned from this source."}</div>`; return; }
+  const cols = [["tableName", "Table"], ["schemaName", "Schema"], ["modelName", "Model"], ["columnCount", "Columns"], ["lastAuditDate", "Last audit"], ["isActive", "Active"]];
+  const ar = key => sort.key === key ? `<span class="ar">${sort.dir > 0 ? "▲" : "▼"}</span>` : `<span class="ar">↕</span>`;
+  host.innerHTML = `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+    <thead><tr>${cols.map(([k, l]) => `<th class="sortable" data-k="${k}">${esc(l)} ${ar(k)}</th>`).join("")}</tr></thead>
+    <tbody>${shown.map(r => `<tr>
+      <td><code>${esc(r.tableName || "")}</code></td>
+      <td class="text-muted small">${esc(r.schemaName || "")}</td>
+      <td>${esc(r.modelName || "")}</td>
+      <td>${esc(String(r.columnCount ?? ""))}</td>
+      <td class="small">${r.lastAuditDate ? esc((Cocky.parseDate(r.lastAuditDate) || "").toLocaleString?.() || r.lastAuditDate) : '<span class="text-muted">—</span>'}</td>
+      <td>${r.isActive === false ? '<span class="badge text-bg-secondary">No</span>' : '<span class="badge text-bg-success">Yes</span>'}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+  host.querySelectorAll("th.sortable").forEach(th => th.onclick = () => {
+    const k = th.dataset.k; sort = { key: k, dir: sort.key === k ? -sort.dir : 1 }; draw();
+  });
+}
+
+async function load() {
+  const host = main.querySelector(".dt-table");
+  main.querySelector("#dtTiles").innerHTML = "";
+  host.innerHTML = Cocky.spinner("Loading tables…");
+  try { rows = await fetchTables(sourceUrl()); tiles(); draw(); }
+  catch (e) {
+    rows = []; main.querySelector("#dtTiles").innerHTML = ""; main.querySelector(".dt-count").textContent = "";
+    const extra = e.status === 404 ? ` This source has no <code>${esc(PATH)}</code> route (the table-discovery MVC may not be deployed on it).` : "";
+    host.innerHTML = `<div class="alert alert-${e.status === 404 ? "warning" : "danger"} mb-0"><b>Couldn't load tables.</b> ${esc(e.message)}${extra}</div>`;
+  }
+}
+
+(async () => {
+  document.getElementById("dt").classList.remove("d-none");
+  try { hosts = await Cocky.api.list("apihosts"); } catch { hosts = []; }
+  const sel = main.querySelector(".dt-source");
+  sel.innerHTML = `<option value="">This API (${esc(new URL(Cocky.CFG.apiBaseUrl).host)})</option>` +
+    hosts.filter(h => h.apiHostUrl).sort((a, b) => hostName(a).localeCompare(hostName(b)))
+      .map(h => `<option value="${esc(h.apiHostUrl)}">${esc(hostName(h))} · ${esc(h.apiHostUrl)}</option>`).join("");
+  sel.onchange = load;
+  main.querySelector(".dt-search").addEventListener("input", draw);
+  main.querySelector(".dt-refresh").onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>

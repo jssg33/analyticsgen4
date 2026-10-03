@@ -1,0 +1,73 @@
+================================================
+SQL AZURE TABLE AUDIT
+================================================
+Generated UTC : 2026-10-03 17:25:32
+
+ENTITY FRAMEWORK TABLE INVENTORY
+---------------------------------------------
+dbo.ApiHostException | Model=ApiHostException | Columns=10
+dbo.Adminlog | Model=Adminlog | Columns=8
+dbo.allstocks | Model=Allstock | Columns=40
+dbo.ApiAccessPermissions | Model=ApiAccessPermission | Columns=7
+dbo.ApiInterfacesAudit | Model=ApiInterfacesAudit | Columns=14
+dbo.ApiServices | Model=ApiService | Columns=13
+dbo.Apiaudit | Model=Apiaudit | Columns=73
+dbo.Apihosts | Model=Apihost | Columns=66
+dbo.Apilogs | Model=Apilog | Columns=8
+dbo.Applications | Model=Application | Columns=23
+dbo.ApplicationApis | Model=ApplicationApi | Columns=5
+dbo.ApplicationUsers | Model=ApplicationUser | Columns=16
+dbo.AuditExceptions | Model=AuditException | Columns=11
+dbo.AuditFieldPermissions | Model=AuditFieldPermission | Columns=7
+dbo.AuditPrincipals | Model=AuditPrincipal | Columns=7
+dbo.AuditResults | Model=AuditResult | Columns=11
+dbo.AuditServerPermissions | Model=AuditServerPermission | Columns=6
+dbo.AuditSqlFields | Model=AuditSqlField | Columns=14
+dbo.AuditSqlServers | Model=AuditSqlServer | Columns=22
+dbo.AuditSqlTables | Model=AuditSqlTable | Columns=13
+dbo.AuditTablePermissions | Model=AuditTablePermission | Columns=7
+dbo.CipherSupport | Model=CipherSupport | Columns=7
+dbo.CockyCipherBlocks | Model=CockyCipherBlock | Columns=9
+dbo.Customers | Model=Customer | Columns=5
+dbo.Databases | Model=Database | Columns=18
+dbo.DatabaseServers | Model=DatabaseServer | Columns=26
+dbo.DatabaseTables | Model=DatabaseTable | Columns=8
+dbo.Enterprise9 | Model=Enterprise9 | Columns=16
+dbo.Keyassignments | Model=Keyassignment | Columns=9
+dbo.Learndetails | Model=Learndetail | Columns=14
+dbo.Learnlogs | Model=Learnlog | Columns=4
+dbo.LunaLog | Model=Lunalog | Columns=12
+dbo.Portfolios | Model=Portfolio | Columns=4
+dbo.PortfolioStocks | Model=PortfolioStock | Columns=8
+dbo.sectorssummaries | Model=Sectorssummary | Columns=19
+dbo.Sessionlog | Model=Sessionlog | Columns=7
+dbo.Sites | Model=Site | Columns=13
+dbo.SiteAccessPermissions | Model=SiteAccessPermission | Columns=10
+dbo.Superuserlog | Model=Superuserlog | Columns=8
+dbo.SysLog | Model=Syslog | Columns=11
+dbo.SystemStocks | Model=SystemStock | Columns=44
+dbo.TradeOrders | Model=TradeOrder | Columns=8
+dbo.Traders | Model=Trader | Columns=4
+dbo.Users | Model=User | Columns=39
+dbo.UserDownloadLogs | Model=UserDownloadLog | Columns=16
+dbo.UserLocations | Model=UserLocation | Columns=13
+dbo.UserProfileLog | Model=UserProfileLog | Columns=8
+dbo.Useraction | Model=Useraction | Columns=6
+dbo.Usergroups | Model=Usergroup | Columns=5
+dbo.Userhelps | Model=Userhelp | Columns=15
+dbo.Userlog | Model=Userlog | Columns=9
+dbo.Usernotice | Model=Usernotice | Columns=8
+dbo.Userprofiles | Model=Userprofile | Columns=38
+dbo.Usersessions | Model=Usersession | Columns=27
+dbo.WebFarms | Model=WebFarm | Columns=28
+dbo.WebFarmServers | Model=WebFarmServer | Columns=3
+dbo.WebServers | Model=WebServer | Columns=28
+dbo.WorkerTroubleTickets | Model=WorkerTroubleTicket | Columns=21
+
+AUDIT SUMMARY
+---------------------------------------------
+Entities Found : 58
+Inserted       : 58
+Updated        : 0
+
+END OF REPORT
