@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Services · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Services</h2>
+  <div class="page-sub">Services defined holistically for the enterprise. Each service belongs to one API <a href="apihosts.html">host</a>;
+    attach it to that host's endpoints on the <a href="servicemap.html">Service Map</a>. CockyAuditor records what's exposed &mdash; it never calls these services.</div>
+  <div id="setup"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("services");
+const esc = Cocky.esc;
+const qs = new URLSearchParams(location.search);
+
+let hosts = [], links = [];
+const hostName = h => h ? (h.apiHostName || h.apiHostUrl || "#" + h.id) : "";
+const hostById = id => hosts.find(h => h.id === id);
+
+async function loadLookups() {
+  [hosts, links] = await Promise.all([
+    Cocky.api.list("apihosts").catch(() => []),
+    Cocky.api.list("apiserviceendpoints").catch(() => [])   // may 404 until the join controller is deployed
+  ]);
+}
+
+// Show the host by name, and a count of endpoints this service is attached to.
+Cocky.SCHEMA.apiservices.format = {
+  apiHostId: (v, s) => {
+    const id = v ?? s.apiHostId;
+    if (id == null) return '<span class="text-muted">—</span>';
+    const h = hostById(id);
+    return esc(hostName(h) || "#" + id);
+  },
+  isActive: v => v === false ? '<span class="badge text-bg-secondary">No</span>' : '<span class="badge text-bg-success">Yes</span>'
+};
+
+// When the host dropdown changes in the add/edit form, mirror the chosen host's name into apiHostName
+// so the stored ApiHostName stays consistent with ApiHostId.
+Cocky.SCHEMA.apiservices.onForm = (form) => {
+  const hostSel = form.querySelector('[data-key="apiHostId"]');
+  const nameInput = form.querySelector('[data-key="apiHostName"]');
+  if (!hostSel || !nameInput) return;
+  hostSel.addEventListener("change", () => {
+    const h = hostById(+hostSel.value);
+    if (h) nameInput.value = hostName(h);
+  });
+};
+
+(async () => {
+  try { await Cocky.api.list("apiservices"); }
+  catch (e) {
+    if (e.status === 404) {
+      document.getElementById("setup").innerHTML = `<div class="alert alert-warning"><strong>The API didn't answer on <code>${esc(Cocky.CFG.endpoints.apiservices)}</code>.</strong>
+        Check the API has been deployed with <code>MapApiServicesEndpoints()</code> (set the route in <code>config.js</code>).
+        <div class="small text-muted mt-1">${esc(e.message)}</div></div>`;
+      return;
+    }
+  }
+
+  const page = Cocky.crudPage("apiservices", {
+    mount: main,
+    columns: Cocky.SCHEMA.apiservices.columns,
+    beforeLoad: loadLookups,
+    addDefaults: () => { const h = +main.querySelector(".host-filter")?.value; return h ? { apiHostId: h, apiHostName: hostName(hostById(h)) } : {}; },
+    toolbarExtra: `<select class="form-select form-select-sm host-filter" style="max-width:260px"><option value="">All hosts</option></select>`,
+    filter: rows => {
+      const h = main.querySelector(".host-filter").value;
+      return h ? rows.filter(r => String(r.apiHostId) === h) : rows;
+    },
+    sort: rows => rows.slice().sort((a, b) =>
+      String(hostName(hostById(a.apiHostId))).localeCompare(String(hostName(hostById(b.apiHostId)))) ||
+      String(a.serviceName || "").localeCompare(String(b.serviceName || ""))),
+    onLoaded: () => {
+      const hf = main.querySelector(".host-filter");
+      const keep = hf.value || qs.get("host") || "";
+      hf.innerHTML = `<option value="">All hosts</option>` + hosts.slice().sort((a, b) => hostName(a).localeCompare(hostName(b)))
+        .map(h => `<option value="${h.id}">${esc(hostName(h))}</option>`).join("");
+      hf.value = keep;
+    },
+    // Remove this service's endpoint links first (put them back if the delete fails).
+    beforeDelete: async s => {
+      const mine = links.filter(l => l.serviceId === s.id);
+      if (mine.length && !confirm(`${mine.length} endpoint link(s) for this service will be removed too. Continue?`)) throw new Error("Cancelled.");
+      const removed = [];
+      try { for (const l of mine) { await Cocky.api.remove("apiserviceendpoints", l.id); removed.push(l); } }
+      catch (e) { for (const l of removed) await Cocky.api.create("apiserviceendpoints", { serviceId: l.serviceId, apiAuditId: l.apiAuditId }); throw e; }
+      return async () => { for (const l of removed) await Cocky.api.create("apiserviceendpoints", { serviceId: l.serviceId, apiAuditId: l.apiAuditId }); };
+    }
+  });
+
+  main.querySelector(".host-filter").onchange = () => page.redraw();
+})();
+</script>
+</body>
+</html>

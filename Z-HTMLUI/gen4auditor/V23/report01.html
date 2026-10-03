@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report 01 · API compliance · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <div class="no-print mb-2 small"><a href="reports.html">‹ Reports</a></div>
+  <div class="report-head d-flex flex-wrap justify-content-between align-items-end gap-2">
+    <div><div class="small text-muted text-uppercase">Report 01</div><h2 class="mb-0">API compliance by endpoint</h2>
+      <div class="small text-muted" id="meta"></div></div>
+    <div class="no-print d-flex flex-wrap gap-2 align-items-center">
+      <select class="form-select form-select-sm" id="hostSel" style="width:auto"></select>
+      <select class="form-select form-select-sm" id="viewSel" style="width:auto" title="How the token / auth check is scored">
+        <option value="strict">Strict view</option><option value="practical">Practical view</option>
+      </select>
+      <select class="form-select form-select-sm" id="sortSel" style="width:auto">
+        <option value="host">Group by host</option><option value="low">Lowest compliance first</option>
+      </select>
+      <div class="form-check form-check-inline small mb-0"><input class="form-check-input" type="checkbox" id="incInactive"><label class="form-check-label" for="incInactive">Include inactive</label></div>
+      <div class="form-check form-check-inline small mb-0"><input class="form-check-input" type="checkbox" id="incExcepted"><label class="form-check-label" for="incExcepted">Include excepted</label></div>
+      <button class="btn btn-sm btn-outline-secondary" id="csvBtn" type="button">Download CSV</button>
+      <button class="btn btn-sm btn-primary" id="printBtn" type="button">Print</button>
+    </div>
+  </div>
+  <div id="out">Loading…</div>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="tickets.js"></script>
+<script>
+Cocky.layout("reports");
+document.title = "Report 01 · API compliance · CockyAuditor";
+const { esc } = Cocky, $ = s => document.querySelector(s);
+const CC = Object.assign({ auditMaxDays: 90, checks: [], excludeInactive: true, excludeExcepted: true }, Cocky.CFG.compliance || {});
+const CHECKS = CC.checks.filter(c => c.enabled !== false);
+const view = () => document.getElementById("viewSel")?.value || CC.view || "strict";
+const val = v => (v == null || ["", "string", "n/a"].includes(String(v).trim().toLowerCase())) ? "" : String(v).trim();
+let hosts = [], endpoints = [], exc = [], hostExc = [], loadedAt = null;
+
+const hostName = id => { const h = hosts.find(x => x.id === id); return h ? (h.apiHostName || h.apiHostUrl || "Host #" + id) : (id == null ? "No host" : "Host #" + id + " (missing)"); };
+const epName = e => `${Tickets.methodOf(e)} ${Cocky.e9.pathOf(e) || val(e.description) || "#" + e.id}`;
+const isActive = e => e.isActive !== false;
+
+// Same scoping rules as Run Audit (README "Exceptions"): every field that's set must match; * is a wildcard
+function exceptionFor(e) {
+  const hx = Cocky.hostException(hostExc, e.apiHostId);
+  if (hx) return { id: hx.id, text: `host exception #${hx.id}` };
+  const url = Tickets.targetUrl(e, hosts);
+  let u = null; try { u = url ? new URL(url) : null; } catch {}
+  const norm = s => String(s || "").toLowerCase().replace(/\/+$/, "");
+  const pat = p => new RegExp("^" + norm(p).split("*").map(x => x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$", "i");
+  for (const x of exc.filter(Cocky.isLiveException)) {
+    const id = val(x.apiAuditId), root = val(x.apiRootUrl), path = val(x.apiEndpointPath);
+    if (!id && !root && !path) continue;
+    if (id && String(id) !== String(e.id)) continue;
+    let rest = u ? u.pathname : "";
+    if (root) { if (!u || !norm(url).startsWith(norm(root))) continue; try { const rp = new URL(root).pathname.replace(/\/+$/, ""); rest = rest.slice(rp.length) || "/"; } catch {} }
+    if (path && !pat(path).test(norm(rest) || "/")) continue;
+    return { id: x.id, text: `exception #${x.id}` };
+  }
+  return null;
+}
+
+// One endpoint against the checks: [{ id, label, ok, text }]
+function score(e) {
+  const url = Tickets.targetUrl(e, hosts);
+  const https = /^https:\/\//i.test(url);
+  const audited = Cocky.parseDate(e.lastAuditDate);
+  const ageDays = audited ? (Date.now() - audited) / 864e5 : null;
+  const results = CHECKS.map(c => {
+    let ok;
+    switch (c.id) {
+      case "secure": ok = https && e.endpointSecure !== false; break;
+      case "auth": ok = !!e.hasAuthEnabled; break;
+      case "authType": ok = !!e.hasAuthEnabled && !!val(e.authType); break;
+      case "audited": ok = ageDays != null && ageDays <= CC.auditMaxDays; break;
+      case "contact": ok = !!(val(e.securityEmail) || val(e.techContactEmail)); break;
+      case "classification": ok = !!val(e.securityClassification); break;
+      // Build 6.6: stamped by Run Audit's token / auth check. Strict: the endpoint itself refuses calls without a valid
+      // token or login. Practical: that, or the world can't reach it (CORS restricted and IP restricted).
+      case "access": ok = e.authEnforced === true || (view() === "practical" && e.corsRestricted === true && e.ipRestricted === true); break;
+      default: ok = true;
+    }
+    let text = (c.text || c.label).replace("{days}", CC.auditMaxDays);
+    if (c.id === "secure" && !ok) text = !url ? "No URL recorded" : !https ? "Not served over HTTPS" : "The last audit found it insecure";
+    if (c.id === "authType" && !ok && !e.hasAuthEnabled) text = "No auth type (authentication not enabled)";
+    if (c.id === "access" && !ok) text = e.authEnforced == null && e.corsRestricted == null
+      ? "Token / auth not verified yet: run Run Audit with the token check on and stamp the results"
+      : view() === "practical"
+        ? `Doesn't enforce a token or login, and isn't kept from the world (CORS ${e.corsRestricted ? "restricted" : e.corsRestricted === false ? "open" : "not checked"}, IP ${e.ipRestricted ? "restricted" : e.ipRestricted === false ? "public" : "not checked"})`
+        : "Answers without a valid token or login (strict)";
+    if (c.id === "audited" && !ok) text = audited ? `Last audited ${Math.round(ageDays)} days ago (limit ${CC.auditMaxDays})` : "Never audited";
+    return { id: c.id, label: c.label, ok, text };
+  });
+  const passed = results.filter(r => r.ok).length;
+  return { e, url, secure: results.find(r => r.id === "secure")?.ok ?? (https && e.endpointSecure !== false), results, passed, total: results.length,
+    warnings: results.filter(r => !r.ok), pct: results.length ? passed / results.length * 100 : 100 };
+}
+
+const pctTxt = p => (Math.round(p * 10) / 10).toFixed(p % 1 ? 1 : 0) + "%";
+const color = p => p >= 90 ? "#198754" : p >= 70 ? "#e0a100" : "#dc3545";
+const bar = p => `<div class="d-flex align-items-center gap-2"><div class="cmp-bar flex-fill"><div style="width:${p}%;background:${color(p)}"></div></div><b style="color:${color(p)};min-width:3.2em;text-align:right">${pctTxt(p)}</b></div>`;
+function totals(rows) {
+  const checks = rows.reduce((a, r) => a + r.total, 0), passed = rows.reduce((a, r) => a + r.passed, 0);
+  return { n: rows.length, secure: rows.filter(r => r.secure).length, warnings: rows.reduce((a, r) => a + r.warnings.length, 0),
+    pct: checks ? passed / checks * 100 : 100, full: rows.filter(r => !r.warnings.length).length };
+}
+
+function scope() {
+  const h = $("#hostSel").value, inInactive = $("#incInactive").checked, inExc = $("#incExcepted").checked;
+  const all = endpoints.filter(e => !h || String(e.apiHostId ?? "none") === h);
+  const skipped = { inactive: [], excepted: [] };
+  const rows = [];
+  all.forEach(e => {
+    if (!inInactive && !isActive(e)) { skipped.inactive.push(e); return; }
+    const x = exceptionFor(e);
+    if (!inExc && x) { skipped.excepted.push({ e, x }); return; }
+    rows.push(Object.assign(score(e), { exception: x }));
+  });
+  return { rows, skipped };
+}
+
+function draw() {
+  const { rows, skipped } = scope(), T = totals(rows), me = window.CockyAuth?.current() || {};
+  $("#meta").textContent = `Generated ${loadedAt.toLocaleString()} by ${me.fullname || me.username || "—"} · CockyAuditor build ${Cocky.CFG.version} · ${new URL(Cocky.CFG.apiBaseUrl).host}` +
+    ($("#hostSel").value ? ` · host: ${$("#hostSel").selectedOptions[0].textContent}` : " · all hosts") +
+    (CHECKS.some(c => c.id === "access") ? ` · ${view() === "practical" ? "Practical" : "Strict"} view` : "");
+  const tile = (lbl, v, sub = "", style = "") => `<div class="col"><div class="card stat report-total h-100"><div class="card-body"><div class="lbl">${lbl}</div><div class="num" style="${style}">${v}</div>${sub ? `<div class="small text-muted">${sub}</div>` : ""}</div></div></div>`;
+  let html = `<div class="row row-cols-2 row-cols-md-4 g-3 mb-3">
+    ${tile("Total endpoints", T.n, `${T.full} fully compliant`)}
+    ${tile("Total secure endpoints", T.secure, T.n ? `${pctTxt(T.secure / T.n * 100)} of endpoints` : "")}
+    ${tile("Total security warnings", T.warnings, T.n ? `${(T.warnings / T.n).toFixed(1)} per endpoint` : "", T.warnings ? "color:#dc3545" : "")}
+    ${tile("Compliance", pctTxt(T.pct), `${rows.reduce((a, r) => a + r.passed, 0)} of ${rows.reduce((a, r) => a + r.total, 0)} checks passed`, `color:${color(T.pct)}`)}
+  </div>`;
+  // Which checks fail most
+  html += `<div class="card mb-3"><div class="card-body"><h6 class="mb-2">Checks</h6><div class="table-responsive"><table class="table table-sm mb-0 small align-middle">
+    <thead class="table-light"><tr><th>Check</th><th class="text-end">Passed</th><th class="text-end">Warnings</th><th style="width:40%">Pass rate</th></tr></thead><tbody>
+    ${CHECKS.map(c => { const p = rows.filter(r => r.results.find(x => x.id === c.id)?.ok).length;
+      return `<tr><td>${esc(c.label)}${c.id === "audited" ? ` <span class="text-muted">(${CC.auditMaxDays} days)</span>` : ""}</td><td class="text-end">${p}</td><td class="text-end ${rows.length - p ? "text-danger fw-semibold" : ""}">${rows.length - p}</td><td>${bar(rows.length ? p / rows.length * 100 : 100)}</td></tr>`; }).join("")}
+    </tbody></table></div></div></div>`;
+  if (!rows.length) html += '<div class="empty">No endpoints in this report.</div>';
+
+  const table = list => `<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 small">
+    <thead class="table-light"><tr><th>Id</th><th>Endpoint</th>${$("#sortSel").value === "low" ? "<th>Host</th>" : ""}<th>Secure</th><th class="text-end">Warnings</th><th>Security warnings</th><th style="width:170px">Compliance</th></tr></thead>
+    <tbody>${list.map(r => `<tr>
+      <td>${r.e.id}</td>
+      <td><span class="font-monospace">${esc(epName(r.e))}</span>${isActive(r.e) ? "" : ' <span class="badge text-bg-secondary">inactive</span>'}${r.exception ? ` <span class="badge text-bg-warning">${esc(r.exception.text)}</span>` : ""}
+        ${val(r.e.environment) ? `<div class="text-muted">${esc(r.e.environment)}</div>` : ""}</td>
+      ${$("#sortSel").value === "low" ? `<td>${esc(hostName(r.e.apiHostId))}</td>` : ""}
+      <td>${r.secure ? '<span class="badge text-bg-success">Yes</span>' : '<span class="badge text-bg-danger">No</span>'}</td>
+      <td class="text-end ${r.warnings.length ? "text-danger fw-semibold" : ""}">${r.warnings.length}</td>
+      <td>${r.warnings.length ? `<ul class="mb-0 ps-3">${r.warnings.map(w => `<li>${esc(w.text)}</li>`).join("")}</ul>` : '<span class="text-success">None</span>'}</td>
+      <td>${bar(r.pct)}<div class="text-muted">${r.passed} of ${r.total} checks</div></td></tr>`).join("")}</tbody>
+    ${(() => { const t = totals(list); return `<tfoot><tr class="table-light fw-semibold"><td colspan="${$("#sortSel").value === "low" ? 3 : 2}">${t.n} endpoint${t.n === 1 ? "" : "s"}</td><td>${t.secure} secure</td><td class="text-end">${t.warnings}</td><td></td><td>${bar(t.pct)}</td></tr></tfoot>`; })()}
+    </table></div>`;
+
+  if (rows.length && $("#sortSel").value === "low") {
+    html += `<div class="card"><div class="card-body">${table(rows.slice().sort((a, b) => a.pct - b.pct || b.warnings.length - a.warnings.length || a.e.id - b.e.id))}</div></div>`;
+  } else if (rows.length) {
+    const groups = new Map();
+    rows.forEach(r => { const k = r.e.apiHostId ?? "none"; (groups.get(k) || groups.set(k, []).get(k)).push(r); });
+    [...groups.entries()].sort((a, b) => hostName(a[0] === "none" ? null : a[0]).localeCompare(hostName(b[0] === "none" ? null : b[0])))
+      .forEach(([k, list]) => { const t = totals(list), h = hosts.find(x => x.id === k);
+        html += `<div class="card mb-3 report-host"><div class="card-body">
+          <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2"><div><h5 class="mb-0">${esc(hostName(k === "none" ? null : k))}</h5>
+            ${h?.apiHostUrl ? `<div class="small text-muted font-monospace">${esc(h.apiHostUrl)}</div>` : ""}</div>
+            <div class="small">${t.n} endpoint${t.n === 1 ? "" : "s"} · ${t.secure} secure · <span class="${t.warnings ? "text-danger" : ""}">${t.warnings} warnings</span> · <b style="color:${color(t.pct)}">${pctTxt(t.pct)} compliant</b></div></div>
+          ${table(list.sort((a, b) => a.e.id - b.e.id))}</div></div>`; });
+  }
+  const notes = [];
+  if (skipped.inactive.length) notes.push(`${skipped.inactive.length} inactive endpoint${skipped.inactive.length === 1 ? "" : "s"} left out.`);
+  if (skipped.excepted.length) notes.push(`${skipped.excepted.length} endpoint${skipped.excepted.length === 1 ? "" : "s"} covered by a live exception left out (${[...new Set(skipped.excepted.map(s => s.x.text))].slice(0, 8).join(", ")}).`);
+  html += `<div class="small text-muted mt-2">${notes.join(" ")} Scored from the endpoint records as stored (no API is called). Secure = the URL is HTTPS and the last audit didn't stamp it insecure.
+    Compliance = checks passed ÷ checks run.
+    ${CHECKS.some(c => c.id === "access") ? `<b>Token or auth enforced</b> (${view() === "practical" ? "practical" : "strict"} view): ${view() === "practical"
+      ? "passes when the endpoint refuses calls without a valid token or login, or when CORS is restricted and the endpoint isn't reachable from the internet (private address or Allowed Ranges on the endpoint / host)."
+      : "passes only when the endpoint itself refuses calls without a valid token or login, as if the whole world could reach it."}
+      ${endpoints.length && !endpoints.some(e => "authEnforced" in e) ? ` <span class="text-danger">The endpoint records have no AuthEnforced column yet, so nothing can pass it: run <code>db/ApiauditAuthCheck-6.6.sql</code> and add the properties to the Apiaudit model.</span>` : ""}` : ""}
+    Checks and limits: <code>config.js</code> → <code>compliance</code>.</div>`;
+  $("#out").innerHTML = html;
+}
+
+$("#csvBtn").onclick = () => {
+  const { rows } = scope(), T = totals(rows);
+  const out = [["endpoint_id", "endpoint", "api_host", "environment", "url", "secure", "security_warnings", "checks_passed", "checks_run", "compliance_pct", "warnings", "exception"]];
+  rows.forEach(r => out.push([r.e.id, epName(r.e), hostName(r.e.apiHostId), val(r.e.environment), r.url, r.secure ? "Yes" : "No", r.warnings.length, r.passed, r.total, r.pct.toFixed(1), r.warnings.map(w => w.text).join("; "), r.exception?.text || ""]));
+  out.push([], ["TOTAL", "", "", "", "", T.secure, T.warnings, "", "", T.pct.toFixed(1), `${T.n} endpoints`, ""]);
+  const csv = out.map(r => r.map(v => /[",\n]/.test(String(v ?? "")) ? `"${String(v).replace(/"/g, '""')}"` : (v ?? "")).join(",")).join("\n");
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: `report01-api-compliance-${CHECKS.some(c => c.id === "access") ? view() + "-" : ""}${new Date().toISOString().slice(0, 10)}.csv` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$("#printBtn").onclick = () => window.print();
+["#hostSel", "#viewSel", "#sortSel", "#incInactive", "#incExcepted"].forEach(s => $(s).addEventListener("change", draw));
+
+(async () => {
+  $("#out").innerHTML = Cocky.spinner("Reading endpoints, hosts and exceptions…");
+  try {
+    [hosts, endpoints, exc, hostExc] = await Promise.all([Cocky.api.list("apihosts"), Cocky.api.list("apiaudit"),
+      Cocky.api.list("auditexceptions").catch(() => []), Cocky.api.list("hostexceptions").catch(() => [])]);
+  } catch (e) { $("#out").innerHTML = ""; $("#out").appendChild(Cocky.errorBox(e, () => location.reload())); return; }
+  loadedAt = new Date();
+  $("#incInactive").checked = !CC.excludeInactive; $("#incExcepted").checked = !CC.excludeExcepted;
+  const ids = [...new Set(endpoints.map(e => e.apiHostId ?? "none"))];
+  $("#hostSel").innerHTML = `<option value="">All hosts (${endpoints.length})</option>` + ids.map(k => [k, hostName(k === "none" ? null : k)]).sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([k, n]) => `<option value="${esc(k)}">${esc(n)} (${endpoints.filter(e => (e.apiHostId ?? "none") === k).length})</option>`).join("");
+  const q = new URLSearchParams(location.search).get("host"); if (q) $("#hostSel").value = q;
+  const v = new URLSearchParams(location.search).get("view"); $("#viewSel").value = v === "practical" || v === "strict" ? v : (CC.view || "strict");
+  if (!CHECKS.some(c => c.id === "access")) $("#viewSel").classList.add("d-none");
+  draw();
+})();
+</script>
+</body>
+</html>

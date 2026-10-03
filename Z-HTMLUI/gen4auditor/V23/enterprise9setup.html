@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enterprise(9) Setup · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Enterprise(9) Setup</h2>
+  <div class="page-sub">Define which Enterprise(9) logs each API <a href="apihosts.html">host</a> exposes and the exact route for each &mdash;
+    routes can vary by host and region, so they're stored per host here. The <a href="enterprise9.html">Enterprise(9)</a> page reads these as the source of truth.
+    <b>Seed from discovery</b> pre-fills rows from a host's discovered <code>log</code> endpoints.</div>
+  <div id="setup"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script>
+const main = Cocky.layout("e9setup");
+const esc = Cocky.esc;
+const qs = new URLSearchParams(location.search);
+const { segsOf, isParam } = Cocky.e9;
+
+let hosts = [], allEndpoints = [];
+const hostName = h => h ? (h.apiHostName || h.apiHostUrl || "#" + h.id) : "";
+const hostById = id => hosts.find(h => h.id === id);
+const blank = v => v == null || String(v).trim() === "" || String(v).trim().toLowerCase() === "string";
+const pathOf = e => { const u = blank(e.url) ? "" : String(e.url).trim(); try { return /^https?:\/\//i.test(u) ? new URL(u).pathname : u; } catch { return u; } };
+const methodOf = e => { const m = String(e.endpointType || e.type || "").trim().toUpperCase(); return m || "GET"; };
+
+async function loadLookups() {
+  [hosts, allEndpoints] = await Promise.all([
+    Cocky.api.list("apihosts").catch(() => []),
+    Cocky.api.list("apiaudit").catch(() => [])
+  ]);
+}
+
+Cocky.SCHEMA.enterprise9.format = {
+  apiHostId: (v, r) => { const id = v ?? r.apiHostId; if (id == null) return '<span class="text-muted">—</span>'; return esc(hostName(hostById(id)) || "#" + id); },
+  endpointUrl: v => v ? `<code class="small">${esc(v)}</code>` : '<span class="text-muted">—</span>',
+  isRequired: v => v ? '<span class="badge text-bg-warning">Required</span>' : '<span class="text-muted">—</span>',
+  isImplemented: v => v ? '<span class="badge text-bg-success">Yes</span>' : '<span class="badge text-bg-secondary">No</span>',
+  isActive: v => v === false ? '<span class="badge text-bg-secondary">No</span>' : '<span class="badge text-bg-success">Yes</span>'
+};
+
+// Keep ApiHostName in step with the chosen host in the add/edit form.
+Cocky.SCHEMA.enterprise9.onForm = (form) => {
+  const hostSel = form.querySelector('[data-key="apiHostId"]');
+  const nameInput = form.querySelector('[data-key="apiHostName"]');
+  if (!hostSel || !nameInput) return;
+  hostSel.addEventListener("change", () => { const h = hostById(+hostSel.value); if (h) nameInput.value = hostName(h); });
+};
+
+// The best "list" route for a discovered log set: a GET whose path ends at the set name with no {params}.
+function listRouteFor(set) {
+  const listable = e => (methodOf(e) === "GET") && !segsOf(e).some(isParam);
+  const ep = set.endpoints.find(listable) || set.endpoints.find(e => methodOf(e) === "GET") || set.endpoints[0];
+  return ep ? pathOf(ep) : (set.path || "/api/" + set.name);
+}
+
+(async () => {
+  try { await Cocky.api.list("enterprise9"); }
+  catch (e) {
+    if (e.status === 404) {
+      document.getElementById("setup").innerHTML = `<div class="alert alert-warning"><strong>The API didn't answer on <code>${esc(Cocky.CFG.endpoints.enterprise9)}</code>.</strong>
+        Deploy the Enterprise9 controller (<code>MapEnterprise9Endpoints()</code>) and run <code>db/Enterprise9-6.4.sql</code>.
+        <div class="small text-muted mt-1">${esc(e.message)}</div></div>`;
+      return;
+    }
+  }
+
+  const page = Cocky.crudPage("enterprise9", {
+    mount: main,
+    columns: Cocky.SCHEMA.enterprise9.columns,
+    beforeLoad: loadLookups,
+    addDefaults: () => { const h = +main.querySelector(".host-filter")?.value; return h ? { apiHostId: h, apiHostName: hostName(hostById(h)) } : {}; },
+    toolbarExtra: `<select class="form-select form-select-sm host-filter" style="max-width:260px"><option value="">All hosts</option></select>
+      <button class="btn btn-sm btn-outline-success seed" type="button" title="Create rows from this host's discovered log endpoints">Seed from discovery</button>`,
+    filter: rows => { const h = main.querySelector(".host-filter").value; return h ? rows.filter(r => String(r.apiHostId) === h) : rows; },
+    sort: rows => rows.slice().sort((a, b) =>
+      String(hostName(hostById(a.apiHostId))).localeCompare(String(hostName(hostById(b.apiHostId)))) ||
+      String(a.logName || "").localeCompare(String(b.logName || ""))),
+    onLoaded: (rows) => {
+      const hf = main.querySelector(".host-filter");
+      const keep = hf.value || qs.get("host") || "";
+      hf.innerHTML = `<option value="">All hosts</option>` + hosts.slice().sort((a, b) => hostName(a).localeCompare(hostName(b)))
+        .map(h => `<option value="${h.id}">${esc(hostName(h))}</option>`).join("");
+      hf.value = keep;
+      main._rows = rows;
+      main.querySelector(".seed").disabled = !hf.value;
+    }
+  });
+
+  main.querySelector(".host-filter").onchange = () => { page.redraw(); main.querySelector(".seed").disabled = !main.querySelector(".host-filter").value; };
+
+  // Seed from discovery: find the host's discovered log sets and create any not already configured.
+  main.querySelector(".seed").onclick = async () => {
+    const hid = +main.querySelector(".host-filter").value;
+    if (!hid) { Cocky.toast("Pick a host first.", "warning"); return; }
+    const host = hostById(hid);
+    const sets = Cocky.e9.sets(allEndpoints.filter(e => e.apiHostId === hid));
+    if (!sets.length) { Cocky.toast("No discovered log endpoints on this host.", "warning"); return; }
+    const have = new Set((main._rows || []).filter(r => r.apiHostId === hid).map(r => String(r.logName || "").toLowerCase()));
+    const toCreate = sets.filter(s => !have.has(s.name.toLowerCase())).map(s => ({
+      apiHostId: hid, apiHostName: hostName(host),
+      logName: s.name, logDescription: s.label || s.name,
+      endpointUrl: listRouteFor(s), httpMethod: "GET",
+      isRequired: false, isImplemented: true, isActive: true,
+      createdDate: new Date().toISOString()
+    }));
+    if (!toCreate.length) { Cocky.toast(`All ${sets.length} discovered log(s) are already configured for ${hostName(host)}.`); return; }
+    if (!confirm(`Create ${toCreate.length} Enterprise(9) row(s) for ${hostName(host)} from discovery?\n\n${toCreate.map(r => `• ${r.logName}  →  ${r.endpointUrl}`).join("\n")}`)) return;
+    const btn = main.querySelector(".seed"); btn.disabled = true; btn.textContent = "Seeding…";
+    try {
+      // Prefer the bulk route; fall back to one-by-one if it isn't deployed.
+      let created = 0;
+      const res = await fetch(Cocky.api.url("enterprise9", "/bulk"), {
+        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(toCreate)
+      });
+      if (res.ok) created = toCreate.length;
+      else { for (const row of toCreate) { await Cocky.api.create("enterprise9", row); created++; } }
+      Cocky.toast(`Seeded ${created} log(s) for ${hostName(host)}.`);
+    } catch (e) {
+      // Bulk threw (e.g. network): try row-by-row before giving up.
+      try { let created = 0; for (const row of toCreate) { await Cocky.api.create("enterprise9", row); created++; } Cocky.toast(`Seeded ${created} log(s) for ${hostName(host)}.`); }
+      catch (e2) { Cocky.toast("Seed failed: " + e2.message, "danger"); }
+    }
+    finally { btn.textContent = "Seed from discovery"; btn.disabled = false; page.reload(); }
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Re-audit problems · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Re-audit problems</h2>
+  <div class="page-sub">Endpoints whose last saved audit was <b>hard down</b> (no response), a <b>5xx server error</b> or <b>very slow</b>,
+    plus every endpoint with an open trouble ticket. <b>Re-audit</b> checks just these again from this browser (one GET each, like Run Audit),
+    then you can save the new results, open or update tickets for the ones still failing, and resolve the tickets of the ones that recovered.</div>
+  <div class="row row-cols-2 row-cols-md-5 g-3 mb-3" id="tiles"></div>
+  <div class="card"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+      <select class="form-select form-select-sm" id="kindFilter" style="max-width:230px"></select>
+      <select class="form-select form-select-sm" id="hostFilter" style="max-width:220px"><option value="">All hosts</option></select>
+      <button class="btn btn-primary btn-sm" id="run" type="button">Re-audit selected</button>
+      <span class="small text-muted" id="summary"></span>
+      <button class="btn btn-outline-secondary btn-sm ms-auto" id="reload" type="button">Refresh</button>
+    </div>
+    <div id="msg"></div>
+    <div id="list"></div>
+    <div class="d-none border-top pt-3 mt-2" id="actions">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <button class="btn btn-success btn-sm" id="saveStamps" type="button">Save results to endpoints</button>
+        <button class="btn btn-danger btn-sm" id="fileTickets" type="button">Open / update tickets</button>
+        <button class="btn btn-outline-success btn-sm" id="resolveTickets" type="button">Resolve recovered tickets</button>
+      </div>
+      <div class="form-text">Save results writes Last Audit Date, LastStatusCode and LastResponseMs on the re-checked endpoints (what Performance and this page read);
+        it doesn't add an audit to History. Tickets follow the problem types ticked for tickets in <code>config.js</code> → <code>tickets.problems</code>, and you confirm each step first.</div>
+      <div class="mt-2" id="actMsg"></div>
+    </div>
+  </div></div>
+  <div class="small text-muted mt-3">Endpoints on hosts with a live host exception are listed but can't be re-audited. Times are measured from this browser.</div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="tickets.js"></script>
+<script>
+Cocky.layout("reaudit");
+const { esc } = Cocky, TK = Tickets, K = TK.KINDS;
+const qs = new URLSearchParams(location.search);
+const $ = s => document.querySelector(s);
+let endpoints = [], hosts = [], tickets = null, hostExc = [];
+let rows = [];            // [{ e, last, ticket, now }]
+const picked = {};
+let ran = false;
+
+const hostOf = e => hosts.find(h => h.id === e.apiHostId);
+const excepted = e => Cocky.hostException(hostExc, e.apiHostId);
+const fmtWhen = d => { const t = Cocky.parseDate(d); return t ? t.toLocaleString() : ""; };
+
+async function load() {
+  $("#list").innerHTML = Cocky.spinner();
+  $("#msg").innerHTML = ""; $("#actions").classList.add("d-none"); ran = false;
+  try {
+    [endpoints, hosts, hostExc] = await Promise.all([Cocky.api.list("apiaudit"), Cocky.api.list("apihosts"), Cocky.api.list("hostexceptions").catch(() => [])]);
+  } catch (e) { $("#list").innerHTML = ""; $("#list").appendChild(Cocky.errorBox(e, load)); return; }
+  try { tickets = await Cocky.api.list("troubletickets"); }
+  catch (e) { tickets = null; $("#msg").innerHTML = `<div class="alert alert-warning small">Couldn't read trouble tickets${e.status === 404 ? ` (${esc(Cocky.CFG.endpoints.troubletickets)} isn't deployed)` : ""}: ${esc(e.message)}. Re-audit still works; ticket actions are off.</div>`; }
+  const stamped = endpoints.some(e => "lastStatusCode" in e || "lastResponseMs" in e);
+  if (!stamped) $("#msg").insertAdjacentHTML("beforeend", `<div class="alert alert-info small">The API doesn't return <code>lastStatusCode</code> / <code>lastResponseMs</code> yet (build 5.6), so only endpoints with open tickets are listed.</div>`);
+
+  const open = (tickets || []).filter(TK.isOpen);
+  rows = endpoints.map(e => ({ e, last: TK.classifyStamp(e), ticket: tickets ? TK.openTicketFor(open, e, hosts) : null, now: null }))
+    .filter(r => r.last || r.ticket);
+  const matched = new Set(rows.map(r => r.ticket?.id).filter(Boolean));
+  const orphan = open.filter(t => !matched.has(t.id));
+  if (orphan.length) $("#msg").insertAdjacentHTML("beforeend", `<div class="alert alert-light border small">${orphan.length} open ticket(s) don't match a registered endpoint (by API name + method and path), so they can't be re-checked here:
+    ${orphan.slice(0, 5).map(t => `<b>${esc(t.ticketNumber || "#" + t.id)}</b> ${esc(t.apiName)} ${esc(t.endpoint)}`).join("; ")}${orphan.length > 5 ? " …" : ""}</div>`);
+
+  // tickets.html?ticket=<id> opens on that ticket's endpoint and re-checks it straight away
+  const tq = +qs.get("ticket"), only = tq ? rows.filter(r => r.ticket?.id === tq) : null;
+  rows.forEach(r => picked[r.e.id] = !excepted(r.e) && (only ? only.includes(r) : true));
+  const hf = $("#hostFilter"), hostIds = [...new Set(rows.map(r => r.e.apiHostId).filter(x => x != null))];
+  hf.innerHTML = '<option value="">All hosts</option>' + hostIds.map(id => `<option value="${id}">${esc(TK.val(hosts.find(h => h.id === id)?.apiHostName) || "#" + id)}</option>`).join("");
+  if (qs.get("host")) hf.value = qs.get("host");
+  if (only && !only.length) $("#msg").insertAdjacentHTML("beforeend", `<div class="alert alert-warning small">Ticket #${tq} isn't open, or doesn't match a registered endpoint.</div>`);
+  render();
+  if (only && only.length) run();
+}
+
+// ---------- filters ----------
+const kindOf = r => r.now ? (r.now.kind || "ok") : r.last;
+function visible() {
+  const k = $("#kindFilter").value, h = $("#hostFilter").value;
+  return rows.filter(r => (!h || String(r.e.apiHostId) === h) &&
+    (!k || (k === "ticket" ? !!r.ticket : k === "noticket" ? !r.ticket : r.last === k)));
+}
+function drawFilters() {
+  const sel = $("#kindFilter"), keep = sel.value;
+  const n = f => rows.filter(r => f === "ticket" ? r.ticket : f === "noticket" ? !r.ticket : r.last === f).length;
+  sel.innerHTML = `<option value="">All problems (${rows.length})</option>` + Object.keys(K).map(k => `<option value="${k}">${esc(K[k].label)} (${n(k)})</option>`).join("") +
+    `<option value="ticket">With an open ticket (${n("ticket")})</option><option value="noticket">No ticket yet (${n("noticket")})</option>`;
+  sel.value = keep;
+}
+function drawTiles() {
+  const tile = (lbl, n, cls) => `<div class="col"><div class="card stat h-100"><div class="card-body"><div class="lbl">${lbl}</div><div class="num ${n ? cls : ""}">${n}</div></div></div></div>`;
+  const last = k => rows.filter(r => r.last === k).length;
+  const done = rows.filter(r => r.now);
+  $("#tiles").innerHTML = tile("Hard down", last("down"), "text-danger") + tile("Server errors (5xx)", last("error"), "text-warning") +
+    tile("Very slow", last("slow"), "text-info") + tile("Open tickets", rows.filter(r => r.ticket).length, "text-danger") +
+    (done.length ? tile("Recovered now", done.filter(r => !r.now.kind).length + ` <span class="small text-muted fw-normal">of ${done.length}</span>`, "text-success")
+      : tile("Re-checked", "–", ""));
+}
+
+// ---------- grid ----------
+function change(r) {
+  if (!r.now) return "";
+  const was = r.last, now = r.now.kind;
+  if (!now) return '<span class="badge text-bg-success">Recovered</span>';
+  if (!was) return '<span class="badge text-bg-danger">Failing</span>';
+  const rank = { slow: 1, error: 2, down: 3 };
+  return rank[now] > rank[was] ? '<span class="badge text-bg-danger">Worse</span>' : rank[now] < rank[was] ? '<span class="badge text-bg-warning">Better, still failing</span>' : '<span class="badge text-bg-danger">Still failing</span>';
+}
+function render() {
+  drawFilters(); drawTiles();
+  const shown = visible();
+  if (!rows.length) { $("#list").innerHTML = '<div class="empty">Nothing to re-audit: no endpoint was hard down, 5xx or very slow on its last saved audit, and there are no open tickets.</div>'; $("#summary").textContent = ""; return; }
+  if (!shown.length) { $("#list").innerHTML = '<div class="empty">Nothing matches these filters.</div>'; return; }
+  $("#list").innerHTML = `<div class="table-responsive"><table class="table table-sm align-middle">
+    <thead><tr><th style="width:32px"><input class="form-check-input" type="checkbox" id="all"></th><th>Endpoint</th><th>Last saved result</th><th>Ticket</th><th>Now</th><th></th></tr></thead>
+    <tbody>${shown.map(r => { const e = r.e, k = TK.ticketKey(e, hosts), x = excepted(e), t = r.ticket;
+      const lastRes = r.last ? `${TK.kindBadge(r.last)} <span class="small">${esc(TK.describe(r.last, { status: e.lastStatusCode, ms: e.lastResponseMs }))}</span>`
+        : `<span class="small text-muted">${e.lastStatusCode != null ? "HTTP " + e.lastStatusCode : "OK"}${e.lastResponseMs != null ? ` · ${e.lastResponseMs} ms` : ""}</span>`;
+      const now = r.now ? (r.now.running ? '<span class="badge text-bg-info">Running…</span>'
+        : `${TK.kindBadge(r.now.kind)} <span class="small">${r.now.status != null ? "HTTP " + r.now.status : r.now.corsHidden ? "answered (CORS hides status)" : esc(r.now.error || "")}${r.now.ms != null ? ` · ${Math.round(r.now.ms)} ms` : ""}</span>`)
+        : '<span class="small text-muted">Not run</span>';
+      return `<tr data-id="${e.id}">
+        <td><input class="form-check-input pick" type="checkbox" ${picked[e.id] ? "checked" : ""} ${x ? "disabled" : ""}></td>
+        <td><div><b>${esc(k.apiName)}</b> <span class="font-monospace small">${esc(k.endpoint)}</span></div>
+          <div class="small text-muted text-truncate" style="max-width:420px">${esc(TK.targetUrl(e, hosts) || "no URL")}</div>
+          ${x ? `<span class="badge text-bg-warning">Host excepted (#${x.id})</span>` : ""}</td>
+        <td>${lastRes}${e.lastAuditDate ? `<div class="small text-muted">${esc(fmtWhen(e.lastAuditDate))}</div>` : ""}</td>
+        <td class="small">${t ? `<a href="tickets.html?status=all"><b>${esc(t.ticketNumber || "#" + t.id)}</b></a> ${esc(t.status)}<div class="text-muted">${esc(t.severity || "")} · ${t.incidentCount || 1} incident(s)</div>` : '<span class="text-muted">—</span>'}</td>
+        <td>${now}</td><td>${change(r)}</td></tr>`; }).join("")}</tbody></table></div>`;
+  const picks = [...document.querySelectorAll(".pick:not(:disabled)")], all = $("#all");
+  all.checked = picks.length > 0 && picks.every(p => p.checked); all.disabled = !picks.length;
+  picks.forEach(p => p.onchange = () => { picked[p.closest("tr").dataset.id] = p.checked; all.checked = picks.every(x => x.checked); });
+  all.onchange = () => picks.forEach(p => { p.checked = all.checked; picked[p.closest("tr").dataset.id] = all.checked; });
+  const done = rows.filter(r => r.now && !r.now.running);
+  $("#summary").textContent = done.length ? `${done.filter(r => !r.now.kind).length} recovered · ${done.filter(r => r.now.kind).length} still failing` : "";
+}
+
+// ---------- re-audit ----------
+let renderQueued = false;
+const later = () => { if (!renderQueued) { renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render(); }); } };
+async function run() {
+  const jobs = visible().filter(r => picked[r.e.id] && !excepted(r.e));
+  if (!jobs.length) { Cocky.toast("Tick at least one endpoint.", "warning"); return; }
+  const btn = $("#run"); btn.disabled = true;
+  jobs.forEach(r => r.now = { running: true });
+  render();
+  let next = 0, finished = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const r = jobs[next++];
+      const res = await TK.probe(TK.targetUrl(r.e, hosts));
+      r.now = { ...res, kind: TK.classify(res) };
+      btn.textContent = `Re-auditing… ${++finished}/${jobs.length}`; later();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, jobs.length) }, worker));
+  btn.disabled = false; btn.textContent = "Re-audit selected"; ran = true;
+  render(); showActions();
+}
+
+// ---------- after a re-audit ----------
+const checked = () => rows.filter(r => r.now && !r.now.running);
+// still failing and ticketed by default (config tickets.problems), or failing with a ticket already open
+const failing = () => checked().filter(r => r.now.kind && (K[r.now.kind]?.ticketByDefault !== false || r.ticket));
+const recovered = () => checked().filter(r => !r.now.kind && r.ticket);
+function showActions(keepMsg) {
+  $("#actions").classList.remove("d-none"); if (!keepMsg) $("#actMsg").innerHTML = "";
+  $("#saveStamps").textContent = `Save results to endpoints (${checked().length})`;
+  $("#fileTickets").textContent = `Open / update tickets (${failing().length})`;
+  $("#resolveTickets").textContent = `Resolve recovered tickets (${recovered().length})`;
+  $("#fileTickets").disabled = !tickets || !failing().length;
+  $("#resolveTickets").disabled = !tickets || !recovered().length;
+}
+const note = (ok, html) => $("#actMsg").insertAdjacentHTML("beforeend", `<div class="alert alert-${ok ? "success" : "warning"} small py-2 mb-2">${html}</div>`);
+
+$("#saveStamps").onclick = async () => {
+  const list = checked(); if (!list.length) return;
+  const btn = $("#saveStamps"); btn.disabled = true;
+  const now = new Date().toISOString(), fails = [];
+  for (const r of list) {
+    const upd = { ...r.e, lastAuditDate: now, modifiedDate: now, ...TK.stampOf(r.now) };
+    try { await Cocky.api.update("apiaudit", r.e.id, upd); Object.assign(r.e, upd); } catch (e) { fails.push(`#${r.e.id}: ${e.message}`); }
+  }
+  btn.disabled = false;
+  note(!fails.length, `${list.length - fails.length} endpoint(s) updated with the new results.${fails.length ? " Failed: " + fails.map(esc).join("; ") : ""}`);
+};
+$("#fileTickets").onclick = async () => {
+  const items = failing().map(r => ({ endpoint: r.e, kind: r.now.kind, result: r.now }));
+  if (!await TK.confirmList("Open / update trouble tickets", `${items.length} endpoint(s) still failing:`, TK.planRows(items, hosts, tickets), "Create / update tickets")) return;
+  const btn = $("#fileTickets"); btn.disabled = true;
+  const res = await TK.fileTickets(items, hosts, "Re-audit", tickets);
+  items.forEach(it => { const r = rows.find(x => x.e === it.endpoint); r.ticket = TK.openTicketFor(tickets, it.endpoint, hosts); });
+  note(!res.failures.length, `${res.created.length} ticket(s) created, ${res.updated.length} updated. <a href="tickets.html">View tickets</a>${res.failures.length ? " Failed: " + res.failures.map(esc).join("; ") : ""}`);
+  render(); showActions(true);
+};
+$("#resolveTickets").onclick = async () => {
+  const list = recovered();
+  const rowsHtml = list.map(r => `<b>${esc(r.ticket.ticketNumber || "#" + r.ticket.id)}</b> ${esc(r.ticket.apiName)} ${esc(r.ticket.endpoint)} · now ${r.now.status != null ? "HTTP " + r.now.status : "answering"}${r.now.ms != null ? ` in ${Math.round(r.now.ms)} ms` : ""}`);
+  if (!await TK.confirmList("Resolve recovered tickets", "These endpoints answered normally on re-audit. Their tickets will be marked Resolved:", rowsHtml, "Resolve tickets")) return;
+  const btn = $("#resolveTickets"); btn.disabled = true;
+  let ok = 0; const fails = [];
+  for (const r of list) {
+    const how = `${r.now.status != null ? "HTTP " + r.now.status : "answered"}${r.now.ms != null ? ` in ${Math.round(r.now.ms)} ms` : ""}`;
+    try { await TK.resolve(r.ticket, `Recovered on re-audit ${new Date().toLocaleString()}: ${how}.`); r.ticket = null; ok++; }
+    catch (e) { fails.push(e.message); }
+  }
+  note(!fails.length, `${ok} ticket(s) resolved.${fails.length ? " Failed: " + fails.map(esc).join("; ") : ""}`);
+  render(); showActions(true);
+};
+
+$("#run").onclick = run;
+$("#reload").onclick = load;
+$("#kindFilter").onchange = render;
+$("#hostFilter").onchange = render;
+load();
+</script>
+</body>
+</html>
