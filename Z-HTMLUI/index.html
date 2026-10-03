@@ -92,6 +92,32 @@
   background-color: black;
 }
 #versioning {font-size: 6pt;color: coral;margin-left: 30px;}
+.hero-image {
+width: 90%;
+height: 650px;
+object-fit: cover;
+}
+ 
+@media screen and (max-width: 1050px) {
+ 
+.column,
+.column2 {
+width: 100%;
+float: none;
+}
+ 
+.hero-image {
+width: 100%;
+height: 90vh;
+}
+ 
+body {
+height: auto;
+min-height: 100vh;
+}
+}
+
+
   </style>
 
   <script>
@@ -141,7 +167,7 @@
 
   <!-- CENTERCOURT IFRAME -->
   <div class="row">
-    <div class="column" align="center"><span align="center"><img src="./images/moore.jpg" width="90%" height="650px"></span></div>
+    <div class="column" align="center"><span align="center"><img class="hero-image" src="./images/moore.jpg" width="90%" height="650px"></span></div>
     <div class="column2">
       <button class="buttonclass" onclick="callplotter()">StockPlotter</button>
       <button class="buttonclass" onclick="callsummaries()">SectorSummaries</button>

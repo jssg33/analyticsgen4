@@ -132,7 +132,8 @@ public static class Enterprise9Controller
             existing.Notes = input.Notes;
             existing.IsActive = input.IsActive;
             existing.ModifiedDate = DateTime.UtcNow;
-
+            existing.ApiServiceId = input.ApiServiceId;
+            existing.ApiServiceName = input.ApiServiceName;
             await context.SaveChangesAsync();
 
             return Results.Ok(existing);
