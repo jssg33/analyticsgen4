@@ -21,6 +21,7 @@ public partial class User
     public string? Hashedpassword { get; set; }
     public int? Passwordtype { get; set; }
     public string? InvestorMode { get; set; }
+    public string? InvestorGroupId { get; set; }
     public string? AdvisorId { get; set;}
     public int? Jid { get; set; }
     public string? Profileurl { get; set; }
