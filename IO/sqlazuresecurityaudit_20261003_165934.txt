@@ -1,0 +1,1374 @@
+================================================
+SQL AZURE SECURITY AUDIT
+================================================
+Generated UTC : 2026-10-03 16:59:32
+
+DATABASE INFORMATION
+---------------------------------------------
+Database : CockyAnalytics
+Version  : Microsoft SQL Azure (RTM) - 12.0.2000.8 
+	Aug 28 2026 13:42:19 
+	Copyright (C) 2026 Microsoft Corporation
+
+
+DATABASE USERS
+---------------------------------------------
+db_accessadmin | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_backupoperator | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_datareader | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_datawriter | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_ddladmin | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_denydatareader | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_denydatawriter | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_owner | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+db_securityadmin | DATABASE_ROLE | 4/8/2003 9:10:42 AM
+
+ROLE MEMBERSHIPS
+---------------------------------------------
+db_owner -> dbo
+
+EXPLICIT PERMISSIONS
+---------------------------------------------
+dbo | CONNECT | GRANT | 
+public | SELECT | GRANT | dm_db_index_persisted_usage_stats
+public | SELECT | GRANT | semantic_index_columns
+public | SELECT | GRANT | semantic_indexes
+public | SELECT | GRANT | query_store_plan_by_hash
+public | SELECT | GRANT | query_store_query_hash_plan
+public | SELECT | GRANT | query_store_query_hints_by_hash
+public | SELECT | GRANT | sysdatabase_principals_2022
+public | SELECT | GRANT | database_resource_governor_configuration
+public | SELECT | GRANT | json_indexes
+public | SELECT | GRANT | vector_indexes
+public | SELECT | GRANT | information_protection_label_mapping
+public | SELECT | GRANT | external_models
+public | SELECT | GRANT | json_index_paths
+public | SELECT | GRANT | sysquery_store_runtime_stats_2017
+public | SELECT | GRANT | sysexternal_data_sources_2017
+public | SELECT | GRANT | external_governance_sensitivity_labels_mapping
+public | SELECT | GRANT | external_governance_classifications_mapping
+public | SELECT | GRANT | external_governance_sensitivity_labels
+public | SELECT | GRANT | external_governance_classifications
+public | SELECT | GRANT | external_table_schema_changed_mdsync
+public | SELECT | GRANT | sysquery_store_query_hints_2019
+public | SELECT | GRANT | external_governance_classification_attributes
+public | SELECT | GRANT | external_governance_sensitivity_classifications
+public | SELECT | GRANT | database_automatic_tuning_configurations
+public | SELECT | GRANT | query_store_plan_forcing_locations
+public | SELECT | GRANT | query_store_replicas
+public | SELECT | GRANT | external_table_partitioning_columns
+public | SELECT | GRANT | materialized_views
+public | SELECT | GRANT | sysquery_store_wait_stats_2019
+public | SELECT | GRANT | sysquery_store_runtime_stats_2019
+public | SELECT | GRANT | sysdevops_database_principals_2021
+public | SELECT | GRANT | sysdevops_principals_2021
+public | SELECT | GRANT | sysdatabase_principals_2021
+public | SELECT | GRANT | sysserver_principals_2021
+public | SELECT | GRANT | syscolumn_store_segments_2020
+public | SELECT | GRANT | query_store_query_variant
+public | SELECT | GRANT | sysquery_context_settings_2016
+public | SELECT | GRANT | sysquery_store_runtime_stats_interval_2016
+public | SELECT | GRANT | sysquery_store_runtime_stats_2016
+public | SELECT | GRANT | sysexternal_tables_2016
+public | SELECT | GRANT | sysexternal_file_formats_2016
+public | SELECT | GRANT | sysexternal_data_sources_2016
+public | SELECT | GRANT | query_store_plan_feedback
+public | SELECT | GRANT | ledger_column_history
+public | SELECT | GRANT | ledger_table_history
+public | SELECT | GRANT | database_ledger_digest_locations
+public | SELECT | GRANT | syscolumns_2019
+public | SELECT | GRANT | pdw_permanent_table_mappings
+public | SELECT | GRANT | devops_principals
+public | SELECT | GRANT | external_job_streams
+public | SELECT | GRANT | external_streaming_jobs
+public | SELECT | GRANT | external_stream_columns
+public | SELECT | GRANT | external_streams
+public | SELECT | GRANT | database_ledger_blocks
+public | SELECT | GRANT | database_ledger_transactions
+public | SELECT | GRANT | query_store_query_hints
+public | SELECT | GRANT | devops_database_principals
+public | SELECT | GRANT | pdw_materialized_view_column_distribution_properties
+public | SELECT | GRANT | pdw_materialized_view_distribution_properties
+public | SELECT | GRANT | pdw_materialized_view_mappings
+public | SELECT | GRANT | external_library_setup_errors
+public | SELECT | GRANT | sensitivity_classifications
+public | SELECT | GRANT | edge_constraint_clauses
+public | SELECT | GRANT | edge_constraints
+public | SELECT | GRANT | database_automatic_tuning_mode
+public | SELECT | GRANT | database_automatic_tuning_options
+public | SELECT | GRANT | query_store_wait_stats
+public | SELECT | GRANT | pdw_table_mappings
+public | SELECT | GRANT | pdw_index_mappings
+public | SELECT | GRANT | pdw_column_distribution_properties
+public | SELECT | GRANT | pdw_table_distribution_properties
+public | SELECT | GRANT | external_library_files
+public | SELECT | GRANT | external_libraries
+public | SELECT | GRANT | index_resumable_operations
+public | SELECT | GRANT | dm_db_column_store_row_group_physical_stats
+public | SELECT | GRANT | dm_db_workload_group_resource_stats
+public | SELECT | GRANT | dm_db_resource_governor_configuration
+public | SELECT | GRANT | database_resource_governor_workload_groups
+public | SELECT | GRANT | database_scoped_configurations
+public | SELECT | GRANT | column_master_key_definitions
+public | SELECT | GRANT | time_zone_info
+public | SELECT | GRANT | database_scoped_credentials
+public | SELECT | GRANT | masked_columns
+public | SELECT | GRANT | internal_partitions
+public | SELECT | GRANT | database_credentials
+public | SELECT | GRANT | remote_data_archive_tables
+public | SELECT | GRANT | remote_data_archive_databases
+public | SELECT | GRANT | external_file_formats
+public | SELECT | GRANT | external_data_sources
+public | SELECT | GRANT | column_encryption_key_values
+public | SELECT | GRANT | column_encryption_keys
+public | SELECT | GRANT | column_master_keys
+public | SELECT | GRANT | periods
+public | SELECT | GRANT | memory_optimized_tables_internal_attributes
+public | SELECT | GRANT | external_tables
+public | SELECT | GRANT | security_predicates
+public | SELECT | GRANT | security_policies
+public | SELECT | GRANT | column_store_row_groups
+public | SELECT | GRANT | selective_xml_index_namespaces
+public | SELECT | GRANT | selective_xml_index_paths
+public | SELECT | GRANT | query_store_runtime_stats_interval
+public | SELECT | GRANT | query_store_runtime_stats
+public | SELECT | GRANT | query_store_query_text
+public | SELECT | GRANT | query_store_query
+public | SELECT | GRANT | query_store_plan
+public | SELECT | GRANT | query_context_settings
+public | SELECT | GRANT | hash_indexes
+public | SELECT | GRANT | database_event_sessions
+public | SELECT | GRANT | database_event_session_targets
+public | SELECT | GRANT | database_event_session_fields
+public | SELECT | GRANT | database_event_session_events
+public | SELECT | GRANT | database_event_session_actions
+public | SELECT | GRANT | federated_table_columns
+public | SELECT | GRANT | federation_member_distributions
+public | SELECT | GRANT | federation_members
+public | SELECT | GRANT | federation_distributions
+public | SELECT | GRANT | federations
+public | SELECT | GRANT | column_store_dictionaries
+public | SELECT | GRANT | column_store_segments
+public | SELECT | GRANT | filetable_system_defined_objects
+public | SELECT | GRANT | filetables
+public | SELECT | GRANT | sequences
+public | SELECT | GRANT | registered_search_properties
+public | SELECT | GRANT | registered_search_property_lists
+public | SELECT | GRANT | fulltext_stopwords
+public | SELECT | GRANT | fulltext_stoplists
+public | SELECT | GRANT | fulltext_index_fragments
+public | SELECT | GRANT | database_audit_specification_details
+public | SELECT | GRANT | database_audit_specifications
+public | SELECT | GRANT | conversation_priorities
+public | SELECT | GRANT | change_tracking_tables
+public | SELECT | GRANT | spatial_index_tessellations
+public | SELECT | GRANT | spatial_indexes
+public | SELECT | GRANT | function_order_columns
+public | SELECT | GRANT | table_types
+public | SELECT | GRANT | system_sql_modules
+public | SELECT | GRANT | plan_guides
+public | SELECT | GRANT | module_assembly_usages
+public | SELECT | GRANT | type_assembly_usages
+public | SELECT | GRANT | fulltext_index_catalog_usages
+public | SELECT | GRANT | service_queue_usages
+public | SELECT | GRANT | parameter_type_usages
+public | SELECT | GRANT | column_type_usages
+public | SELECT | GRANT | message_type_xml_schema_collection_usages
+public | SELECT | GRANT | parameter_xml_schema_collection_usages
+public | SELECT | GRANT | column_xml_schema_collection_usages
+public | SELECT | GRANT | asymmetric_keys
+public | SELECT | GRANT | internal_tables
+public | SELECT | GRANT | certificates
+public | SELECT | GRANT | crypt_properties
+public | SELECT | GRANT | key_encryptions
+public | SELECT | GRANT | symmetric_keys
+public | SELECT | GRANT | xml_schema_collections
+public | SELECT | GRANT | transmission_queue
+public | SELECT | GRANT | routes
+public | SELECT | GRANT | remote_service_bindings
+public | SELECT | GRANT | xml_schema_component_placements
+public | SELECT | GRANT | xml_schema_wildcard_namespaces
+public | SELECT | GRANT | xml_schema_wildcards
+public | SELECT | GRANT | xml_schema_attributes
+public | SELECT | GRANT | xml_schema_model_groups
+public | SELECT | GRANT | xml_schema_elements
+public | SELECT | GRANT | xml_schema_facets
+public | SELECT | GRANT | xml_schema_types
+public | SELECT | GRANT | xml_schema_components
+public | SELECT | GRANT | xml_schema_namespaces
+public | SELECT | GRANT | extended_properties
+public | SELECT | GRANT | database_files
+public | SELECT | GRANT | conversation_endpoints
+public | SELECT | GRANT | conversation_groups
+public | SELECT | GRANT | service_contract_usages
+public | SELECT | GRANT | services
+public | SELECT | GRANT | service_contract_message_usages
+public | SELECT | GRANT | service_contracts
+public | SELECT | GRANT | service_message_types
+public | SELECT | GRANT | fulltext_catalogs
+public | SELECT | GRANT | destination_data_spaces
+public | SELECT | GRANT | partition_schemes
+public | SELECT | GRANT | filegroups
+public | SELECT | GRANT | data_spaces
+public | SELECT | GRANT | partition_range_values
+public | SELECT | GRANT | partition_parameters
+public | SELECT | GRANT | partition_functions
+public | SELECT | GRANT | assembly_references
+public | SELECT | GRANT | assembly_files
+public | SELECT | GRANT | assemblies
+public | SELECT | GRANT | database_permissions
+public | SELECT | GRANT | database_role_members
+public | SELECT | GRANT | database_principals
+public | SELECT | GRANT | schemas
+public | SELECT | GRANT | assembly_types
+public | SELECT | GRANT | types
+public | SELECT | GRANT | sql_dependencies
+public | SELECT | GRANT | service_queues
+public | SELECT | GRANT | synonyms
+public | SELECT | GRANT | numbered_procedure_parameters
+public | SELECT | GRANT | numbered_procedures
+public | SELECT | GRANT | assembly_modules
+public | SELECT | GRANT | sql_modules
+public | SELECT | GRANT | trigger_events
+public | SELECT | GRANT | events
+public | SELECT | GRANT | event_notifications
+public | SELECT | GRANT | triggers
+public | SELECT | GRANT | procedures
+public | SELECT | GRANT | foreign_key_columns
+public | SELECT | GRANT | foreign_keys
+public | SELECT | GRANT | default_constraints
+public | SELECT | GRANT | check_constraints
+public | SELECT | GRANT | key_constraints
+public | SELECT | GRANT | fulltext_index_columns
+public | SELECT | GRANT | fulltext_indexes
+public | SELECT | GRANT | stats_columns
+public | SELECT | GRANT | stats
+public | SELECT | GRANT | index_columns
+public | SELECT | GRANT | allocation_units
+public | SELECT | GRANT | partitions
+public | SELECT | GRANT | xml_indexes
+public | SELECT | GRANT | indexes
+public | SELECT | GRANT | identity_columns
+public | SELECT | GRANT | computed_columns
+public | SELECT | GRANT | system_parameters
+public | SELECT | GRANT | parameters
+public | SELECT | GRANT | system_columns
+public | SELECT | GRANT | columns
+public | SELECT | GRANT | system_views
+public | SELECT | GRANT | system_objects
+public | SELECT | GRANT | extended_procedures
+public | SELECT | GRANT | views
+public | SELECT | GRANT | tables
+public | SELECT | GRANT | objects
+public | SELECT | GRANT | sysfiles
+public | SELECT | GRANT | sysfilegroups
+public | SELECT | GRANT | sysmembers
+public | SELECT | GRANT | sysusers
+public | SELECT | GRANT | systypes
+public | SELECT | GRANT | sysreferences
+public | SELECT | GRANT | sysprotects
+public | SELECT | GRANT | syspermissions
+public | SELECT | GRANT | sysindexkeys
+public | SELECT | GRANT | sysindexes
+public | SELECT | GRANT | sysfulltextcatalogs
+public | SELECT | GRANT | sysconstraints
+public | SELECT | GRANT | sysforeignkeys
+public | SELECT | GRANT | sysdepends
+public | SELECT | GRANT | syscomments
+public | SELECT | GRANT | all_sql_modules
+public | SELECT | GRANT | syscolumns
+public | SELECT | GRANT | sysobjects
+public | SELECT | GRANT | all_parameters
+public | SELECT | GRANT | all_columns
+public | SELECT | GRANT | all_views
+public | SELECT | GRANT | all_objects
+public | SELECT | GRANT | database_firewall_rules
+
+TABLE INVENTORY
+---------------------------------------------
+dbo.__EFMigrationsHistory
+dbo.Adminlogs
+dbo.allstocks
+dbo.ApiAccessPermissions
+dbo.Apiaudit
+dbo.ApiHostException
+dbo.Apihosts
+dbo.ApiInterfacesAudit
+dbo.Apilogs
+dbo.ApiServices
+dbo.ApplicationApis
+dbo.Applications
+dbo.ApplicationUsers
+dbo.AuditExceptions
+dbo.AuditFieldPermissions
+dbo.AuditPrincipals
+dbo.AuditResults
+dbo.AuditServerPermissions
+dbo.AuditSqlFields
+dbo.AuditSqlServers
+dbo.AuditSqlTables
+dbo.AuditTablePermissions
+dbo.CipherSupport
+dbo.CockyCipherBlocks
+dbo.Customers
+dbo.Databases
+dbo.DatabaseServers
+dbo.EmployeeHR
+dbo.Enterprise9
+dbo.Keyassignments
+dbo.Learndetails
+dbo.Learnlogs
+dbo.LunaLog
+dbo.Portfolios
+dbo.PortfolioStocks
+dbo.sectorssummaries
+dbo.Sessionlogs
+dbo.SiteAccessPermissions
+dbo.Sites
+dbo.Superuserlogs
+dbo.SysLog
+dbo.SystemStocks
+dbo.TradeOrders
+dbo.Traders
+dbo.Useractions
+dbo.UserDownloadLogs
+dbo.Usergroups
+dbo.Userhelps
+dbo.UserLocations
+dbo.Userlog
+dbo.Usernotice
+dbo.UserProfileLog
+dbo.Userprofiles
+dbo.Users
+dbo.Usersessions
+dbo.WebFarms
+dbo.WebFarmServers
+dbo.WebServers
+dbo.WorkerTroubleTickets
+
+ENTITY FRAMEWORK MODEL
+---------------------------------------------
+ApiHostException
+    Id (Int32)
+    Active (Boolean)
+    ApiHostId (Int32)
+    ApprovalDate (Nullable`1)
+    ApprovedBy (String)
+    CreatedDate (DateTime)
+    ExceptionType (String)
+    ExpirationDate (Nullable`1)
+    Notes (String)
+    Reason (String)
+
+Adminlog
+    Id (Int32)
+    Acknowledged (String)
+    Date (Nullable`1)
+    Description (String)
+    Managerescid (Nullable`1)
+    Techid (Nullable`1)
+    Threatlevel (String)
+    Userid (String)
+
+Allstock
+    Id (Int32)
+    Avgdividend (Nullable`1)
+    Change (Nullable`1)
+    Company (String)
+    Div2016 (Nullable`1)
+    Div2017 (Nullable`1)
+    Div2018 (Nullable`1)
+    Div2019 (Nullable`1)
+    Div2020 (Nullable`1)
+    Div2021 (Nullable`1)
+    Div2022 (Nullable`1)
+    Div2023 (Nullable`1)
+    Div2024 (Nullable`1)
+    Div2025 (Nullable`1)
+    Div2026 (Nullable`1)
+    Fiveyeardivproj (Nullable`1)
+    Fiveyearequityproj (Nullable`1)
+    Price2016 (Nullable`1)
+    Price2017 (Nullable`1)
+    Price2018 (Nullable`1)
+    Price2019 (Nullable`1)
+    Price2020 (Nullable`1)
+    Price2021 (Nullable`1)
+    Price2022 (Nullable`1)
+    Price2023 (Nullable`1)
+    Price2024 (Nullable`1)
+    Price2025 (Nullable`1)
+    Price2026 (Nullable`1)
+    PriceEnd (Nullable`1)
+    PriceStart (Nullable`1)
+    Sector (String)
+    Selected (String)
+    Shares500 (Nullable`1)
+    Source (String)
+    Ticker (String)
+    Totaldividends (Nullable`1)
+    Totalfiveyearview (Nullable`1)
+    Totalreturn (Nullable`1)
+    Totalreturnover10 (Nullable`1)
+    Totalspend (Nullable`1)
+
+ApiAccessPermission
+    Id (Int32)
+    ApiId (Int32)
+    CreatedDate (DateTime)
+    GrantedBy (String)
+    IsEnabled (Boolean)
+    PermissionLevel (String)
+    UserId (Int32)
+
+ApiInterfacesAudit
+    Id (Int32)
+    ApiAuditId (Nullable`1)
+    ApiHostId (Nullable`1)
+    ControllerName (String)
+    DiscoveredDate (DateTime)
+    EndpointName (String)
+    HttpMethod (String)
+    ImplementationName (String)
+    InterfaceName (String)
+    IsImplemented (Nullable`1)
+    IsRegistered (Nullable`1)
+    MethodName (String)
+    Route (String)
+    ServiceLifetime (String)
+
+ApiService
+    Id (Int32)
+    ApiHostId (Nullable`1)
+    ApiHostName (String)
+    CreatedDate (DateTime)
+    Description (String)
+    ImplementationClass (String)
+    InterfaceId (Nullable`1)
+    InterfaceName (String)
+    IsActive (Boolean)
+    ModifiedDate (Nullable`1)
+    ServiceName (String)
+    ServiceOwner (String)
+    ServiceType (String)
+
+Apiaudit
+    Id (Int32)
+    AllowedRanges (String)
+    ApiHostId (Nullable`1)
+    ApiRoot (String)
+    ApplicationName (String)
+    AuditResultId (Nullable`1)
+    AuditorDepartment (String)
+    AuditorEmail (String)
+    AuditorEmployeeId (String)
+    AuditorId (Int32)
+    AuditorName (String)
+    AuthType (String)
+    AzureResourceGroup (String)
+    AzureSubscriptionId (Nullable`1)
+    BuildingId (Int32)
+    BuildingName (String)
+    BusinessUnitName (String)
+    BusinessUnitOwnerId (Int32)
+    CorsPath (String)
+    CreatedDate (DateTime)
+    DBAId (Int32)
+    DBAName (String)
+    DatabaseConnectionString (String)
+    DatabaseFramework (String)
+    DatabaseType (String)
+    DeniedRanges (String)
+    Description (String)
+    EndpointSecure (Boolean)
+    EndpointType (String)
+    Environment (String)
+    FQDN (String)
+    Family (String)
+    FrameworkVersion (String)
+    GroupDescription (String)
+    GroupId (Int32)
+    HasAuthEnabled (Boolean)
+    HasProxy (Boolean)
+    HashType (String)
+    HostName (String)
+    HttpPortV4 (Nullable`1)
+    HttpPortV6 (Nullable`1)
+    HttpSupported (Boolean)
+    IPv4Address (String)
+    IPv6Address (String)
+    IsActive (Boolean)
+    LastAuditDate (Nullable`1)
+    LastResponseMs (Nullable`1)
+    LastStatusCode (Nullable`1)
+    ModifiedDate (Nullable`1)
+    Notes (String)
+    OSType (String)
+    PrimaryPort (Nullable`1)
+    ProxyEntranceV4 (String)
+    ProxyEntranceV6 (String)
+    ProxyType (String)
+    SecondaryPort (Nullable`1)
+    SecondaryV4 (String)
+    SecondaryV6 (String)
+    SecurityClassification (String)
+    SecurityEmail (String)
+    SecurityPhone (String)
+    ServicesAttached (Boolean)
+    ServicesJson (String)
+    SourceRepository (String)
+    SslSupported (Boolean)
+    SwaggerOperationId (String)
+    SwaggerVersion (String)
+    TechContactEmail (String)
+    TechContactFax (String)
+    TechContactName (String)
+    TechContactPhone (String)
+    Type (String)
+    Url (String)
+
+Apihost
+    Id (Int32)
+    Active (Boolean)
+    AllowedRanges (String)
+    ApiHostName (String)
+    ApiHostUrl (String)
+    ApplicationName (String)
+    AuditorDepartment (String)
+    AuditorEmail (String)
+    AuditorEmployeeId (String)
+    AuditorId (Int32)
+    AuditorName (String)
+    AzureResourceGroup (String)
+    AzureSubscriptionId (Nullable`1)
+    BuildingId (Int32)
+    BuildingName (String)
+    BusinessUnitName (String)
+    BusinessUnitOwnerId (Int32)
+    CorsPath (String)
+    CreatedDate (DateTime)
+    DBAId (Nullable`1)
+    DBAName (String)
+    DatabaseConnectionString (String)
+    DatabaseFramework (String)
+    DatabaseType (String)
+    DeniedRanges (String)
+    Environment (String)
+    FQDN (String)
+    Family (String)
+    FrameworkVersion (String)
+    GroupDescription (String)
+    GroupId (Int32)
+    HasProxy (Boolean)
+    HashType (String)
+    HostName (String)
+    HttpPortV4 (Nullable`1)
+    HttpPortV6 (Nullable`1)
+    HttpSupported (Boolean)
+    IPv4Address (String)
+    IPv6Address (String)
+    InventoryId (String)
+    IsActive (Nullable`1)
+    IsSecure (Boolean)
+    LastAuditDate (Nullable`1)
+    LastAuditId (Nullable`1)
+    OSType (String)
+    PrimaryPort (Nullable`1)
+    ProxyEntranceV4 (String)
+    ProxyEntranceV6 (String)
+    ProxyType (String)
+    SecondaryPort (Nullable`1)
+    SecondaryV4 (String)
+    SecondaryV6 (String)
+    SecurityClassification (String)
+    SecurityEmail (String)
+    SecurityPhone (String)
+    ServiceId (Nullable`1)
+    ServiceName (String)
+    ServicePath (String)
+    SourceRepository (String)
+    SslSupported (Boolean)
+    SwaggerPassword (String)
+    SwaggerUsername (String)
+    TechContactEmail (String)
+    TechContactFax (String)
+    TechContactName (String)
+    TechContactPhone (String)
+
+Apilog
+    Id (Int32)
+    Apiname (String)
+    Apinumber (String)
+    Apiresult (String)
+    Description (String)
+    Eptype (String)
+    Hashid (Nullable`1)
+    Parameterlist (String)
+
+Application
+    Id (Int32)
+    APIVendor (String)
+    ApplicationCode (String)
+    ApplicationName (String)
+    BusinessUnit (String)
+    CreatedDate (DateTime)
+    DatabaseId (Nullable`1)
+    Description (String)
+    Environment (String)
+    InventoryId (String)
+    IsActive (Nullable`1)
+    ModifiedDate (Nullable`1)
+    OS_API (String)
+    OS_UIHTML (String)
+    OS_UIREACT (String)
+    OwnerEmail (String)
+    OwnerName (String)
+    SupportGroup (String)
+    UI_Codebase (String)
+    UI_HTMLVendor (String)
+    UI_REACTVendor (String)
+    WebFarmId (Nullable`1)
+    WebServerId (Nullable`1)
+
+ApplicationApi
+    Id (Int32)
+    ApiHostId (Int32)
+    ApplicationId (Int32)
+    CreatedDate (DateTime)
+    DatabaseId (Nullable`1)
+
+ApplicationUser
+    Id (Int32)
+    AccessGrantedDate (Nullable`1)
+    AccessRemovedDate (Nullable`1)
+    AccessType (String)
+    ApplicationId (Int32)
+    ApprovalGroup (String)
+    BusinessJustification (String)
+    CreatedDate (DateTime)
+    IsActive (Boolean)
+    LastReviewedDate (Nullable`1)
+    ModifiedDate (Nullable`1)
+    Permission (String)
+    RequestTicket (String)
+    ReviewedBy (String)
+    RoleName (String)
+    UserId (Int32)
+
+AuditException
+    Id (Int32)
+    Active (Boolean)
+    ApiAuditId (Int32)
+    ApiEndpointPath (String)
+    ApiRootUrl (String)
+    ApprovalDate (Nullable`1)
+    ApprovedBy (String)
+    CreatedDate (DateTime)
+    ExpirationDate (Nullable`1)
+    Notes (String)
+    Reason (String)
+
+AuditFieldPermission
+    Id (Int32)
+    CanDecrypt (Boolean)
+    CanMask (Boolean)
+    CanRead (Boolean)
+    CanUpdate (Boolean)
+    PrincipalId (Int32)
+    SqlFieldId (Int32)
+
+AuditPrincipal
+    Id (Int32)
+    Active (Boolean)
+    DisplayName (String)
+    Email (String)
+    ObjectId (String)
+    PrincipalType (String)
+    UserName (String)
+
+AuditResult
+    Id (Int32)
+    ApiHostsInsecure (Int32)
+    ApiHostsSecure (Int32)
+    AuditDate (DateTime)
+    AuditorId (Nullable`1)
+    AuditorName (String)
+    Notes (String)
+    TotalApiEndpoints (Int32)
+    TotalApiHosts (Int32)
+    TotalEndpointsInsecure (Int32)
+    TotalEndpointsSecure (Int32)
+
+AuditServerPermission
+    Id (Int32)
+    GrantedDate (Nullable`1)
+    PermissionLevel (String)
+    PrincipalId (Int32)
+    RevokedDate (Nullable`1)
+    SqlServerId (Int32)
+
+AuditSqlField
+    Id (Int32)
+    ColumnName (String)
+    ContainsPHI (Boolean)
+    ContainsPII (Boolean)
+    DataType (String)
+    Description (String)
+    IsEncrypted (Boolean)
+    IsForeignKey (Boolean)
+    IsNullable (Boolean)
+    IsPrimaryKey (Boolean)
+    MaskingRule (String)
+    MaxLength (Nullable`1)
+    SensitivityLabel (String)
+    SqlTableId (Int32)
+
+AuditSqlServer
+    Id (Int32)
+    Active (Boolean)
+    BackupPolicy (String)
+    ConnectionStringName (String)
+    CreatedDate (DateTime)
+    DatabaseName (String)
+    DatabaseSizeMB (Nullable`1)
+    DatabaseType (String)
+    DatabaseVersion (String)
+    DbContextName (String)
+    DbaEmail (String)
+    DbaName (String)
+    DbaPhone (String)
+    DefenderEnabled (Boolean)
+    Description (String)
+    Environment (String)
+    GeoReplicationEnabled (Boolean)
+    OwnerEmail (String)
+    OwnerName (String)
+    OwnerPhone (String)
+    ServerName (String)
+    TdeEnabled (Boolean)
+
+AuditSqlTable
+    Id (Int32)
+    ClassificationStatus (String)
+    ContainsPHI (Boolean)
+    ContainsPII (Boolean)
+    Description (String)
+    HasDynamicDataMasking (Boolean)
+    HasRowLevelSecurity (Boolean)
+    LastStatisticsUpdate (Nullable`1)
+    SchemaName (String)
+    SomeRowCount (Nullable`1)
+    SqlServerId (Int32)
+    TableName (String)
+    TableSizeMB (Nullable`1)
+
+AuditTablePermission
+    Id (Int32)
+    CanDelete (Boolean)
+    CanInsert (Boolean)
+    CanSelect (Boolean)
+    CanUpdate (Boolean)
+    PrincipalId (Int32)
+    SqlTableId (Int32)
+
+CipherSupport
+    Id (Int32)
+    CipherKey (String)
+    CipherName (String)
+    DateCreated (String)
+    Description (String)
+    IsActive (Nullable`1)
+    Version (String)
+
+CockyCipherBlock
+    Id (Int32)
+    Description (String)
+    Key1 (String)
+    Key2 (String)
+    Key3 (String)
+    Key4 (String)
+    Key5 (String)
+    SessionToken (String)
+    type (CipherType)
+
+Customer
+    Id (Int32)
+    CreatedAt (DateTime)
+    FullName (String)
+    Tenantid (String)
+    UserId (String)
+
+Database
+    Id (Int32)
+    Active (Boolean)
+    BackupRequired (Boolean)
+    Classification (String)
+    ContainsPCI (Boolean)
+    ContainsPHI (Boolean)
+    ContainsPII (Boolean)
+    CreatedDate (DateTime)
+    DatabaseName (String)
+    DatabaseServerId (Int32)
+    DatabaseType (String)
+    Description (String)
+    EncryptionEnabled (Boolean)
+    InventoryId (String)
+    Notes (String)
+    Owner (String)
+    SupportTeam (String)
+    Version (String)
+
+DatabaseServer
+    Id (Int32)
+    Active (Boolean)
+    AzureIP (String)
+    AzureSubscription (String)
+    AzureURL (String)
+    BackupSolution (String)
+    CName1 (String)
+    CName2 (String)
+    CName3 (String)
+    CreatedDate (DateTime)
+    DatabaseInstance (String)
+    DatabasePlatform (String)
+    Environment (String)
+    Hostname (String)
+    InventoryId (String)
+    IpAddress (String)
+    Location (String)
+    Notes (String)
+    Owner (String)
+    PublicFacing (Boolean)
+    RecoveryModel (String)
+    Region (String)
+    ResourceGroup (String)
+    ServerName (String)
+    SupportTeam (String)
+    Version (String)
+
+EmployeeHR
+    EmployeeId (Int32)
+    Salary (Nullable`1)
+    SocialSecurityNo (String)
+    TotalStockOptions (Nullable`1)
+    Username (String)
+
+Enterprise9
+    Id (Int32)
+    ApiHostId (Int32)
+    ApiHostName (String)
+    ApiServiceId (Nullable`1)
+    ApiServiceName (String)
+    CreatedDate (DateTime)
+    EndpointUrl (String)
+    HttpMethod (String)
+    IsActive (Boolean)
+    IsImplemented (Boolean)
+    IsRequired (Boolean)
+    LastValidated (Nullable`1)
+    LogDescription (String)
+    LogName (String)
+    ModifiedDate (Nullable`1)
+    Notes (String)
+
+Keyassignment
+    Id (Int32)
+    Alias (String)
+    CreatedAt (String)
+    DeliveredToUser (Int32)
+    KeyId (String)
+    PrivateKey (String)
+    PublicKey (String)
+    SessionId (Int32)
+    UpdatedAt (String)
+
+Learndetail
+    Id (Int32)
+    Cataloguesku (String)
+    Category (String)
+    Certauthority (String)
+    Description (String)
+    Employee (Nullable`1)
+    Employeeid (String)
+    Employeeidasint (Nullable`1)
+    Enddate (String)
+    Fullname (String)
+    Learningmodulesid (Nullable`1)
+    Startdate (String)
+    Status (String)
+    Userid (Nullable`1)
+
+Learnlog
+    Id (Int32)
+    Date (Nullable`1)
+    Description (String)
+    uid (Nullable`1)
+
+Lunalog
+    Id (Int32)
+    AccessTime (Nullable`1)
+    Apiid (Nullable`1)
+    DestinationIpAddress (String)
+    QueryText (String)
+    SourceIpAddress (String)
+    Uid (String)
+    User1 (String)
+    User2 (String)
+    User3 (String)
+    User4 (String)
+    User5 (String)
+
+Portfolio
+    Id (Int32)
+    CustomerId (Nullable`1)
+    PortfolioTargetInvestment (Decimal)
+    UserId (String)
+
+PortfolioStock
+    Id (Int32)
+    CompanyName (String)
+    PortfolioId (Int32)
+    PreviousDayDate (String)
+    PreviousDayPrice (Decimal)
+    Shares (Decimal)
+    StockTargetInvestment (Decimal)
+    Ticker (String)
+
+Sectorssummary
+    Id (Int32)
+    Avgdividend (Nullable`1)
+    Change (Nullable`1)
+    Company (String)
+    Fiveyeardivproj (Nullable`1)
+    Fiveyearequityproj (Nullable`1)
+    PriceEnd (Nullable`1)
+    PriceStart (Nullable`1)
+    Sector (String)
+    Selected (String)
+    Shares500 (Nullable`1)
+    Ticker (String)
+    Totaldividends (Nullable`1)
+    Totalfiveyearview (Nullable`1)
+    Totalreturn (Nullable`1)
+    Totalreturnover10 (Nullable`1)
+    Totalspend (Nullable`1)
+    Userid (Nullable`1)
+    Useridasstring (String)
+
+Sessionlog
+    Id (Int32)
+    Description (String)
+    Hashid (Nullable`1)
+    Moduleid (String)
+    Sessionend (Nullable`1)
+    Sessionstart (Nullable`1)
+    Username (String)
+
+Site
+    Id (Int32)
+    Address1 (String)
+    Address2 (String)
+    City (String)
+    Country (String)
+    IsActive (Boolean)
+    Notes (String)
+    PhoneNumber (String)
+    PostalCode (String)
+    SiteCode (String)
+    SiteManager (String)
+    SiteName (String)
+    State (String)
+
+SiteAccessPermission
+    Id (Int32)
+    AccessLevel (String)
+    ExpirationDate (Nullable`1)
+    GrantedBy (String)
+    GrantedDate (DateTime)
+    IsEnabled (Boolean)
+    ReviewedBy (String)
+    ReviewedDate (Nullable`1)
+    SiteId (Int32)
+    UserId (Int32)
+
+Superuserlog
+    Id (Int32)
+    Acknowledged (String)
+    Date (Nullable`1)
+    Description (String)
+    Managerescid (Nullable`1)
+    Techid (Nullable`1)
+    Threatlevel (String)
+    Userid (String)
+
+Syslog
+    Id (Int32)
+    AdditionalData (String)
+    Exception (String)
+    IpAddress (String)
+    LogDate (DateTime)
+    LogLevel (String)
+    MachineName (String)
+    Message (String)
+    Source (String)
+    StackTrace (String)
+    Username (String)
+
+SystemStock
+    Id (Int32)
+    Avgdividend (Nullable`1)
+    Change (Nullable`1)
+    Company (String)
+    CompanyName (String)
+    Country (String)
+    Div2016 (Nullable`1)
+    Div2017 (Nullable`1)
+    Div2018 (Nullable`1)
+    Div2019 (Nullable`1)
+    Div2020 (Nullable`1)
+    Div2021 (Nullable`1)
+    Div2022 (Nullable`1)
+    Div2023 (Nullable`1)
+    Div2024 (Nullable`1)
+    Div2025 (Nullable`1)
+    Div2026 (Nullable`1)
+    Fiveyeardivproj (Nullable`1)
+    Fiveyearequityproj (Nullable`1)
+    Price2016 (Nullable`1)
+    Price2017 (Nullable`1)
+    Price2018 (Nullable`1)
+    Price2019 (Nullable`1)
+    Price2020 (Nullable`1)
+    Price2021 (Nullable`1)
+    Price2022 (Nullable`1)
+    Price2023 (Nullable`1)
+    Price2024 (Nullable`1)
+    Price2025 (Nullable`1)
+    Price2026 (Nullable`1)
+    PriceEnd (Nullable`1)
+    PriceStart (Nullable`1)
+    PrimaryExchange (String)
+    SecondaryExchange (String)
+    Sector (String)
+    Selected (String)
+    Shares500 (Nullable`1)
+    Source (Int32)
+    Ticker (String)
+    Totaldividends (Nullable`1)
+    Totalfiveyearview (Nullable`1)
+    Totalreturn (Nullable`1)
+    Totalreturnover10 (Nullable`1)
+    Totalspend (Nullable`1)
+
+TradeOrder
+    Id (Int32)
+    ExecutedAt (DateTime)
+    ExecutionPrice (Decimal)
+    OrderType (String)
+    PortfolioId (Int32)
+    PortfolioStockId (Int32)
+    Quantity (Decimal)
+    TraderId (Int32)
+
+Trader
+    Id (Int32)
+    FullName (String)
+    IsActive (Boolean)
+    StaffUserId (String)
+
+User
+    Id (Int32)
+    Accountactiondate (String)
+    Accountactiondescription (String)
+    Accountstatus (String)
+    ApplicationIds (List`1)
+    ApplicationPermissions (List`1)
+    Azureid (String)
+    Btn (String)
+    Companyid (String)
+    Displayname (String)
+    Email (String)
+    Employee (Nullable`1)
+    Employeeid (String)
+    Firstname (String)
+    Fullname (String)
+    Groupid1 (String)
+    Groupid2 (String)
+    Groupid3 (String)
+    Groupid4 (String)
+    Groupid5 (String)
+    Hashedpassword (String)
+    Iscertified (Nullable`1)
+    Jid (Nullable`1)
+    Lastname (String)
+    Microsoftid (String)
+    Ncrid (String)
+    Oracleid (String)
+    Passwordtype (Nullable`1)
+    Plainpassword (String)
+    Profileurl (String)
+    Resettoken (String)
+    Resettokenexpiration (Nullable`1)
+    Role (String)
+    Role2 (String)
+    Role3 (String)
+    Tenantid (String)
+    Userid (Nullable`1)
+    Useridstring (String)
+    Username (String)
+
+UserDownloadLog
+    Id (Int32)
+    ContentType (String)
+    DownloadDateTime (DateTime)
+    DownloadMethod (String)
+    FailureReason (String)
+    FileName (String)
+    FilePath (String)
+    FileSizeBytes (Int64)
+    SourceApplication (String)
+    Successful (Boolean)
+    Uid (Int32)
+    UserAgent (String)
+    UserEmail (String)
+    UserIPAddress (String)
+    UserLocation (String)
+    Username (String)
+
+UserLocation
+    Id (Int32)
+    AddressLine1 (String)
+    AddressLine2 (String)
+    City (String)
+    Country (String)
+    CreatedAt (String)
+    IsPrimary (Nullable`1)
+    Label (String)
+    Latitude (Nullable`1)
+    Longitude (Nullable`1)
+    PostalCode (String)
+    State (String)
+    UserId (Nullable`1)
+
+UserProfileLog
+    Id (Int32)
+    DateCreated (DateTime)
+    Description (String)
+    NotificationDestination (String)
+    NotificationTimestamp (Nullable`1)
+    NotificationType (String)
+    Uid (Int32)
+    UserId (String)
+
+Useraction
+    Id (Int32)
+    Acknowledged (Nullable`1)
+    Actiondate (String)
+    Actionpriority (Nullable`1)
+    Description (String)
+    Userid (Nullable`1)
+
+Usergroup
+    Id (Int32)
+    Groupcompanyid (String)
+    Groupdescription (String)
+    Groupid (String)
+    Groupownerid (Nullable`1)
+
+Userhelp
+    Id (Int32)
+    Bestcontactnumber (String)
+    Descr (String)
+    Email (String)
+    Emplid (Nullable`1)
+    Fullname (String)
+    Replied (String)
+    Repliedmanageremail (String)
+    Repliedmanagerid (String)
+    Repliedmanagerphone (String)
+    Responsedate (String)
+    Severity (Nullable`1)
+    Ticketdate (String)
+    Ticketid (String)
+    Userid (Nullable`1)
+
+Userlog
+    Id (Int32)
+    Description (String)
+    Hashedpassword (String)
+    Hashid (Nullable`1)
+    Loginstatus (String)
+    Uiorigin (String)
+    Username (String)
+    role (String)
+    uid (Nullable`1)
+
+Usernotice
+    Id (Int32)
+    Description (String)
+    Emailaddress (String)
+    Emailgwtype (String)
+    NoticeDatetime (Nullable`1)
+    Noticetype (String)
+    Userid (Nullable`1)
+    Useridstring (String)
+
+Userprofile
+    Id (Int32)
+    Activepictureurl (String)
+    Address1 (String)
+    Address2 (String)
+    Branchid (Nullable`1)
+    Buid (Nullable`1)
+    Cellphone (String)
+    CipherSupportId (Byte[])
+    City (String)
+    Companyid (String)
+    Country (String)
+    Defaultinstanceid (String)
+    Defaultshardid (String)
+    Email (String)
+    Employeeid (String)
+    Facebookurl (String)
+    Firstname (String)
+    Fullname (String)
+    Googleurl (String)
+    Instagramurl (String)
+    Lastname (String)
+    Linkedinurl (String)
+    Managerid (Nullable`1)
+    Maritalstatus (String)
+    Phone (String)
+    Postalzip (String)
+    Pronoun (String)
+    Regionid (Nullable`1)
+    Sms (Nullable`1)
+    Stateregion (String)
+    Targetcipher (Byte[])
+    Title (String)
+    Title2 (String)
+    University (String)
+    University1 (String)
+    University2 (String)
+    Userid (Nullable`1)
+    Vimeourl (String)
+
+Usersession
+    Id (Int32)
+    Acknowledged (Nullable`1)
+    Actionpriority (Nullable`1)
+    FacebookToken (String)
+    GoogleToken (String)
+    MicrosoftToken (String)
+    Sessioncomplete (Nullable`1)
+    Sessiondescription (String)
+    Sessionemail (String)
+    Sessionend (String)
+    Sessionfirstname (String)
+    Sessionfullname (String)
+    Sessionlastname (String)
+    Sessionrecorded (Nullable`1)
+    Sessionrecordurl (String)
+    Sessionstart (String)
+    Sessionusername (String)
+    Targetcipher (String)
+    Token (String)
+    Twofactorkey (String)
+    Twofactorkeyemaildestination (String)
+    Twofactorkeysmsdestination (String)
+    Twofactorprovider (String)
+    Twofactorproviderauthstring (String)
+    Twofactorprovidertoken (String)
+    Userid (Nullable`1)
+    Useridasstring (String)
+
+WebFarm
+    Id (Int32)
+    ApplicationURL (String)
+    AzureIP (String)
+    AzureSubscription (String)
+    AzureURL (String)
+    BackendPoolCount (Nullable`1)
+    CName1 (String)
+    CName2 (String)
+    CName3 (String)
+    CreatedDate (DateTime)
+    Description (String)
+    Enabled (Boolean)
+    Environment (String)
+    FarmName (String)
+    HealthProbeUrl (String)
+    InventoryId (String)
+    LoadBalancerName (String)
+    LoadBalancerType (String)
+    Location (String)
+    Notes (String)
+    Owner (String)
+    PublicFacing (Boolean)
+    Region (String)
+    ResourceGroup (String)
+    SupportTeam (String)
+    TLSVersion (String)
+    Url (String)
+    VirtualIpAddress (String)
+
+WebFarmServer
+    Id (Int32)
+    WebFarmId (Int32)
+    WebServerId (Int32)
+
+WebServer
+    Id (Int32)
+    Active (Boolean)
+    ApplicationURL (String)
+    AzureIP (String)
+    AzureSubscription (String)
+    AzureURL (String)
+    CName1 (String)
+    CName2 (String)
+    CName3 (String)
+    CreatedDate (DateTime)
+    Environment (String)
+    Hostname (String)
+    InventoryId (String)
+    IpAddress (String)
+    Location (String)
+    Notes (String)
+    OperatingSystem (String)
+    Owner (String)
+    PublicFacing (Boolean)
+    Region (String)
+    ResourceGroup (String)
+    ServerName (String)
+    SupportTeam (String)
+    TLSVersion (String)
+    Version (String)
+    WebServerType (String)
+    isProxy (Nullable`1)
+    isProxySlave (Nullable`1)
+
+WorkerTroubleTicket
+    Id (Int32)
+    ApiName (String)
+    ApplicationOwner (String)
+    AssignedTo (String)
+    AuditorNotes (String)
+    BusinessUnit (String)
+    Description (String)
+    Endpoint (String)
+    Environment (String)
+    EvidenceUrl (String)
+    ImpactedUsers (Nullable`1)
+    IncidentCount (Nullable`1)
+    IsHardDown (Boolean)
+    ReportedBy (String)
+    ReportedOn (DateTime)
+    ResolutionNotes (String)
+    ResolvedOn (Nullable`1)
+    RootCause (String)
+    Severity (String)
+    Status (String)
+    TicketNumber (String)
+
+
+END OF REPORT

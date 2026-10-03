@@ -145,6 +145,7 @@ app.MapTwofactorEndpoints();
 //SECURITY TEST ADVANCED SQL PERMISSIONS
 app.MapHREndpoints(); //WITHOUT INTEGRATED SECURITY
 app.MapWorkerTroubleTicketEndpoints();
+app.MapDatabaseTablesEndpoints();
 
 #endregion
 

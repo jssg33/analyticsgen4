@@ -42,7 +42,7 @@ public partial class EnterpriseContext : DbContext
     
     public virtual DbSet<EmployeeHR> EmployeeHR { get; set; }
     
-    
+    public virtual DbSet<DatabaseTable> DatabaseTables { get; set; }
     public virtual DbSet<UserDownloadLog> UserDownloadLogs { get; set; }
 
     public virtual DbSet<Keyassignment> Keyassignments { get; set; }
@@ -172,6 +172,26 @@ public partial class EnterpriseContext : DbContext
         entity.Property(e => e.Fiveyearequityproj);
         entity.Property(e => e.Fiveyeardivproj);
         entity.Property(e => e.Totalfiveyearview);
+});
+
+modelBuilder.Entity<DatabaseTable>(entity =>
+{
+    entity.ToTable("DatabaseTables");
+
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.TableName)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.SchemaName)
+        .HasMaxLength(100);
+
+    entity.Property(e => e.ModelName)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.CreatedDate);
+
+    entity.Property(e => e.LastAuditDate);
 });
 
 modelBuilder.Entity<Enterprise9>(entity =>
