@@ -30,6 +30,7 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<ApplicationUser> ApplicationUsers { get; set; }
     public virtual DbSet<Allstock> Allstocks { get; set; }
     public virtual DbSet<Apilog> Apilogs { get; set; }
+    public virtual DbSet<ApiService> ApiServices { get; set; }
     public virtual DbSet<Site> Sites { get; set; }
     public virtual DbSet<SiteAccessPermission> SiteAccessPermissions { get; set; }
     public virtual DbSet<ApiAccessPermission> ApiAccessPermissions { get; set; }
@@ -40,6 +41,7 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<Customer> Customers { get; set; }
     
     public virtual DbSet<EmployeeHR> EmployeeHR { get; set; }
+    
     
     public virtual DbSet<UserDownloadLog> UserDownloadLogs { get; set; }
 
@@ -474,6 +476,34 @@ modelBuilder.Entity<ApplicationUser>(entity =>
         entity.Property(e => e.Salary);
         entity.Property(e => e.TotalStockOptions);
     });
+
+
+modelBuilder.Entity<ApiService>(entity =>
+{
+    entity.ToTable("ApiServices");
+
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.ServiceName)
+        .HasMaxLength(200);
+
+    entity.Property(e => e.InterfaceName)
+        .HasMaxLength(200);
+
+    entity.Property(e => e.ImplementationClass)
+        .HasMaxLength(500);
+
+    entity.Property(e => e.ServiceType)
+        .HasMaxLength(100);
+
+    entity.Property(e => e.ServiceOwner)
+        .HasMaxLength(200);
+
+    entity.Property(e => e.CreatedDate);
+
+    entity.Property(e => e.ModifiedDate);
+});
+
 
         modelBuilder.Entity<ApiHostException>(entity =>
         {
