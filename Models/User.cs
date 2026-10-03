@@ -22,7 +22,7 @@ public partial class User
     public int? Passwordtype { get; set; }
     public string? InvestorMode { get; set; }
     public string? InvestorGroupId { get; set; }
-    public int? AdvisorId { get; set;}
+    public int? AnalystId { get; set;}
     public int? Jid { get; set; }
     public string? Profileurl { get; set; }
     public string? Role { get; set; }
