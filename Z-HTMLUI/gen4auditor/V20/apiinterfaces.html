@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interfaces · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Back-end Interfaces</h2>
+  <div class="page-sub">The services and interfaces registered behind each API, one row per interface method.
+    They're imported <b>per host</b> when the host is audited (<b>Walk Swagger &amp; audit host</b> reads the API's
+    <code>SystemConsole</code>), or with <b>Import from host</b>. <b>Associate endpoints</b> then ties each method to the endpoint that serves it.
+    CockyAuditor records what's exposed &mdash; it never calls these methods.</div>
+  <div id="setup"></div>
+</section>
+
+<!-- Import from host dialog -->
+<div class="modal fade" id="importModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Import interfaces from a host</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <label class="form-label small mb-1">Host (API) the interfaces belong to</label>
+    <select class="form-select form-select-sm mb-3 imp-host"></select>
+    <div class="border rounded p-2 mb-3">
+      <div class="d-flex flex-wrap gap-2 align-items-end">
+        <div><label class="form-label small mb-1">Login (Basic)</label><input class="form-control form-control-sm imp-user" placeholder="username" autocomplete="off" style="width:150px"></div>
+        <div><input class="form-control form-control-sm imp-pass" type="password" placeholder="password" autocomplete="new-password" style="width:150px"></div>
+        <button class="btn btn-sm btn-success imp-fetch" type="button">Read SystemConsole</button>
+      </div>
+      <div class="form-text">Reads <code class="imp-paths"></code> on the host. Leave the password blank to use the host's saved Swagger login.</div>
+      <div class="imp-fetch-msg small mt-2"></div>
+    </div>
+    <details class="mb-2"><summary class="small">Or paste the SystemConsole JSON</summary>
+      <textarea class="form-control font-monospace imp-json mt-2" rows="10" spellcheck="false"
+        placeholder='[
+  { "interfaceName": "IApilogService02", "methodCount": 5, "methods": ["Create02","Delete02","GetAll02","GetById02","Update02"] }
+]'></textarea>
+    </details>
+    <div class="imp-preview small mt-2"></div>
+    <div class="imp-progress small text-muted mt-2 d-none"></div>
+    <div class="imp-error alert alert-danger small mt-3 d-none"></div>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <div class="small text-muted imp-summary"></div>
+    <div><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+      <button class="btn btn-primary imp-save" type="button" disabled>Save interfaces</button></div>
+  </div>
+</div></div></div>
+
+<!-- Associate endpoints dialog -->
+<div class="modal fade" id="assocModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Associate interfaces with endpoints</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+      <select class="form-select form-select-sm as-host" style="max-width:320px"></select>
+      <div class="form-check ms-1"><input class="form-check-input as-all" type="checkbox" id="as_all"><label class="form-check-label small" for="as_all">Show associated and no-longer-registered too</label></div>
+      <input class="form-control form-control-sm as-search" placeholder="Filter interfaces…" style="max-width:200px">
+      <button class="btn btn-sm btn-outline-success ms-auto as-fill" type="button"></button>
+    </div>
+    <div class="small text-muted mb-2">Pick the endpoint each method serves. <span class="badge text-bg-info">suggested</span> matches come from the names
+      (<code>IPaymentService24.GetById24</code> &rarr; <code>GET /api/Payments/{id}</code>). Nothing is saved until you click Save.</div>
+    <div class="as-list"></div>
+    <div class="as-error alert alert-danger small mt-3 d-none"></div>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <div class="small text-muted as-summary"></div>
+    <div><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Close</button>
+      <button class="btn btn-primary as-save" type="button" disabled>Save</button></div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="interfaces.js"></script>
+<script>
+const main = Cocky.layout("interfaces");
+const { esc } = Cocky;
+const I = window.Interfaces;
+const qs = new URLSearchParams(location.search);
+
+// Lookups, reloaded with the list
+let endpoints = [], hosts = [], epById = new Map(), allRows = [];
+const hostName = h => h ? (h.apiHostName || h.apiHostUrl || "#" + h.id) : "";
+const hostById = id => hosts.find(h => h.id === id);
+const hostOf = r => I.hostOf(r, epById);
+const methodBadge = m => `<span class="badge method-${String(m).toLowerCase()} me-1">${esc(m)}</span>`;
+const epHtml = e => `${methodBadge(I.endpointMethod(e))}<span class="font-monospace small">${esc(I.endpointPath(e) || e.description || "")}</span> <span class="text-muted small">#${e.id}</span>`;
+
+Cocky.SCHEMA.apiinterfaces.format = Object.assign({}, Cocky.SCHEMA.apiinterfaces.format, {
+  apiHostId: (v, r) => {
+    const id = hostOf(r);
+    if (id == null) return '<span class="text-muted">—</span>';
+    return esc(hostName(hostById(id)) || "#" + id) + (v == null || v === 0 ? ' <span class="small text-muted" title="Saved before build 5.0; host taken from its endpoint">(via endpoint)</span>' : "");
+  },
+  interfaceName: (v, r) => `<code>${esc(v || "")}</code>${r.implementationName ? `<div class="small text-muted">${esc(r.implementationName)}${r.serviceLifetime ? " · " + esc(r.serviceLifetime) : ""}</div>` : ""}`,
+  apiAuditId: (v, r) => {
+    if (!I.isAssociated(r)) return '<span class="badge text-bg-warning fw-normal">Not associated</span>';
+    const e = epById.get(v);
+    return e ? epHtml(e) : `<span class="badge text-bg-danger fw-normal">Endpoint #${esc(v)} missing</span>`;
+  },
+  isRegistered: v => v === false ? '<span class="badge text-bg-secondary">No longer registered</span>' : '<span class="badge text-bg-success">Yes</span>'
+});
+
+function showSetupNote(html) { document.getElementById("setup").innerHTML = `<div class="alert alert-warning">${html}</div>`; }
+
+let page;
+(async () => {
+  try { await Cocky.api.list("apiinterfaces"); }
+  catch (e) {
+    if (e.status === 404) {
+      showSetupNote(`<strong>The API didn't answer on the interfaces route.</strong> CockyAuditor expects
+        <code>${esc(Cocky.CFG.endpoints.apiinterfaces)}</code> (set in <code>config.js</code>). Check the <code>ApiInterfacesAudit</code> controller has been deployed.
+        <div class="small mt-2 text-muted">${esc(e.message)}</div>`);
+      return;
+    }
+  }
+
+  page = Cocky.crudPage("apiinterfaces", {
+    mount: main,
+    columns: Cocky.SCHEMA.apiinterfaces.columns,
+    toolbarExtra: `<select class="form-select form-select-sm host-filter" style="max-width:260px"><option value="">All hosts</option></select>
+      <select class="form-select form-select-sm status-filter" style="max-width:190px">
+        <option value="">Any status</option><option value="unassoc">Not associated</option><option value="assoc">Associated</option><option value="gone">No longer registered</option>
+      </select>
+      <span class="ep-chip"></span>
+      <button class="btn btn-sm btn-success" id="importBtn" type="button">Import from host</button>
+      <button class="btn btn-sm btn-warning" id="assocBtn" type="button">Associate endpoints</button>`,
+    beforeLoad: async () => {
+      [endpoints, hosts] = await Promise.all([Cocky.api.list("apiaudit").catch(() => []), Cocky.api.list("apihosts").catch(() => [])]);
+      epById = I.byId(endpoints);
+    },
+    sort: rows => {
+      allRows = rows;
+      const h = main.querySelector(".host-filter").value, st = main.querySelector(".status-filter").value, ep = qs.get("endpoint");
+      return rows.filter(r => (!h || String(hostOf(r)) === h)
+          && (!ep || String(r.apiAuditId) === ep)
+          && (!st || (st === "unassoc" ? !I.isAssociated(r) && r.isRegistered !== false : st === "assoc" ? I.isAssociated(r) : r.isRegistered === false)))
+        .sort((a, b) => String(hostName(hostById(hostOf(a)))).localeCompare(String(hostName(hostById(hostOf(b))))) ||
+          String(a.interfaceName || "").localeCompare(String(b.interfaceName || "")) ||
+          String(a.methodName || "").localeCompare(String(b.methodName || "")));
+    },
+    onLoaded: afterLoad,
+    rowActions: [{ label: "Associate", className: "btn-outline-warning", onClick: r => openAssoc(hostOf(r), r.id) }]
+  });
+
+  main.querySelector(".host-filter").onchange = () => page.reload();
+  main.querySelector(".status-filter").onchange = () => page.reload();
+  document.getElementById("importBtn").onclick = () => openImport(+main.querySelector(".host-filter").value || null);
+  document.getElementById("assocBtn").onclick = () => openAssoc(+main.querySelector(".host-filter").value || null);
+})();
+
+// After every load: host filter (with counts), the endpoint chip, the setup warning, and ?assoc / ?import on first load
+let firstLoad = true;
+function afterLoad() {
+  const hf = main.querySelector(".host-filter");
+  const keep = firstLoad ? qs.get("host") || "" : hf.value;
+  const count = id => allRows.filter(r => hostOf(r) === id).length;
+  const open = id => allRows.filter(r => hostOf(r) === id && !I.isAssociated(r) && r.isRegistered !== false).length;
+  hf.innerHTML = `<option value="">All hosts</option>` + hosts.slice().sort((a, b) => hostName(a).localeCompare(hostName(b)))
+    .map(h => `<option value="${h.id}">${esc(hostName(h))} (${count(h.id)}${open(h.id) ? `, ${open(h.id)} to associate` : ""})</option>`).join("");
+  hf.value = keep;
+  const ep = qs.get("endpoint"), e = ep && epById.get(+ep);
+  main.querySelector(".ep-chip").innerHTML = ep ? `<a class="badge text-bg-light border text-decoration-none fw-normal" href="apiinterfaces.html" title="Show all">Endpoint: ${e ? esc(I.endpointLabel(e)) : "#" + esc(ep)} &times;</a>` : "";
+  if (I.hostColumnMissing(allRows)) showSetupNote(`<strong>Interfaces can't be saved against a host yet.</strong> ${esc(I.SETUP)}
+    Until then, existing rows still show (their host comes from their endpoint).`);
+  else showLegacyNote();
+  if (firstLoad) {
+    firstLoad = false;
+    if (keep && hf.value === keep && keep) page.reload();   // apply ?host= to the list
+    if (qs.has("assoc")) openAssoc(+keep || null);
+    else if (qs.has("import")) openImport(+keep || null);
+  }
+}
+
+// Rows from the old paste import have no host and are tied to whichever endpoint was picked in that dialog.
+// Offer to move them onto their endpoint's host, unassociated, so they can be associated properly.
+function showLegacyNote() {
+  const legacy = I.legacyRows(allRows, epById);
+  const box = document.getElementById("setup");
+  if (!legacy.length) { box.innerHTML = ""; return; }
+  const eps = [...new Set(legacy.map(r => r.apiAuditId))].map(id => epById.get(id));
+  box.innerHTML = `<div class="alert alert-info d-flex flex-wrap gap-3 align-items-center">
+    <div class="flex-grow-1"><b>${legacy.length}</b> interface method(s) were imported before interfaces belonged to a host, so they're all tied to
+      ${eps.map(e => `endpoint #${e.id} (${esc(I.endpointLabel(e))})`).join(", ")} &mdash; the endpoint picked in the old import dialog.
+      <div class="small">Moving them puts each on that endpoint's host (${[...new Set(eps.map(e => esc(hostName(hostById(e.apiHostId)) || "#" + e.apiHostId)))].join(", ")})
+      with no endpoint, ready for <b>Associate endpoints</b>.</div><div class="small legacy-msg"></div></div>
+    <button class="btn btn-sm btn-primary" type="button" id="moveLegacy">Move ${legacy.length} to their host</button></div>`;
+  document.getElementById("moveLegacy").onclick = async ev => {
+    ev.target.disabled = true;
+    const msg = box.querySelector(".legacy-msg");
+    const r = await I.moveLegacy(legacy, epById, t => { msg.textContent = t; });
+    Cocky.toast(`${r.moved + r.keptEndpoint} moved to their host` + (r.keptEndpoint ? `; ${r.keptEndpoint} kept endpoint #${legacy[0].apiAuditId} because the API still requires ApiAuditId` : "") +
+      (r.failures.length ? `; ${r.failures.length} failed: ${r.failures[0]}` : "."), r.failures.length || r.keptEndpoint ? "warning" : "success");
+    page.reload();
+  };
+}
+
+// ---------------------------------------------------------------- Import from host ----
+const im = document.getElementById("importModal");
+const imBs = bootstrap.Modal.getOrCreateInstance(im);
+const $i = s => im.querySelector(s);
+let found = null, foundFrom = "";
+im.querySelector(".imp-paths").textContent = I.PATHS.join(", ");
+
+function openImport(hostId) {
+  $i(".imp-host").innerHTML = hosts.length ? hosts.map(h => `<option value="${h.id}">${esc(hostName(h))} · ${esc(h.apiHostUrl || "")}</option>`).join("")
+    : `<option value="">No hosts yet — add one on the Hosts page first</option>`;
+  if (hostId) $i(".imp-host").value = String(hostId);
+  found = null; foundFrom = "";
+  $i(".imp-json").value = ""; $i(".imp-fetch-msg").innerHTML = "";
+  $i(".imp-error").classList.add("d-none"); $i(".imp-progress").classList.add("d-none");
+  hostChanged();
+  imBs.show();
+}
+function hostChanged() {
+  const h = hostById(+$i(".imp-host").value);
+  $i(".imp-user").value = h && h.swaggerUsername && h.swaggerUsername !== "string" ? h.swaggerUsername : "";
+  $i(".imp-pass").value = "";
+  $i(".imp-pass").placeholder = h && h.swaggerPassword && h.swaggerPassword !== "string" ? "(saved on host)" : "password";
+  found = null; foundFrom = ""; $i(".imp-fetch-msg").innerHTML = "";
+  refreshPreview();
+}
+$i(".imp-host").onchange = hostChanged;
+
+$i(".imp-fetch").onclick = async () => {
+  const h = hostById(+$i(".imp-host").value);
+  if (!h) return;
+  const msg = $i(".imp-fetch-msg"), btn = $i(".imp-fetch");
+  const user = $i(".imp-user").value.trim(), pass = $i(".imp-pass").value;
+  const creds = pass ? { user, pass } : user && user !== h.swaggerUsername ? { user, pass: "" } : {};
+  btn.disabled = true;
+  try {
+    const r = await I.fetchConsole(h, creds, t => { msg.innerHTML = Cocky.spinner(t).replace("py-4", "py-0"); });
+    found = r.rows; foundFrom = r.url;
+    msg.innerHTML = `<span class="text-success">Read <b>${r.rows.length}</b> method(s) from <code>${esc(r.url)}</code>.</span>`;
+  } catch (e) {
+    found = null; foundFrom = "";
+    msg.innerHTML = `<span class="text-danger">${esc(e.message)}</span>${e.kind === "auth" ? " Enter the login above and try again." : e.kind === "network" || e.kind === "missing" ? " You can paste the JSON below instead." : ""}`;
+  } finally { btn.disabled = false; refreshPreview(); }
+};
+
+$i(".imp-json").addEventListener("input", () => {
+  const text = $i(".imp-json").value.trim();
+  if (!text) { found = null; foundFrom = ""; refreshPreview(); return; }
+  try { found = I.parse(text); foundFrom = "pasted JSON"; }
+  catch (e) { found = null; $i(".imp-preview").innerHTML = `<span class="text-danger">Not valid JSON: ${esc(e.message)}</span>`; $i(".imp-save").disabled = true; return; }
+  refreshPreview();
+});
+
+let plan = null;
+function refreshPreview() {
+  const hid = +$i(".imp-host").value;
+  plan = null;
+  if (!found || !hid) { $i(".imp-preview").innerHTML = ""; $i(".imp-summary").textContent = ""; $i(".imp-save").disabled = true; return; }
+  plan = I.reconcile(found, hid, allRows, endpoints);
+  $i(".imp-preview").innerHTML = `<div class="mb-2">From ${esc(foundFrom)}: <b>${found.length}</b> method(s).</div>` + I.planSummaryHtml(plan, found);
+  const n = plan.toCreate.length + plan.toRetire.length + plan.toRevive.length;
+  $i(".imp-summary").textContent = n ? `${plan.toCreate.length} to save, ${plan.toRetire.length + plan.toRevive.length} to update` : "Nothing new: everything is already recorded.";
+  $i(".imp-save").disabled = !n;
+}
+
+$i(".imp-save").onclick = async () => {
+  const hid = +$i(".imp-host").value, err = $i(".imp-error"), prog = $i(".imp-progress"), btn = $i(".imp-save");
+  err.classList.add("d-none");
+  // Re-check against the database right before writing
+  try { allRows = await Cocky.api.list("apiinterfaces"); } catch { /* use what's loaded */ }
+  if (I.hostColumnMissing(allRows)) { err.textContent = I.SETUP; err.classList.remove("d-none"); return; }
+  plan = I.reconcile(found, hid, allRows, endpoints);
+  btn.disabled = true; prog.classList.remove("d-none");
+  let r;
+  try { r = await I.apply(plan, hid, t => { prog.textContent = t; }, hostById(hid)); }
+  catch (e) { err.textContent = e.message; err.classList.remove("d-none"); btn.disabled = false; prog.classList.add("d-none"); page.reload(); return; }
+  prog.classList.add("d-none"); btn.disabled = false;
+  if (r.failures.length) { err.textContent = `${r.failures.length} change(s) failed. First error: ${r.failures[0]}`; err.classList.remove("d-none"); }
+  else {
+    imBs.hide();
+    Cocky.toast(`${hostName(hostById(hid))}: ${r.created.length} interface method(s) saved` +
+      `${r.retired ? `, ${r.retired} marked no longer registered` : ""}${r.revived ? `, ${r.revived} registered again` : ""}. Use Associate endpoints to tie them to endpoints.`);
+  }
+  main.querySelector(".host-filter").value = String(hid);
+  page.reload();
+};
+
+// ---------------------------------------------------------------- Associate endpoints ----
+const am = document.getElementById("assocModal");
+const amBs = bootstrap.Modal.getOrCreateInstance(am);
+const $a = s => am.querySelector(s);
+const pending = new Map();   // interface row id -> endpoint id (or null = not associated)
+let focusId = null;
+
+function openAssoc(hostId, focus = null) {
+  // Hosts that have interfaces first
+  const withRows = new Set(allRows.map(hostOf));
+  const sorted = hosts.slice().sort((a, b) => withRows.has(b.id) - withRows.has(a.id) || hostName(a).localeCompare(hostName(b)));
+  $a(".as-host").innerHTML = sorted.map(h => {
+    const n = allRows.filter(r => hostOf(r) === h.id).length, open = allRows.filter(r => hostOf(r) === h.id && !I.isAssociated(r) && r.isRegistered !== false).length;
+    return `<option value="${h.id}">${esc(hostName(h))} (${n} method${n === 1 ? "" : "s"}${open ? `, ${open} to associate` : ""})</option>`;
+  }).join("");
+  const pickFirst = sorted.find(h => allRows.some(r => hostOf(r) === h.id && !I.isAssociated(r) && r.isRegistered !== false)) || sorted.find(h => withRows.has(h.id));
+  $a(".as-host").value = String(hostId || pickFirst?.id || "");
+  pending.clear();
+  focusId = focus;
+  $a(".as-all").checked = focus != null && allRows.some(r => r.id === focus && (I.isAssociated(r) || r.isRegistered === false));
+  $a(".as-search").value = "";
+  $a(".as-error").classList.add("d-none");
+  drawAssoc();
+  amBs.show();
+}
+
+function assocRows() {
+  const hid = +$a(".as-host").value, all = $a(".as-all").checked, q = $a(".as-search").value.trim().toLowerCase();
+  return allRows.filter(r => hostOf(r) === hid
+    && (all || pending.has(r.id) || r.id === focusId || (!I.isAssociated(r) && r.isRegistered !== false))
+    && (!q || `${r.interfaceName} ${r.methodName} ${r.implementationName || ""}`.toLowerCase().includes(q)))
+    .sort((a, b) => String(a.interfaceName || "").localeCompare(String(b.interfaceName || "")) || String(a.methodName || "").localeCompare(String(b.methodName || "")));
+}
+const currentOf = r => pending.has(r.id) ? pending.get(r.id) : (I.isAssociated(r) ? r.apiAuditId : null);
+
+function drawAssoc() {
+  const hid = +$a(".as-host").value;
+  const hostEps = endpoints.filter(e => e.apiHostId === hid)
+    .sort((a, b) => I.endpointPath(a).localeCompare(I.endpointPath(b)) || I.endpointMethod(a).localeCompare(I.endpointMethod(b)));
+  const rows = assocRows();
+  const list = $a(".as-list");
+  const total = allRows.filter(r => hostOf(r) === hid).length;
+  if (!rows.length) {
+    list.innerHTML = `<div class="empty">${!hid ? "No hosts yet." : !total ? `No interfaces recorded for this host yet. Audit the host (Walk Swagger &amp; audit host), or use Import from host.`
+      : "Every registered method on this host is associated. Tick “Show associated…” to change them."}</div>`;
+    updateAssocFooter([]); return;
+  }
+  const opts = `<option value="">— not associated —</option>` + hostEps.map(e => `<option value="${e.id}">${esc(I.endpointLabel(e))}  (#${e.id})</option>`).join("");
+  const sugs = new Map(rows.map(r => [r.id, I.suggest(r, hostEps)]));
+  const groups = new Map();
+  rows.forEach(r => (groups.get(r.interfaceName) || groups.set(r.interfaceName, []).get(r.interfaceName)).push(r));
+  list.innerHTML = (hostEps.length ? "" : `<div class="alert alert-warning small py-2">This host has no endpoints registered, so there's nothing to associate with. Walk its Swagger first.</div>`) +
+    `<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th style="width:28%">Method</th><th>Endpoint</th><th style="width:30%"></th></tr></thead>
+    <tbody>${[...groups.entries()].map(([name, ms]) => `
+      <tr class="table-light"><td colspan="3"><code class="fw-semibold">${esc(name)}</code>
+        ${ms[0].implementationName ? `<span class="small text-muted ms-2">${esc(ms[0].implementationName)}${ms[0].serviceLifetime ? " · " + esc(ms[0].serviceLifetime) : ""}</span>` : ""}
+        <span class="small text-muted ms-2">(resource “${esc(I.resourceOf(name) || "?")}”)</span></td></tr>
+      ${ms.map(r => {
+        const cur = currentOf(r), s = sugs.get(r.id);
+        const hint = !s ? '<span class="small text-muted">No suggestion</span>'
+          : s.endpoint.id === cur ? `<span class="badge text-bg-info fw-normal" title="Matched on ${esc(s.why.join(", "))}">suggested</span>`
+          : `<button type="button" class="btn btn-sm btn-outline-info py-0 use-sug" data-id="${r.id}" data-ep="${s.endpoint.id}" title="Matched on ${esc(s.why.join(", "))}">Use ${esc(I.endpointLabel(s.endpoint))}</button>`;
+        return `<tr data-id="${r.id}" class="${r.id === focusId ? "table-warning" : ""}${r.isRegistered === false ? " text-muted" : ""}">
+          <td class="ps-4"><code>${esc(r.methodName || "(no methods listed)")}</code>
+            ${I.isMutating(r.methodName) ? '<span class="badge text-bg-warning ms-1">writes</span>' : ""}
+            ${r.isRegistered === false ? '<span class="badge text-bg-secondary ms-1">no longer registered</span>' : ""}
+            ${r.isImplemented === false ? '<span class="badge text-bg-danger ms-1">not implemented</span>' : ""}
+            ${pending.has(r.id) ? '<span class="badge text-bg-primary ms-1">changed</span>' : ""}</td>
+          <td><select class="form-select form-select-sm as-ep" data-id="${r.id}">${opts}</select></td>
+          <td>${hint}</td></tr>`;
+      }).join("")}`).join("")}</tbody></table></div>`;
+  list.querySelectorAll(".as-ep").forEach(sel => {
+    const r = allRows.find(x => x.id === +sel.dataset.id), cur = currentOf(r);
+    sel.value = cur == null ? "" : String(cur);
+    if (cur != null && sel.value !== String(cur)) sel.insertAdjacentHTML("beforeend", `<option value="${cur}" selected>#${cur} (not on this host)</option>`);
+    sel.onchange = () => { setPending(r, sel.value ? +sel.value : null); drawAssoc(); };
+  });
+  list.querySelectorAll(".use-sug").forEach(b => b.onclick = () => { setPending(allRows.find(x => x.id === +b.dataset.id), +b.dataset.ep); drawAssoc(); });
+  if (focusId != null) { const tr = list.querySelector(`tr[data-id="${focusId}"]`); if (tr) setTimeout(() => tr.scrollIntoView({ block: "center" }), 250); }
+  updateAssocFooter(rows, sugs);
+}
+function setPending(r, epId) {
+  const saved = I.isAssociated(r) ? r.apiAuditId : null;
+  if (epId === saved) pending.delete(r.id); else pending.set(r.id, epId);
+}
+function updateAssocFooter(rows, sugs = new Map()) {
+  const fillable = rows.filter(r => currentOf(r) == null && sugs.get(r.id));
+  const fill = $a(".as-fill");
+  fill.textContent = fillable.length ? `Fill ${fillable.length} suggestion${fillable.length === 1 ? "" : "s"}` : "No suggestions to fill";
+  fill.disabled = !fillable.length;
+  fill.onclick = () => { fillable.forEach(r => setPending(r, sugs.get(r.id).endpoint.id)); drawAssoc(); };
+  const hid = +$a(".as-host").value, open = allRows.filter(r => hostOf(r) === hid && currentOf(r) == null && r.isRegistered !== false).length;
+  $a(".as-summary").textContent = `${pending.size} change${pending.size === 1 ? "" : "s"} not saved · ${open} registered method(s) on this host still not associated`;
+  $a(".as-save").disabled = !pending.size;
+  $a(".as-save").textContent = pending.size ? `Save ${pending.size}` : "Save";
+}
+let lastHost = null;
+$a(".as-host").addEventListener("focus", () => { lastHost = $a(".as-host").value; });
+$a(".as-host").onchange = () => {
+  if (pending.size && !confirm(`Discard ${pending.size} unsaved change(s)?`)) { $a(".as-host").value = lastHost; return; }
+  pending.clear(); focusId = null; lastHost = $a(".as-host").value; drawAssoc();
+};
+$a(".as-all").onchange = drawAssoc;
+$a(".as-search").oninput = drawAssoc;
+am.addEventListener("hide.bs.modal", e => {
+  if (pending.size && !saving && !confirm(`Close without saving ${pending.size} change(s)?`)) e.preventDefault();
+});
+
+let saving = false;
+$a(".as-save").onclick = async () => {
+  const hid = +$a(".as-host").value, btn = $a(".as-save"), err = $a(".as-error");
+  err.classList.add("d-none");
+  const items = [...pending.entries()].map(([id, epId]) => ({ row: allRows.find(r => r.id === id), ep: epId == null ? null : epById.get(epId) })).filter(x => x.row);
+  btn.disabled = true; saving = true;
+  const failures = []; let done = 0, i = 0;
+  const worker = async () => {
+    while (i < items.length) {
+      const { row, ep } = items[i++];
+      btn.textContent = `Saving ${done + 1} of ${items.length}…`;
+      const body = { ...row, ...I.associationFields(row, ep, hid) };
+      try { await Cocky.api.update("apiinterfaces", row.id, body); Object.assign(row, body); pending.delete(row.id); }
+      catch (e) { failures.push(`${row.interfaceName}.${row.methodName}: ${e.message}`); }
+      done++;
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  saving = false;
+  if (failures.length) { err.textContent = `${failures.length} of ${items.length} failed. First error: ${failures[0]}`; err.classList.remove("d-none"); drawAssoc(); }
+  else { amBs.hide(); Cocky.toast(`${items.length} interface method(s) associated.`); }
+  page.reload();
+};
+</script>
+</body>
+</html>

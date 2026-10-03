@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surveillance Tickets · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>Surveillance Tickets</h2>
+  <div class="page-sub">The Operations Surveillance / Tier 2 queue (WorkerTroubleTickets): tickets for endpoints that are hard down, return 5xx server errors, or are very slow. Run Audit and
+    <a href="reaudit.html">Re-audit problems</a> open them; an endpoint that already has an open ticket gets its incident count raised
+    instead of a second ticket. Tickets raised by customers are under <a href="customer.html">Customer Troubles</a>. <b>Re-audit</b> re-checks a ticket's endpoint; <b>Resolve</b> closes it with notes.</div>
+  <div class="row row-cols-2 row-cols-md-4 g-3 mb-3" id="tiles"></div>
+  <div id="setup"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="tickets.js"></script>
+<script>
+const main = Cocky.layout("tickets");
+const { esc } = Cocky, TK = Tickets;
+const SEV_BADGE = { critical: "text-bg-danger", high: "text-bg-warning", medium: "text-bg-info", low: "text-bg-secondary" };
+const STATUS_BADGE = s => TK.isOpen({ status: s }) ? (/progress/i.test(s) ? "text-bg-primary" : "text-bg-danger") : "text-bg-success";
+const age = d => { const t = Cocky.parseDate(d); if (!t) return ""; const h = (Date.now() - t) / 36e5; return h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`; };
+
+Cocky.SCHEMA.troubletickets.format = {
+  ticketNumber: (v, r) => `<b class="text-nowrap">${esc(v || "#" + r.id)}</b>`,
+  apiName: v => `<span class="text-nowrap">${esc(v || "")}</span>`,
+  severity: v => v ? `<span class="badge ${SEV_BADGE[String(v).toLowerCase()] || "text-bg-secondary"}">${esc(v)}</span>` : '<span class="text-muted">—</span>',
+  status: v => `<span class="badge ${STATUS_BADGE(v || "")}">${esc(v || "—")}</span>`,
+  endpoint: (v, r) => `<span class="font-monospace small">${esc(v || "")}</span>${r.description ? `<div class="small text-muted text-truncate" style="max-width:340px" title="${esc(r.description)}">${esc(String(r.description).split("\n")[0])}</div>` : ""}`,
+  owner: (v, r) => (r.applicationOwner || r.businessUnit)
+    ? `${r.applicationOwner ? `<div class="text-nowrap">${esc(r.applicationOwner)}</div>` : ""}${r.businessUnit ? `<div class="small text-muted text-nowrap">${esc(r.businessUnit)}</div>` : ""}`
+    : '<span class="text-muted">—</span>',
+  incidentCount: (v, r) => (v > 1 ? `<span class="badge text-bg-dark">${v}</span>` : esc(v ?? 1)) +
+    (r.impactedUsers ? `<div class="small text-muted text-nowrap" title="Impacted users">${Number(r.impactedUsers).toLocaleString()} users</div>` : ""),
+  isHardDown: v => v ? '<span class="badge text-bg-danger">Down</span>' : '<span class="text-muted small">No</span>',
+  reportedOn: (v, r) => v ? `<span class="text-nowrap" title="${esc(Cocky.parseDate(v)?.toLocaleString() || "")}">${esc(Cocky.parseDate(v)?.toLocaleDateString() || "")}</span>${TK.isOpen(r) ? `<div class="small text-muted text-nowrap">open ${age(v)}</div>` : ""}${r.reportedBy ? `<div class="small text-muted">${esc(r.reportedBy)}</div>` : ""}` : "",
+  resolvedOn: (v, r) => v ? `<span class="text-nowrap">${esc(Cocky.parseDate(v)?.toLocaleDateString() || "")}</span>${r.resolutionNotes ? `<div class="small text-muted text-truncate" style="max-width:200px" title="${esc(r.resolutionNotes)}">${esc(r.resolutionNotes)}</div>` : ""}` : '<span class="text-muted">—</span>'
+};
+
+// Status filter: open (Open + In Progress, the default), one status, or all. tickets.html?status=all|open|Resolved
+let statusFilter = new URLSearchParams(location.search).get("status") || "open";
+const filterRows = rows => statusFilter === "all" ? rows : statusFilter === "open" ? rows.filter(TK.isOpen)
+  : statusFilter === "harddown" ? rows.filter(r => r.isHardDown && TK.isOpen(r))
+  : rows.filter(r => String(r.status || "").toLowerCase() === statusFilter.toLowerCase());
+
+function drawTiles(rows) {
+  const open = rows.filter(TK.isOpen);
+  const tile = (lbl, n, f, cls = "") => `<div class="col"><div class="card stat h-100"><div class="card-body"><a href="#" data-f="${f}">
+    <div class="lbl">${lbl}</div><div class="num ${n && cls ? cls : ""}">${n}</div></a></div></div></div>`;
+  document.getElementById("tiles").innerHTML =
+    tile("Open", open.length, "open", "text-danger") +
+    tile("Hard down (open)", open.filter(r => r.isHardDown).length, "harddown", "text-danger") +
+    tile("Critical (open)", open.filter(r => /critical/i.test(r.severity || "")).length, "open") +
+    tile("Resolved", rows.filter(r => /resolved/i.test(r.status || "")).length, "Resolved");
+  document.querySelectorAll("#tiles [data-f]").forEach(a => a.onclick = ev => { ev.preventDefault(); setFilter(a.dataset.f); });
+  const sel = document.getElementById("statusFilter");
+  const n = f => { const keep = statusFilter; statusFilter = f; const x = filterRows(rows).length; statusFilter = keep; return x; };
+  sel.innerHTML = `<option value="open">Open (${n("open")})</option><option value="harddown">Hard down, open (${n("harddown")})</option>` +
+    TK.T.statuses.map(s => `<option value="${esc(s)}">${esc(s)} (${n(s)})</option>`).join("") + `<option value="all">All (${rows.length})</option>`;
+  sel.value = statusFilter;
+}
+function setFilter(f) {
+  statusFilter = f;
+  const u = new URL(location.href); f === "open" ? u.searchParams.delete("status") : u.searchParams.set("status", f);
+  history.replaceState(null, "", u);
+  drawTiles(page.rows()); page.redraw();
+}
+
+let page;
+(async () => {
+  try { await Cocky.api.list("troubletickets"); }
+  catch (e) {
+    if (e.status === 404) {
+      document.getElementById("setup").innerHTML = `<div class="alert alert-warning"><b>The API didn't answer on ${esc(Cocky.CFG.endpoints.troubletickets)}.</b>
+        Deploy the WorkerTroubleTickets table and call <code>app.MapWorkerTroubleTicketEndpoints()</code> in Program.cs (the route is set in <code>config.js</code>).</div>`;
+      return;
+    }
+  }
+  page = Cocky.crudPage("troubletickets", {
+    mount: main,
+    columns: Cocky.SCHEMA.troubletickets.columns,
+    toolbarExtra: '<select class="form-select form-select-sm" id="statusFilter" style="max-width:220px"></select>',
+    filter: filterRows,
+    onLoaded: drawTiles,
+    // Open tickets first (worst severity, then newest), then the rest newest first
+    sort: rows => {
+      const sev = s => { const i = TK.T.severities.findIndex(x => x.toLowerCase() === String(s || "").toLowerCase()); return i < 0 ? 99 : i; };
+      return rows.slice().sort((a, b) => (TK.isOpen(b) - TK.isOpen(a)) || (TK.isOpen(a) ? sev(a.severity) - sev(b.severity) : 0) ||
+        Cocky.dateMs(b.reportedOn) - Cocky.dateMs(a.reportedOn));
+    },
+    // TicketNumber, ReportedBy, Environment and Description are required; ReportedOn is replaced by the API's own time
+    addDefaults: () => ({
+      ticketNumber: `${TK.T.numberPrefix}-${new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15)}`,
+      reportedBy: (() => { const u = window.CockyAuth?.current?.() || {}; return u.fullname || u.username || ""; })(),
+      reportedOn: new Date().toISOString(), environment: TK.T.defaultEnvironment, status: TK.T.statuses[0], severity: "Critical",
+      isHardDown: true, incidentCount: 1
+    }),
+    rowActions: [
+      { label: "Re-audit", title: "Re-check this ticket's endpoint now", onClick: t => location.href = "reaudit.html?ticket=" + t.id },
+      { label: t => TK.isOpen(t) ? "Resolve" : "Reopen", className: "btn-outline-success", onClick: resolveOrReopen }
+    ]
+  });
+  document.getElementById("statusFilter").onchange = e => setFilter(e.target.value);
+})();
+
+async function resolveOrReopen(t) {
+  try {
+    if (TK.isOpen(t)) {
+      const notes = prompt(`Resolve ${t.ticketNumber || "#" + t.id}?\n\nResolution notes:`, t.resolutionNotes || "");
+      if (notes === null) return;
+      const cause = prompt("Root cause (optional):", t.rootCause || "");
+      if (cause === null) return;
+      await TK.resolve(t, notes.trim(), cause.trim());
+      Cocky.toast(`${t.ticketNumber || "Ticket"} resolved.`, "success");
+    } else {
+      if (!confirm(`Reopen ${t.ticketNumber || "#" + t.id}? Its resolved date is cleared and the incident count goes up by one.`)) return;
+      await Cocky.api.update("troubletickets", t.id, { ...t, status: TK.T.statuses[0], resolvedOn: null, incidentCount: (t.incidentCount || 1) + 1 });
+      Cocky.toast(`${t.ticketNumber || "Ticket"} reopened.`, "success");
+    }
+    page.reload();
+  } catch (e) { Cocky.toast(e.message, "danger"); }
+}
+</script>
+</body>
+</html>
