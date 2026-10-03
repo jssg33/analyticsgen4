@@ -20,6 +20,7 @@ public partial class User
     public string? Plainpassword { get; set; }
     public string? Hashedpassword { get; set; }
     public int? Passwordtype { get; set; }
+    public string? InvestorMode { get; set; }
     public int? Jid { get; set; }
     public string? Profileurl { get; set; }
     public string? Role { get; set; }
