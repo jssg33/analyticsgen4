@@ -1,12 +1,17 @@
-using Enterprise.Models;
+using System;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using Microsoft.AspNetCore.Mvc;
+using Enterprise.Models;
 
-namespace Enterprise.Controllers;
+namespace somecontrollers.Controllers;
 
 public static class ApiServicesController
 {
-    public static void MapApiServicesEndpoints(RouteGroupBuilder group)
+    public static void MapApiServicesEndpoints(this IEndpointRouteBuilder app)
     {
+        var group = app.MapGroup("/api/apiservices");
+
         // GET ALL
         group.MapGet("/", async () =>
         {
@@ -94,9 +99,9 @@ public static class ApiServicesController
             existing.Description = input.Description;
             existing.ServiceType = input.ServiceType;
             existing.ServiceOwner = input.ServiceOwner;
-            existing.IsActive = input.IsActive;
             existing.ApiHostName = input.ApiHostName;
             existing.ApiHostId = input.ApiHostId;
+            existing.IsActive = input.IsActive;
             existing.ModifiedDate = DateTime.UtcNow;
 
             await context.SaveChangesAsync();
@@ -126,7 +131,7 @@ public static class ApiServicesController
         .WithName("DeleteApiService")
         .WithOpenApi();
 
-        // ACTIVE ONLY
+        // ACTIVE
         group.MapGet("/active/list", async () =>
         {
             using var context = new EnterpriseContext();
@@ -150,10 +155,10 @@ public static class ApiServicesController
 
             return Results.Ok(new
             {
-                Controller = "ApiServicesController",
-                Entity = "ApiService",
+                Controller = nameof(ApiServicesController),
+                Entity = nameof(ApiService),
                 RecordCount = count,
-                Date = DateTime.UtcNow
+                DiscoveryDate = DateTime.UtcNow
             });
         })
         .WithName("DiscoveryApiServices")
