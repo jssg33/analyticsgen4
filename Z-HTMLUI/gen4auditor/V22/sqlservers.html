@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL Catalog · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<section data-page>
+  <h2>SQL Catalog</h2>
+  <div class="page-sub">The databases you catalog (AuditSqlServers), their tables and columns, and where PHI and PII live.
+    <b>Tables</b> opens a database's tables; <b>Import from SQL</b> fills in tables and columns from the database itself.
+    Findings flag unencrypted PHI / PII columns, tables whose PHI / PII flags don't match their columns, missing primary keys and owners,
+    and versions past end of support.</div>
+  <div class="row row-cols-2 row-cols-md-5 g-3 mb-3" id="tiles"></div>
+  <div id="setup"></div>
+</section>
+
+<!-- Import from SQL -->
+<div class="modal fade" id="impModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Import from SQL</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="imp-step1">
+      <ol class="small mb-2">
+        <li>Run this query in the database (SQL Server 2016+ / Azure SQL). It also reads table size, statistics date, row-level security and dynamic data masking. Other database types: paste any result with the same column names.</li>
+        <li>Copy the whole result with its headers (SSMS: right-click the grid → <b>Copy with Headers</b>), or paste CSV or JSON.</li>
+        <li><b>Preview</b> shows what will be added. Existing tables and columns are never changed.</li>
+      </ol>
+      <div class="position-relative mb-2">
+        <pre class="small bg-light border rounded p-2 mb-0 imp-query" style="max-height:180px;overflow:auto"></pre>
+        <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-1 imp-copy" type="button">Copy query</button>
+      </div>
+      <textarea class="form-control font-monospace small imp-paste" rows="8" placeholder="Paste the result here…" spellcheck="false"></textarea>
+    </div>
+    <div class="imp-step2 d-none"></div>
+    <div class="alert alert-danger small mt-2 mb-0 d-none imp-err"></div>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <div class="small text-muted imp-sum"></div>
+    <div><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Close</button>
+      <button class="btn btn-outline-secondary d-none imp-back" type="button">Back</button>
+      <button class="btn btn-primary imp-go" type="button">Preview</button></div>
+  </div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="sqlcatalog.js"></script>
+<script>
+const main = Cocky.layout("sqlcatalog");
+const { esc, api } = Cocky, SQ = SqlCatalog;
+let d = SQ.index({ sqlservers: [], sqltables: [], sqlfields: [], missing: [] });
+async function loadCatalog() {
+  d = await SQ.loadAll();
+  const miss = d.missing.filter(k => k !== "sqlservers");
+  document.getElementById("setup").innerHTML = miss.length ? `<div class="alert alert-warning small">These routes answered 404, so that level is empty: ${miss.map(k => `<code>${esc(Cocky.CFG.endpoints[k])}</code>`).join(", ")}.</div>` : "";
+}
+const contact = (name, email, phone) => name || email ? `<div class="text-nowrap">${esc(name || email)}</div>${email && name ? `<div class="small text-muted">${esc(email)}</div>` : ""}` : "";
+Cocky.SCHEMA.sqlservers.format = {
+  serverName: (v, s) => `<b>${esc(v || "")}</b>`,
+  protection: (v, s) => { const b = (on, lbl, tip) => `<span class="badge ${on ? "text-bg-success" : "text-bg-light border text-muted"} fw-normal me-1" title="${tip}: ${on ? "on" : "off"}">${lbl}</span>`;
+    return `<div class="text-nowrap">${b(SQ.yes(s, "tdeEnabled"), "TDE", "Transparent data encryption")}${b(SQ.yes(s, "defenderEnabled"), "Defender", "Defender for SQL")}${b(SQ.yes(s, "geoReplicationEnabled"), "Geo", "Geo-replication")}</div>` +
+      `<div class="small ${SQ.str(s, "backupPolicy") ? "text-muted" : "text-warning"}">${esc(SQ.str(s, "backupPolicy") || "No backup policy")}</div>` +
+      (SQ.num(s, "databaseSizeMB") != null ? `<div class="small text-muted">${(SQ.num(s, "databaseSizeMB") / 1024).toFixed(1)} GB</div>` : ""); },
+  databaseType: v => v ? `<span class="badge text-bg-light border fw-normal">${esc(v)}</span>` : '<span class="text-muted">—</span>',
+  contacts: (v, s) => { const o = contact(SQ.str(s, "ownerName"), SQ.str(s, "ownerEmail")), b = contact(SQ.str(s, "dbaName"), SQ.str(s, "dbaEmail"));
+    return (o ? `<div class="small text-muted">Owner</div>${o}` : '<span class="small text-warning">No owner</span>') + (b ? `<div class="small text-muted mt-1">DBA</div>${b}` : '<div class="small text-warning">No DBA</div>'); },
+  tableCount: (v, s) => { const ts = d.tablesOf(s.id), fs = ts.reduce((n, t) => n + d.fieldsOf(t.id).length, 0);
+    return `<a href="sqltables.html?server=${s.id}" class="text-decoration-none"><b>${ts.length}</b></a><div class="small text-muted text-nowrap">${fs} columns</div>`; },
+  sensitive: (v, s) => { const ts = d.tablesOf(s.id);
+    const phi = ts.filter(t => SQ.yes(t, "containsPHI") || d.fieldsOf(t.id).some(f => SQ.yes(f, "containsPHI"))).length;
+    const pii = ts.filter(t => SQ.yes(t, "containsPII") || d.fieldsOf(t.id).some(f => SQ.yes(f, "containsPII"))).length;
+    return (phi ? `<span class="badge text-bg-danger me-1">${phi} PHI</span>` : "") + (pii ? `<span class="badge text-bg-warning">${pii} PII</span>` : "") || '<span class="text-muted small">None</span>'; },
+  findings: (v, s) => SQ.badge(SQ.serverFindings(s, d))
+};
+function drawTiles() {
+  const fs = d.sqlfields, sens = fs.filter(f => SQ.yes(f, "containsPHI") || SQ.yes(f, "containsPII"));
+  const unenc = sens.filter(f => !SQ.yes(f, "isEncrypted"));
+  const tile = (lbl, n, cls = "", sub = "") => `<div class="col"><div class="card stat h-100"><div class="card-body"><div class="lbl">${lbl}</div><div class="num ${n && cls ? cls : ""}">${n}</div>${sub ? `<div class="small text-muted">${sub}</div>` : ""}</div></div></div>`;
+  document.getElementById("tiles").innerHTML = tile("Databases", d.sqlservers.length) + tile("Tables", d.sqltables.length) + tile("Columns", fs.length) +
+    tile("PHI / PII columns", sens.length, "text-warning", `${fs.filter(f => SQ.yes(f, "containsPHI")).length} PHI · ${fs.filter(f => SQ.yes(f, "containsPII")).length} PII`) +
+    tile("Sensitive, not encrypted", unenc.length, "text-danger", `${unenc.filter(f => SQ.yes(f, "containsPHI")).length} PHI`);
+}
+
+let page;
+(async () => {
+  try { await api.list("sqlservers"); }
+  catch (e) { if (e.status === 404) { document.getElementById("setup").innerHTML = `<div class="alert alert-warning">The API didn't answer on <code>${esc(Cocky.CFG.endpoints.sqlservers)}</code>. Deploy the AuditSqlServers controller, or set the route in <code>config.js</code> → <code>endpoints.sqlservers</code>.</div>`; return; } }
+  page = Cocky.crudPage("sqlservers", {
+    mount: main,
+    columns: Cocky.SCHEMA.sqlservers.columns,
+    beforeLoad: loadCatalog,
+    onLoaded: drawTiles,
+    sort: rows => rows.slice().sort((a, b) => SQ.serverName(a).localeCompare(SQ.serverName(b))),
+    addDefaults: () => ({ createdDate: new Date().toISOString(), active: true, databaseType: SQ.SC.databaseTypes[0] }),
+    canDelete: s => d.tablesOf(s.id).length ? `${SQ.serverName(s)} has ${d.tablesOf(s.id).length} table(s) in the catalog. Delete them on its Tables page first.` : null,
+    rowActions: [
+      { label: "Tables", className: "btn-primary", onClick: s => location.href = "sqltables.html?server=" + s.id },
+      { label: "Import from SQL", onClick: openImport }
+    ],
+    onCreated: saved => { const s = saved?.id ? page.rows().find(r => r.id === saved.id) : null; if (s) openImport(s); }
+  });
+})();
+
+// ---------- Import from SQL ----------
+const im = document.getElementById("impModal"), imBs = bootstrap.Modal.getOrCreateInstance(im);
+const $i = s => im.querySelector(s);
+let imp = null;   // { server, rows, plan }
+$i(".imp-query").textContent = SQ.IMPORT_QUERY;
+$i(".imp-copy").onclick = async () => { try { await navigator.clipboard.writeText(SQ.IMPORT_QUERY); Cocky.toast("Query copied."); } catch { Cocky.toast("Select the query and copy it.", "warning"); } };
+function step(n) {
+  $i(".imp-step1").classList.toggle("d-none", n !== 1); $i(".imp-step2").classList.toggle("d-none", n !== 2);
+  $i(".imp-back").classList.toggle("d-none", n !== 2);
+  $i(".imp-go").textContent = n === 1 ? "Preview" : "Import"; $i(".imp-go").disabled = false;
+}
+const err = m => { $i(".imp-err").textContent = m || ""; $i(".imp-err").classList.toggle("d-none", !m); };
+function openImport(s) {
+  imp = { server: s }; err(""); step(1);
+  im.querySelector(".modal-title").textContent = `Import from SQL · ${SQ.serverName(s)}`;
+  $i(".imp-sum").textContent = `${d.tablesOf(s.id).length} table(s) already in the catalog`;
+  imBs.show();
+}
+$i(".imp-back").onclick = () => { err(""); step(1); };
+$i(".imp-go").onclick = () => $i(".imp-go").textContent === "Preview" ? preview() : runImport();
+
+function preview() {
+  err("");
+  let rows;
+  try { rows = SQ.normalise(SQ.parsePaste($i(".imp-paste").value)); } catch (e) { return err("Couldn't read that: " + e.message); }
+  if (!rows.length) return err("No rows with a TableName and ColumnName. Paste the result with its header row.");
+  const p = SQ.plan(imp.server, rows, d);
+  imp.rows = rows; imp.plan = p;
+  const newCols = [...p.newTables.flatMap(t => t.columns.map(c => ({ t: `${t.schemaName}.${t.tableName}`, c }))), ...p.newColumns.map(x => ({ t: SQ.tableName(x.table), c: x.column }))];
+  imp.cols = newCols.map((x, i) => ({ ...x, i, g: SQ.guess(x.c.columnName) }));
+  const sugg = imp.cols.filter(x => x.g.phi || x.g.pii);
+  $i(".imp-step2").innerHTML = `
+    <div class="row g-3 mb-3">
+      <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Tables in the paste</div><div class="fs-4 fw-semibold">${p.tables}</div></div></div>
+      <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">New tables</div><div class="fs-4 fw-semibold text-primary">${p.newTables.length}</div></div></div>
+      <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">New columns</div><div class="fs-4 fw-semibold text-primary">${newCols.length}</div></div></div>
+      <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Already catalogued</div><div class="fs-4 fw-semibold">${p.existing}</div></div></div>
+    </div>
+    ${p.newTables.length ? `<div class="small mb-2"><b>New tables:</b> ${p.newTables.slice(0, 40).map(t => `<code>${esc(t.schemaName)}.${esc(t.tableName)}</code>`).join(", ")}${p.newTables.length > 40 ? ` +${p.newTables.length - 40} more` : ""}</div>` : ""}
+    ${sugg.length ? `<h6 class="mt-3">Suggested PHI / PII <span class="small text-muted fw-normal">(from column names, config.js sqlCatalog; untick any that are wrong)</span></h6>
+      <div class="table-responsive" style="max-height:320px"><table class="table table-sm table-bordered align-middle mb-0"><thead class="table-light"><tr><th>Table</th><th>Column</th><th>Type</th><th class="text-center">PHI</th><th class="text-center">PII</th><th class="text-center">Encrypted</th></tr></thead><tbody>
+      ${sugg.map(x => `<tr><td class="small"><code>${esc(x.t)}</code></td><td><b>${esc(x.c.columnName)}</b></td><td class="small">${esc(x.c.dataType)}</td>
+        <td class="text-center"><input class="form-check-input imp-flag" type="checkbox" data-i="${x.i}" data-k="phi" ${x.g.phi ? "checked" : ""}></td>
+        <td class="text-center"><input class="form-check-input imp-flag" type="checkbox" data-i="${x.i}" data-k="pii" ${x.g.pii ? "checked" : ""}></td>
+        <td class="text-center small">${x.c.isEncrypted ? '<span class="badge text-bg-success">Yes</span>' : '<span class="badge text-bg-secondary">No</span>'}</td></tr>`).join("")}
+      </tbody></table></div>` : '<div class="small text-muted">No column names look like PHI or PII. You can flag columns later on each table\'s Fields page.</div>'}`;
+  const nRef = p.refreshTables.length + p.refreshColumns.length;
+  $i(".imp-step2").insertAdjacentHTML("afterbegin", nRef ? `<div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="impRefresh" checked>
+    <label class="form-check-label small" for="impRefresh"><b>Refresh measured facts</b> on ${p.refreshTables.length} existing table(s) and ${p.refreshColumns.length} existing column(s)
+    (row count, size, statistics date, row-level security, masking, encryption, keys, type). PHI / PII flags, descriptions, labels and classification are never changed.</label></div>` : "");
+  $i(".imp-sum").textContent = newCols.length || nRef ? `Will add ${p.newTables.length} table(s) and ${newCols.length} column(s)${nRef ? `, refresh ${nRef}` : ""}` : "Nothing new to add";
+  step(2);
+  if (!newCols.length && !nRef) $i(".imp-go").disabled = true;
+}
+
+async function runImport() {
+  const go = $i(".imp-go"); go.disabled = true; err("");
+  const flags = new Map(imp.cols.map(x => [x.i, { phi: false, pii: false }]));
+  im.querySelectorAll(".imp-flag").forEach(cb => { flags.get(+cb.dataset.i)[cb.dataset.k] = cb.checked; });
+  const colFlags = new Map(imp.cols.map(x => [x.c, flags.get(x.i)]));
+  const s = imp.server, failures = [];
+  // 1. new tables (flagged Contains PHI / PII when any of their accepted columns is)
+  const tableJobs = imp.plan.newTables.map(t => async () => {
+    const f = t.columns.map(c => colFlags.get(c) || {});
+    const body = { sqlServerId: s.id, schemaName: t.schemaName.slice(0, 100), tableName: t.tableName.slice(0, 200), description: null,
+      containsPHI: f.some(x => x.phi), containsPII: f.some(x => x.pii), someRowCount: t.someRowCount,
+      tableSizeMB: t.tableSizeMB, lastStatisticsUpdate: t.lastStatisticsUpdate, hasRowLevelSecurity: !!t.hasRowLevelSecurity, hasDynamicDataMasking: !!t.hasDynamicDataMasking,
+      classificationStatus: f.some(x => x.phi || x.pii) ? "In review" : "Not reviewed" };
+    const saved = await api.create("sqltables", body);
+    t.id = saved && typeof saved === "object" ? (saved.id ?? saved.Id) : null;
+  });
+  $i(".imp-sum").textContent = "Adding tables…";
+  const tFail = await SQ.runJobs(tableJobs, (n, all) => $i(".imp-sum").textContent = `Adding tables… ${n}/${all}`);
+  // the API may not return the new id: find the new tables by name
+  if (imp.plan.newTables.some(t => t.id == null)) {
+    const fresh = await api.list("sqltables");
+    imp.plan.newTables.filter(t => t.id == null).forEach(t => { const hit = fresh.find(x => SQ.num(x, "sqlServerId") === s.id && SQ.str(x, "tableName").toLowerCase() === t.tableName.toLowerCase() && (SQ.str(x, "schemaName") || "dbo").toLowerCase() === t.schemaName.toLowerCase()); if (hit) t.id = hit.id; });
+  }
+  // 2. columns: of the new tables, and new columns of existing tables
+  const colJobs = [
+    ...imp.plan.newTables.filter(t => t.id != null).flatMap(t => t.columns.map(c => () => api.create("sqlfields", SQ.fieldBody(t.id, c, colFlags.get(c))))),
+    ...imp.plan.newColumns.map(x => () => api.create("sqlfields", SQ.fieldBody(x.table.id, x.column, colFlags.get(x.column))))
+  ];
+  const cFail = await SQ.runJobs(colJobs, (n, all) => $i(".imp-sum").textContent = `Adding columns… ${n}/${all}`);
+  // 3. existing tables: raise Contains PHI / PII when they gained such columns, and (Refresh) update their measured facts
+  const refresh = !!im.querySelector("#impRefresh")?.checked;
+  const upd = new Map();   // table id -> changes
+  const tUpd = t => { if (!upd.has(t.id)) upd.set(t.id, { t, ch: {} }); return upd.get(t.id).ch; };
+  imp.plan.newColumns.forEach(x => { const f = colFlags.get(x.column) || {};
+    if (f.phi && !SQ.yes(x.table, "containsPHI")) tUpd(x.table).containsPHI = true;
+    if (f.pii && !SQ.yes(x.table, "containsPII")) tUpd(x.table).containsPII = true; });
+  if (refresh) imp.plan.refreshTables.forEach(x => Object.assign(tUpd(x.table), x.facts));
+  cFail.push(...await SQ.runJobs([...upd.values()].map(u => () => api.update("sqltables", u.t.id, { ...u.t, ...u.ch })),
+    (n, all) => $i(".imp-sum").textContent = `Updating tables… ${n}/${all}`));
+  if (refresh) cFail.push(...await SQ.runJobs(imp.plan.refreshColumns.map(x => () => api.update("sqlfields", x.field.id, { ...x.field, ...x.facts })),
+    (n, all) => $i(".imp-sum").textContent = `Refreshing columns… ${n}/${all}`));
+  const refreshed = refresh ? imp.plan.refreshTables.length + imp.plan.refreshColumns.length : 0;
+  failures.push(...tFail, ...cFail);
+  const lost = imp.plan.newTables.filter(t => t.id == null).length - tFail.length;
+  $i(".imp-sum").textContent = "";
+  imBs.hide();
+  Cocky.toast(`${SQ.serverName(s)}: ${imp.plan.newTables.length - tFail.length - Math.max(0, lost)} table(s) and ${colJobs.length} column(s) imported${refreshed ? `, ${refreshed} refreshed` : ""}` +
+    (failures.length || lost > 0 ? `; ${failures.length} failed${lost > 0 ? `, ${lost} table(s) couldn't be found after saving` : ""}${failures[0] ? ": " + failures[0] : ""}` : "."), failures.length || lost > 0 ? "warning" : "success");
+  page.reload();
+}
+</script>
+</body>
+</html>

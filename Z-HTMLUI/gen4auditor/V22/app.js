@@ -1,0 +1,866 @@
+// CockyAuditor shared code: layout, API client, tables, add/edit dialog.
+(function () {
+  const CFG = window.COCKY_CONFIG;
+  const SCHEMA = window.COCKY_SCHEMA;
+
+  const PAGES = [
+    { key: "dashboard",  href: "apidashboard.html",  label: "Dashboard" },
+    { key: "apps",       href: "apiapps.html",       label: "Apps" },
+    { key: "hosts",      href: "apihosts.html",      label: "Hosts" },
+    { key: "endpoints",  href: "apiendpoints.html",  label: "Endpoints" },
+    { key: "interfaces", href: "apiinterfaces.html", label: "Interfaces" },
+    { key: "history",    href: "apihistory.html",    label: "History" },
+    // Services (build 6.3)
+    { key: "services",   href: "apiservices.html",   label: "Services",    section: "Services" },
+    { key: "servicemap", href: "servicemap.html",    label: "Service Map", section: "Services" },
+    // Infrastructure (build 4.9)
+    { key: "infraaudit", href: "infraaudit.html",    label: "Infra Audit",      section: "Infrastructure" },
+    { key: "webservers", href: "webservers.html",    label: "Web Servers",      section: "Infrastructure" },
+    { key: "webfarms",   href: "webfarms.html",      label: "Web Farms",        section: "Infrastructure" },
+    { key: "dbservers",  href: "dbservers.html",     label: "Database Servers", section: "Infrastructure" },
+    { key: "databases",  href: "databases.html",     label: "Databases",        section: "Infrastructure" },
+    { key: "sqlcatalog", href: "sqlservers.html",    label: "SQL Catalog",      section: "Infrastructure" },
+    { key: "dbtables",   href: "databasetables.html", label: "Database Tables", section: "Infrastructure" },
+    // Users & Access (build 5.3)
+    { key: "users",      href: "users.html",         label: "Users",            section: "Users & Access" },
+    { key: "sites",      href: "sites.html",         label: "Sites",            section: "Users & Access" },
+    { key: "groups",     href: "groups.html",        label: "Groups",           section: "Users & Access" },
+    { key: "customers",  href: "customers.html",     label: "Customers",        section: "Users & Access" },
+    { key: "reports",    href: "reports.html",       label: "Reports",          section: "Reports" },
+    { key: "weather",    href: "weather.html",       label: "Weather",          section: "Utilities" },
+    { key: "hr",         href: "hrpayroll.html",     label: "HR & Payroll",     section: "Utilities" },
+    // Ops (build 5.4): the day-to-day audit work, at the bottom of the menu
+    { key: "audit",      href: "apiaudit.html",      label: "Run Audit",        section: "Ops" },
+    { key: "perf",       href: "perf.html",          label: "Performance",      section: "Ops" },
+    { key: "reaudit",    href: "reaudit.html",       label: "Re-audit problems", section: "Ops" },
+    { key: "tickets",    href: "tickets.html",       label: "Surveillance Tickets", section: "Ops" },
+    { key: "customer",   href: "customer.html",      label: "Customer Troubles", section: "Ops" },
+    { key: "sessions",   href: "usersessions.html",  label: "User Sessions",    section: "Ops" },
+    { key: "poller",     href: "poller.html",        label: "Poller",           section: "Ops" },
+    { key: "exceptions", href: "apiexceptions.html", label: "Exceptions",       section: "Ops" },
+    { key: "logs",       href: "enterprise9.html",   label: "Enterprise(9)",    section: "Ops" },
+    { key: "e9setup",    href: "enterprise9setup.html", label: "Enterprise(9) Setup", section: "Ops" }
+  ];
+
+  // ---------- helpers ----------
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const titleCase = k => String(k)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^./, c => c.toUpperCase());
+
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+  // The API returns UTC dates without a zone ("2026-09-22T21:10:35.369").
+  // Treat those as UTC instead of the browser's local time.
+  function parseDate(v) {
+    if (v == null || v === "") return null;
+    if (typeof v === "string" && DATE_RE.test(v) && !/(Z|[+-]\d{2}:?\d{2})$/i.test(v)) v += "Z";
+    const d = new Date(v);
+    return isNaN(d) ? null : d;
+  }
+  const dateMs = v => parseDate(v)?.getTime() ?? 0;
+
+  // Field names compared without case or underscores, so a schema key (uI_Codebase) matches however the API spells
+  // the property (UI_Codebase, uiCodebase, ui_codebase)
+  const normKey = k => String(k).toLowerCase().replace(/[^a-z0-9]/g, "");
+  // The key in obj (a schema map such as fields / labels / choices) that matches `key`, or undefined
+  function matchKey(obj, key) {
+    if (!obj) return undefined;
+    if (key in obj) return key;
+    const n = normKey(key);
+    return Object.keys(obj).find(k => normKey(k) === n);
+  }
+  const schemaValue = (resource, part, key) => { const o = SCHEMA[resource]?.[part], k = matchKey(o, key); return k === undefined ? undefined : o[k]; };
+
+  function fieldType(resource, key, sample) {
+    const t = schemaValue(resource, "fields", key);
+    if (t) return t;
+    if (typeof sample === "boolean") return "bool";
+    if (typeof sample === "number") return "number";
+    if (typeof sample === "string" && DATE_RE.test(sample)) return "date";
+    if (/date$/i.test(key)) return "date";
+    if (/^(is|has)[A-Z]/.test(key)) return "bool";
+    return "string";
+  }
+
+  function fmtValue(v, type) {
+    if (type === "password") return v ? "••••••" : '<span class="text-muted">—</span>';
+    if (refTarget(type) && v != null && v !== "") return esc(refText(type, v));
+    if (v === null || v === undefined || v === "") return '<span class="text-muted">—</span>';
+    if (type === "bool" || typeof v === "boolean")
+      return v ? '<span class="badge text-bg-success">Yes</span>' : '<span class="badge text-bg-secondary">No</span>';
+    if (type === "date" || (typeof v === "string" && DATE_RE.test(v))) {
+      const d = parseDate(v);
+      if (d) return esc(d.toLocaleString());
+    }
+    const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    return s.length > 60 ? `<span title="${esc(s)}">${esc(s.slice(0, 57))}…</span>` : esc(s);
+  }
+
+  // ---------- lookups for "ref:<resource>" fields ----------
+  const refCache = {};
+  // Name shown for a record in dropdowns, badges and delete prompts
+  const recordName = r => r.applicationName || (r.tableName ? (r.schemaName ? r.schemaName + "." : "") + r.tableName : "") || r.columnName || (r.serverName && r.databaseName && r.databaseType ? `${r.serverName} / ${r.databaseName}` : "") || r.siteName || r.fullname || r.username || r.farmName || r.databaseName || r.serverName || r.description || r.apiHostName || r.hostname || r.hostName || r.name || "";
+  const refLabel = r => `#${r.id} ${recordName(r)}`.trim();
+  const refTarget = type => typeof type === "string" && type.startsWith("ref:") ? type.slice(4) : null;
+  async function ensureRefs(resource) {
+    const targets = [...new Set(Object.values(SCHEMA[resource]?.fields || {}).map(refTarget).filter(Boolean))];
+    await Promise.all(targets.filter(t => !refCache[t]).map(t =>
+      api.list(t).then(rows => { refCache[t] = rows; }).catch(() => { refCache[t] = null; })));
+  }
+  function refText(type, v) {
+    const rows = refCache[refTarget(type)];
+    const hit = rows && rows.find(r => String(r.id) === String(v));
+    return hit ? refLabel(hit) : `#${v}`;
+  }
+
+  // Value used when the API requires a field the user left blank
+  function fillerFor(type, current, message = "") {
+    // Navigation collections (ICollection<T>, List<T>) must be sent as [] - null is "required" and "N/A" can't be converted
+    if (Array.isArray(current) || /collection|list`|ienumerable|\[\]/i.test(message)) return [];
+    switch (type) {
+      case "number": return 0;
+      case "bool": return false;
+      case "date": return new Date().toISOString();
+      case "guid": return "00000000-0000-0000-0000-000000000000";
+      default: return typeof current === "number" ? 0 : "N/A";
+    }
+  }
+
+  // ---------- API client ----------
+  function url(resource, suffix = "") {
+    const path = CFG.endpoints[resource];
+    if (!path) throw new Error(`Unknown resource "${resource}" - check config.js`);
+    // A route can be a full URL when that resource lives on a different API
+    if (/^https?:\/\//i.test(path)) return path.replace(/\/$/, "") + suffix;
+    return CFG.apiBaseUrl.replace(/\/$/, "") + path + suffix;
+  }
+
+  async function request(method, resource, suffix = "", body) {
+    const target = url(resource, suffix);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), CFG.requestTimeoutMs);
+    let res;
+    try {
+      res = await fetch(target, {
+        method,
+        headers: body !== undefined ? { "Content-Type": "application/json", Accept: "application/json" } : { Accept: "application/json" },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: ctrl.signal
+      });
+    } catch (e) {
+      const err = new Error(e.name === "AbortError"
+        ? `Timed out after ${CFG.requestTimeoutMs / 1000}s waiting for ${method} ${target}. The API may be hanging on this route.`
+        : `Could not reach ${method} ${target}. This is usually CORS (the API must allow this page's origin: ${location.origin}) or the API being down.`);
+      err.kind = e.name === "AbortError" ? "timeout" : "network";
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+    const text = await res.text();
+    let data = null;
+    if (text) { try { data = JSON.parse(text); } catch { data = text; } }
+    if (!res.ok) {
+      let detail = "";
+      if (data && typeof data === "object") {
+        detail = data.title || data.message || "";
+        if (data.errors) detail += " " + Object.entries(data.errors).map(([k, v]) => `${k}: ${[].concat(v).join(", ")}`).join("; ");
+      } else if (typeof data === "string") detail = data.slice(0, 300);
+      const err = new Error(`${method} ${target} returned ${res.status} ${res.statusText}${detail ? " - " + detail : ""}`);
+      err.status = res.status; err.kind = "http";
+      if (data && typeof data === "object" && data.errors) {
+        err.fields = Object.keys(data.errors).filter(k => k && k !== "$" && !/^(body|request|item)$/i.test(k));
+        err.fieldMessages = {};
+        err.fields.forEach(k => { err.fieldMessages[k] = [].concat(data.errors[k]).join(" "); });
+      }
+      throw err;
+    }
+    return data;
+  }
+
+  const api = {
+    list: (r, suffix = "") => request("GET", r, suffix).then(d => Array.isArray(d) ? d : (d == null ? [] : [d])),
+    get: (r, id) => request("GET", r, "/" + encodeURIComponent(id)),
+    // ids are generated by SQL Server, so never send one on create
+    create: (r, body) => { const b = { ...body }; delete b.id; delete b.Id; return request("POST", r, "", b); },
+    update: (r, id, body) => request("PUT", r, "/" + encodeURIComponent(id), body),
+    remove: (r, id) => request("DELETE", r, "/" + encodeURIComponent(id)),
+    // POST, and if the API answers 400 naming fields it requires (non-nullable string/Guid/number/date in the C# model),
+    // fill just those with a harmless value and try again (up to 3 rounds, since .NET may report one bad field at a time).
+    // Resolves { data, filled: [field names] }.
+    async createFilling(r, body) {
+      let current = { ...body };
+      const filled = [], tried = new Set();
+      for (let round = 0; ; round++) {
+        try { return { data: await api.create(r, current), filled }; }
+        catch (e) {
+          if (e.status !== 400 || !e.fields?.length || round >= 4) throw e;
+          let changed = false;
+          for (const raw of e.fields) {
+            const k = raw.replace(/^\$\./, "").split(/[.\[]/)[0];
+            // A field the body doesn't have yet (e.g. a navigation collection) is added under its JSON (camelCase) name
+            const key = Object.keys(current).find(x => x.toLowerCase() === k.toLowerCase()) ||
+                        Object.keys(SCHEMA[r]?.fields || {}).find(x => x.toLowerCase() === k.toLowerCase()) ||
+                        (k ? k[0].toLowerCase() + k.slice(1) : "");
+            if (!key) continue;
+            const v = fillerFor(SCHEMA[r]?.fields?.[key], current[key], e.fieldMessages?.[raw] || "");
+            // A field already filled is only tried again when the API says it's a collection
+            if (tried.has(key) && !(Array.isArray(v) && !Array.isArray(current[key]))) continue;
+            current[key] = v;
+            // Empty collections aren't reported as "filled with N/A"
+            if (Array.isArray(v)) { const i = filled.indexOf(key); if (i >= 0) filled.splice(i, 1); }
+            else if (!filled.includes(key)) filled.push(key);
+            tried.add(key);
+            changed = true;
+          }
+          if (!changed) throw e;
+        }
+      }
+    },
+    url
+  };
+
+  // ---------- sortable grids (build 6.6) ----------
+  // Every Bootstrap grid (table.table with a <thead>) on a non-Ops page gets click-to-sort headers: click once for
+  // ascending, again for descending. Works on any table, however the page drew it, by sorting the rendered rows:
+  //   - numbers (1,234 · 12 ms · 45% · $3.50), dates and text are told apart per column; blanks (—, N/A) always sort last
+  //   - a cell's data-sort="..." wins over its text (renderTable sets it on dates)
+  //   - a full-width detail row (class d-none / detail / collapse, or data-d) moves with the row above it;
+  //     any other full-width row is a group heading, and rows are sorted within each group
+  //   - tfoot and rows marked .grid-total / data-pin stay at the bottom
+  //   - the sort is kept when the page redraws the grid (search, filter, refresh)
+  // Opt out: data-nosort on the table or on a <th>. Headers with no text (checkbox / action columns) aren't sortable.
+  const sortState = new Map();          // signature -> { col, dir }
+  const BLANK_RE = /^(—|–|-|n\/a|none|null|not run|never)?$/i;
+  const NUM_RE = /^[#$€£]?\s*[-+]?\$?\d[\d,]*(\.\d+)?\s*(%|ms|s|sec|m|min|h|hrs?|d|days?|kb|mb|gb|tb|x)?$/i;
+  function sortKeyOf(td) {
+    if (!td) return { blank: true, text: "" };
+    const ds = td.getAttribute("data-sort");
+    let text = ds != null ? ds : td.textContent;
+    if (ds == null) { const f = td.querySelector("select, input:not([type=checkbox]):not([type=radio]), textarea"); if (f && f.value) text = f.value; }
+    text = String(text).replace(/\s+/g, " ").trim();
+    return { blank: BLANK_RE.test(text), text };
+  }
+  const numOf = t => { const m = String(t).replace(/[#$€£,\s]/g, "").match(/^[-+]?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
+  const dateOf = t => (/\d{1,4}[\/\-.]\d{1,2}[\/\-.]\d{1,4}|[A-Za-z]{3,9} \d{1,2},? \d{4}/.test(t) ? Date.parse(t.replace(/,(?=\s*\d{1,2}:)/, "")) : NaN);
+  // The cell under column `col`, allowing for colspans
+  function cellAt(tr, col) {
+    let i = 0;
+    for (const c of tr.cells) { const span = c.colSpan || 1; if (col >= i && col < i + span) return span > 1 ? null : c; i += span; }
+    return null;
+  }
+  const isFullWidth = (tr, n) => tr.cells.length === 1 && (tr.cells[0].colSpan || 1) >= Math.max(2, n);
+  const isDetail = tr => tr.classList.contains("d-none") || tr.classList.contains("detail") || tr.classList.contains("collapse") || tr.hasAttribute("data-d") || tr.hasAttribute("data-detail");
+  const isPinned = tr => tr.classList.contains("grid-total") || tr.hasAttribute("data-pin");
+
+  function sortTable(table, col, dir) {
+    const ncols = table.tHead.rows[0].cells.length;
+    [...table.tBodies].forEach(tb => {
+      const rows = [...tb.rows];
+      rows.forEach((tr, i) => { if (tr.dataset.csI === undefined) tr.dataset.csI = i; });
+      // Split into segments at group headings; each segment is a list of units (a row plus its detail rows)
+      const segments = [], pinned = [];
+      let seg = { head: null, units: [] };
+      for (const tr of rows) {
+        if (isPinned(tr)) { pinned.push(tr); continue; }
+        if (isFullWidth(tr, ncols)) {
+          if (isDetail(tr) && seg.units.length) { seg.units[seg.units.length - 1].rows.push(tr); continue; }
+          segments.push(seg); seg = { head: tr, units: [] }; continue;
+        }
+        seg.units.push({ rows: [tr], key: sortKeyOf(cellAt(tr, col)), i: +tr.dataset.csI });
+      }
+      segments.push(seg);
+      // Column type from every non-blank value in this tbody
+      const keys = segments.flatMap(s => s.units.map(u => u.key)).filter(k => !k.blank);
+      let kind = "text";
+      if (keys.length && keys.every(k => NUM_RE.test(k.text) || !isNaN(+k.text))) kind = "num";
+      else if (keys.length && keys.every(k => !isNaN(dateOf(k.text)))) kind = "date";
+      const val = k => kind === "num" ? numOf(k.text) : kind === "date" ? dateOf(k.text) : k.text;
+      const cmp = (a, b) => {
+        if (a.key.blank !== b.key.blank) return a.key.blank ? 1 : -1;     // blanks last, either direction
+        if (a.key.blank) return a.i - b.i;
+        const av = val(a.key), bv = val(b.key);
+        const r = kind === "text" ? String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" }) : av - bv;
+        return (r || 0) * dir || a.i - b.i;
+      };
+      const frag = document.createDocumentFragment();
+      segments.forEach(s => { if (s.head) frag.appendChild(s.head); s.units.sort(cmp).forEach(u => u.rows.forEach(r => frag.appendChild(r))); });
+      pinned.forEach(r => frag.appendChild(r));
+      tb.appendChild(frag);
+    });
+  }
+
+  function headerCells(table) {
+    const head = table.tHead;
+    if (!head || head.rows.length !== 1) return [];
+    return [...head.rows[0].cells];
+  }
+  function tableSignature(table, root) {
+    const sig = headerCells(table).map(th => th.textContent.trim()).join("|");
+    const same = [...root.querySelectorAll("table")].filter(t => t.tHead && headerCells(t).map(th => th.textContent.trim()).join("|") === sig);
+    return location.pathname + "::" + sig + "::" + same.indexOf(table);
+  }
+  function paintHeaders(table, state) {
+    headerCells(table).forEach((th, i) => {
+      if (!th.classList.contains("cs-sortable")) return;
+      const on = state && state.col === i;
+      th.setAttribute("aria-sort", on ? (state.dir > 0 ? "ascending" : "descending") : "none");
+      th.classList.toggle("cs-active", !!on);
+      const ico = th.querySelector(".cs-ico");
+      if (ico) ico.className = "cs-ico bi " + (on ? (state.dir > 0 ? "bi-caret-up-fill" : "bi-caret-down-fill") : "bi-arrow-down-up");
+    });
+  }
+  function enhanceTable(table, root) {
+    if (table.dataset.csReady || table.hasAttribute("data-nosort") || !table.classList.contains("table")) return false;
+    const ths = headerCells(table);
+    if (!ths.length || !table.tBodies.length) return false;
+    table.dataset.csReady = "1";
+    table.classList.add("cs-table");
+    ths.forEach((th, i) => {
+      if (th.hasAttribute("data-nosort") || !th.textContent.trim() || th.querySelector("input, select, button") || (th.colSpan || 1) > 1) return;
+      th.classList.add("cs-sortable");
+      th.tabIndex = 0;
+      th.title = th.title || "Sort";
+      th.insertAdjacentHTML("beforeend", ' <i class="cs-ico bi bi-arrow-down-up" aria-hidden="true"></i>');
+      const go = () => {
+        const sig = table.dataset.csSig;
+        const cur = sortState.get(sig);
+        const next = { col: i, dir: cur && cur.col === i ? -cur.dir : 1 };
+        sortState.set(sig, next);
+        applySort(table);
+      };
+      th.addEventListener("click", e => { if (!e.target.closest("a, input, button, select")) go(); });
+      th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    });
+    table.dataset.csSig = tableSignature(table, root);
+    paintHeaders(table, sortState.get(table.dataset.csSig));
+    return true;
+  }
+  let sortObserver = null;
+  function applySort(table) {
+    const st = sortState.get(table.dataset.csSig);
+    paintHeaders(table, st);
+    if (!st) return;
+    sortTable(table, st.col, st.dir);
+    sortObserver?.takeRecords();         // our own row moves aren't a redraw
+  }
+  function ensureIcons() {
+    if (document.getElementById("cs-icons")) return;
+    const l = document.createElement("link");
+    l.id = "cs-icons"; l.rel = "stylesheet";
+    l.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css";
+    document.head.appendChild(l);
+  }
+  // Watch `root` (default: the whole page) and make every grid in it sortable, now and whenever one is drawn.
+  function sortableGrids(root = document.body) {
+    ensureIcons();
+    const scan = () => root.querySelectorAll("table.table").forEach(t => { if (enhanceTable(t, root)) applySort(t); });
+    scan();
+    if (sortObserver) return;
+    sortObserver = new MutationObserver(records => {
+      const touched = new Set();
+      for (const r of records) {
+        const t = r.target.nodeType === 1 ? r.target.closest("table.cs-table") : null;
+        if (t) touched.add(t);
+      }
+      scan();
+      // A grid whose rows were redrawn in place (tbody replaced) gets its sort back
+      touched.forEach(t => { if (t.isConnected && sortState.has(t.dataset.csSig)) applySort(t); });
+    });
+    sortObserver.observe(root, { childList: true, subtree: true });
+  }
+
+  // ---------- layout ----------
+  function layout(activeKey) {
+    const page = PAGES.find(p => p.key === activeKey);
+    document.title = `${page ? page.label + " · " : ""}${CFG.appName}`;
+    const nav = PAGES.map((p, i) =>
+      (p.section && p.section !== PAGES[i - 1]?.section ? `<div class="nav-section">${esc(p.section)}</div>` : "") +
+      `<a href="${p.href}" class="${p.key === activeKey ? "active" : ""}${p.section ? " sub" : ""}">${esc(p.label)}</a>`).join("");
+    document.body.insertAdjacentHTML("afterbegin", `
+      <div class="app">
+        <nav class="sidebar">
+          <a class="brand" href="index.html" title="Home">${esc(CFG.appName)}</a>
+          <div class="nav-scroll">${nav}</div>
+          <div class="user-box">${(() => { const u = window.CockyAuth?.current() || {}; return `<span title="${esc([u.fullname, u.email, u.role && "role " + u.role].filter(Boolean).join(" · "))}">${esc(u.username || u.email || "")}${u.testLogin ? ' <span class="badge text-bg-warning">test</span>' : ""}</span>`; })()}<a href="#" id="signOut">Sign out</a></div>
+          <div class="api-note" title="${esc(CFG.apiBaseUrl)}">Build ${esc(CFG.version || "")}${CFG.builds?.[0] ? " · " + esc(CFG.builds[0].title) : ""}<br>API: ${esc(new URL(CFG.apiBaseUrl).host.split(".")[0])}${CFG.copyright ? `<br><span class="copy">${esc(CFG.copyright)}</span>` : ""}</div>
+        </nav>
+        <main class="content" id="page"></main>
+      </div>
+      <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts"></div>`);
+    document.getElementById("signOut").addEventListener("click", e => { e.preventDefault(); window.CockyAuth?.signOut(); });
+    // An access log that couldn't be written at sign-in (build 6.0) is reported once
+    try { const w = sessionStorage.getItem("cocky.accesslog.warn"); if (w) { sessionStorage.removeItem("cocky.accesslog.warn");
+      setTimeout(() => toast("Access log not written: " + w + ". Check config.js accessLog.", "warning"), 300); } } catch {}
+    // Keep the current page's link in view (the menu scrolls once it's taller than the window)
+    try { document.querySelector(".sidebar .nav-scroll a.active")?.scrollIntoView({ block: "nearest" }); } catch {}
+    const main = document.getElementById("page");
+    // Move page content (anything already in <body> marked data-page) into main
+    document.querySelectorAll("[data-page]").forEach(el => main.appendChild(el));
+    // Build 6.6: every grid outside the Ops section sorts by clicking its headers (Ops pages keep their own)
+    if (page?.section !== "Ops" && CFG.sortableGrids !== false) sortableGrids(document.body);
+    return main;
+  }
+
+  function toast(message, type = "success") {
+    const el = document.createElement("div");
+    el.className = `toast align-items-center text-bg-${type} border-0`;
+    el.innerHTML = `<div class="d-flex"><div class="toast-body">${esc(message)}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.getElementById("toasts").appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: type === "danger" ? 8000 : 3000 });
+    el.addEventListener("hidden.bs.toast", () => el.remove());
+    t.show();
+  }
+
+  function errorBox(err, retry) {
+    const div = document.createElement("div");
+    div.className = "alert alert-danger d-flex justify-content-between align-items-start gap-3";
+    div.innerHTML = `<div><strong>Couldn't load data.</strong><div class="small mt-1">${esc(err.message)}</div></div>`;
+    if (retry) {
+      const b = document.createElement("button");
+      b.className = "btn btn-sm btn-outline-danger"; b.textContent = "Retry"; b.onclick = retry;
+      div.appendChild(b);
+    }
+    return div;
+  }
+
+  const spinner = (text = "Loading…") =>
+    `<div class="text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>${esc(text)}</div>`;
+
+  // ---------- table ----------
+  function columnsFor(resource, rows) {
+    const preferred = SCHEMA[resource]?.columns || [];
+    if (!rows.length) return preferred;
+    const keys = new Set(rows.flatMap(r => Object.keys(r)));
+    // computed columns (a schema format with no field behind it, e.g. Hosts' Operating system) are kept too
+    const cols = preferred.filter(c => keys.has(c) || SCHEMA[resource]?.format?.[c]);
+    if (cols.length >= 3) return cols;
+    return [...keys].slice(0, 8);
+  }
+
+  function renderTable(container, resource, rows, opts = {}) {
+    const cols = opts.columns || columnsFor(resource, rows);
+    const label = SCHEMA[resource]?.labelPlural || resource;
+    if (!rows.length) {
+      container.innerHTML = `<div class="empty">${esc(opts.emptyText || `No ${label.toLowerCase()} yet.`)}</div>`;
+      return;
+    }
+    const actions = opts.onEdit || opts.onDelete || opts.rowActions;
+    container.innerHTML = `
+      <div class="table-responsive"><table class="table table-hover table-sm align-middle mb-0">
+        <thead><tr>${cols.map(c => `<th>${esc(SCHEMA[resource]?.titles?.[c] || titleCase(c))}</th>`).join("")}${actions ? "<th></th>" : ""}</tr></thead>
+        <tbody>${rows.map((r, i) => `<tr data-i="${i}" class="${opts.onRowClick ? "clickable" : ""}">
+          ${cols.map(c => { const t = fieldType(resource, c, r[c]), d = t === "date" ? parseDate(r[c]) : null;
+            return `<td${d ? ` data-sort="${d.getTime()}"` : ""}>${SCHEMA[resource]?.format?.[c] ? SCHEMA[resource].format[c](r[c], r) : fmtValue(r[c], t)}</td>`; }).join("")}
+          ${actions ? `<td class="text-end text-nowrap">
+            ${(opts.rowActions || []).map((a, ai) => { const lbl = typeof a.label === "function" ? a.label(r) : esc(a.label);
+              const tip = typeof a.title === "function" ? a.title(r) : a.title;
+              return `<button class="btn btn-sm ${a.className || "btn-outline-primary"} me-1" data-act="x${ai}"${tip ? ` title="${esc(tip)}"` : ""}>${lbl}</button>`; }).join("")}
+            ${opts.onEdit ? '<button class="btn btn-sm btn-outline-secondary me-1" data-act="edit">Edit</button>' : ""}
+            ${opts.onDelete ? '<button class="btn btn-sm btn-outline-danger" data-act="del">Delete</button>' : ""}
+          </td>` : ""}
+        </tr>`).join("")}</tbody>
+        ${opts.footer ? (() => { const f = opts.footer(rows) || {};
+          return `<tfoot><tr class="table-light fw-semibold grid-total">${cols.map((c, ci) => `<td>${f[c] ?? (ci === 0 ? "Total" : "")}</td>`).join("")}${actions ? "<td></td>" : ""}</tr>${f._note ? `<tr><td colspan="${cols.length + (actions ? 1 : 0)}" class="small text-muted border-0">${f._note}</td></tr>` : ""}</tfoot>`; })() : ""}
+      </table></div>`;
+    container.querySelectorAll("tbody tr").forEach(tr => {
+      const row = rows[+tr.dataset.i];
+      tr.addEventListener("click", e => {
+        const act = e.target.closest("[data-act]")?.dataset.act;
+        if (act === "edit") return opts.onEdit(row);
+        if (act === "del") return opts.onDelete(row);
+        if (act?.startsWith("x")) return opts.rowActions[+act.slice(1)].onClick(row);
+        if (opts.onRowClick) opts.onRowClick(row);
+      });
+    });
+  }
+
+  function filterRows(rows, q) {
+    q = q.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(r => Object.values(r).some(v => v != null && String(v).toLowerCase().includes(q)));
+  }
+
+  // ---------- add/edit dialog ----------
+  let modalEl;
+  function ensureModal() {
+    if (modalEl) return modalEl;
+    document.body.insertAdjacentHTML("beforeend", `
+      <div class="modal fade" id="recordModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="guess-note alert alert-warning small d-none"></div>
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><button class="nav-link active" data-tab="form" type="button">Form</button></li>
+            <li class="nav-item"><button class="nav-link" data-tab="json" type="button">JSON</button></li>
+          </ul>
+          <form class="tab-form row g-3"></form>
+          <div class="tab-json d-none">
+            <textarea class="form-control font-monospace" rows="18" spellcheck="false"></textarea>
+            <div class="form-text">Edit the exact JSON that will be sent. Useful if the API expects fields the form doesn't show.</div>
+          </div>
+          <div class="save-error alert alert-danger small mt-3 d-none"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+          <button class="btn btn-primary save-btn" type="button">Save</button></div>
+      </div></div></div>`);
+    modalEl = document.getElementById("recordModal");
+    return modalEl;
+  }
+
+  function toLocalInput(v) {
+    if (!v) return "";
+    const d = parseDate(v);
+    if (!d) return "";
+    const p = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  // meta: { label, options } from the schema's labels / choices (options: [value] or [{ value, label }])
+  function inputFor(key, type, value, isNew, meta = {}) {
+    const id = "f_" + key;
+    const name = meta.label || titleCase(key);
+    const lbl = `<label class="form-label small mb-1" for="${id}">${esc(name)}</label>`;
+    const opts = (typeof meta.options === "function" ? meta.options() : meta.options) || [];
+    const optList = opts.map(o => typeof o === "object" ? o : { value: o, label: o });
+    const ro = key === "id" ? "readonly" : "";
+    if (key === "id" && isNew) return "";
+    switch (type) {
+      case "bool":
+        return `<div class="col-md-4 d-flex align-items-end"><div class="form-check">
+          <input class="form-check-input" type="checkbox" id="${id}" data-key="${key}" data-type="bool" ${value ? "checked" : ""}>
+          <label class="form-check-label" for="${id}">${esc(name)}</label></div></div>`;
+      case "number":
+        return `<div class="col-md-4">${lbl}<input class="form-control form-control-sm" type="number" id="${id}" data-key="${key}" data-type="number" value="${value ?? ""}" ${ro}></div>`;
+      case "date":
+        return `<div class="col-md-4">${lbl}<input class="form-control form-control-sm" type="datetime-local" id="${id}" data-key="${key}" data-type="date" value="${toLocalInput(value)}"></div>`;
+      case "password":
+        return `<div class="col-md-6">${lbl}<div class="input-group input-group-sm">
+          <input class="form-control" type="password" autocomplete="new-password" id="${id}" data-key="${key}" data-type="password" value="${esc(value ?? "")}">
+          <button class="btn btn-outline-secondary" type="button" onclick="const i=this.previousElementSibling;i.type=i.type==='password'?'text':'password'">Show</button></div></div>`;
+      case (refTarget(type) ? type : "\u0000"): {
+        const rows = refCache[refTarget(type)] || [];
+        const known = rows.some(r => String(r.id) === String(value));
+        const opts = ['<option value="">(none)</option>']
+          .concat(rows.map(r => `<option value="${r.id}" ${String(r.id) === String(value) ? "selected" : ""}>${esc(refLabel(r))}</option>`))
+          .concat(value != null && value !== "" && !known ? [`<option value="${esc(value)}" selected>#${esc(value)} (not found)</option>`] : []);
+        return `<div class="col-md-6">${lbl}<select class="form-select form-select-sm" id="${id}" data-key="${key}" data-type="ref">${opts.join("")}</select></div>`;
+      }
+      // A fixed list. A stored value that isn't in the list is kept and marked.
+      case "choice": {
+        const v = value ?? "";
+        const known = v === "" || optList.some(o => String(o.value).toLowerCase() === String(v).toLowerCase());
+        const html = ['<option value="">(not set)</option>']
+          .concat(optList.map(o => `<option value="${esc(o.value)}" ${String(o.value).toLowerCase() === String(v).toLowerCase() ? "selected" : ""}>${esc(o.label)}</option>`))
+          .concat(known ? [] : [`<option value="${esc(v)}" selected>${esc(v)} (not in the list)</option>`]);
+        return `<div class="col-md-6" data-field="${key}">${lbl}<select class="form-select form-select-sm" id="${id}" data-key="${key}" data-type="choice">${html.join("")}</select></div>`;
+      }
+      // Free text with suggestions
+      case "suggest":
+        return `<div class="col-md-6" data-field="${key}">${lbl}<input class="form-control form-control-sm" type="text" id="${id}" data-key="${key}" data-type="suggest" list="${id}_list" value="${esc(value ?? "")}">
+          <datalist id="${id}_list">${optList.map(o => `<option value="${esc(o.value)}">`).join("")}</datalist></div>`;
+      case "text":
+        return `<div class="col-12">${lbl}<textarea class="form-control form-control-sm" rows="2" id="${id}" data-key="${key}" data-type="text">${esc(value ?? "")}</textarea></div>`;
+      default:
+        return `<div class="col-md-6">${lbl}<input class="form-control form-control-sm" type="text" id="${id}" data-key="${key}" data-type="${type}" value="${esc(value ?? "")}" ${ro}></div>`;
+    }
+  }
+
+  function readForm(form, base) {
+    const out = { ...base };
+    form.querySelectorAll("[data-key]").forEach(el => {
+      const k = el.dataset.key, t = el.dataset.type;
+      if (t === "bool") out[k] = el.checked;
+      else if (t === "number" || t === "ref") out[k] = el.value === "" ? null : Number(el.value);
+      else if (t === "date") out[k] = el.value ? new Date(el.value).toISOString() : null;
+      else out[k] = el.value === "" ? null : el.value;
+    });
+    return out;
+  }
+
+  // Opens the add/edit dialog. `sampleRows` = existing records, used to learn field names.
+  // defaults: starting values for a new record (e.g. { apiHostId: 3 })
+  // opts.view: "core" (groups without detail:true), "details" (only detail groups), or "all". Fields not shown
+  // are kept unchanged from the record when saving.
+  async function openRecordForm(resource, record, sampleRows = [], defaults = {}, opts = {}) {
+    await ensureRefs(resource);
+    return new Promise(resolve => {
+      const m = ensureModal();
+      const isNew = !record;
+      const sch = SCHEMA[resource] || { fields: {} };
+      const learned = sampleRows.length ? Object.keys(Object.assign({}, ...sampleRows)) : [];
+      const sampleAll = record || Object.assign({}, ...sampleRows);
+      // Navigation properties (arrays/objects the API nests in a record, e.g. Apihost.ApiAccessPermissions) aren't
+      // edited here: collections are always sent as [] and nested objects are left out
+      const isNav = k => !(k in (sch.fields || {})) && sampleAll[k] !== null && typeof sampleAll[k] === "object";
+      const navKeys = Object.keys(sampleAll).filter(isNav);
+      let keys = [...new Set([...(record ? Object.keys(record) : learned.length ? learned : Object.keys(sch.fields))])].filter(k => !isNav(k));
+      // Group keys are schema spellings; use the record's own spelling of each (UI_Codebase vs uI_Codebase)
+      const actualKey = k => keys.includes(k) ? k : (keys.find(x => normKey(x) === normKey(k)) ?? k);
+      const view = opts.view || sch.defaultView || "all";
+      let schGroups = sch.groups && sch.groups.map(g => ({ ...g, keys: g.keys.map(actualKey) }));
+      if (schGroups && view !== "all") {
+        const detailKeys = new Set(schGroups.filter(g => g.detail).flatMap(g => g.keys));
+        schGroups = schGroups.filter(g => view === "details" ? g.detail : !g.detail);
+        keys = keys.filter(k => view === "details" ? detailKeys.has(k) : !detailKeys.has(k));
+      }
+      const sample = record || Object.assign({}, ...sampleRows);
+      const base = {};
+      // New records: yes/no fields start off, except active/enabled; schema "defaults" mirror the table's SQL defaults
+      if (isNew) keys.forEach(k => { if (k !== "id") base[k] = sch.defaults && k in sch.defaults ? sch.defaults[k]
+        : fieldType(resource, k, sample[k]) === "bool" ? /^(is)?(active|enabled)$/i.test(k) : null; });
+      if (isNew) Object.entries(defaults).forEach(([k, v]) => { base[k] = v; if (!keys.includes(k)) keys.push(k); });
+
+      m.querySelector(".modal-title").textContent = view === "details" && record
+        ? `${sch.label || resource} details: ${recordName(record) || "#" + record.id}`
+        : `${isNew ? "Add" : "Edit"} ${sch.label || resource}${record ? " #" + record.id : ""}`;
+      const note = m.querySelector(".guess-note");
+      const guessing = !sch.verified && !learned.length && !record;
+      note.classList.toggle("d-none", !guessing);
+      note.textContent = guessing
+        ? `There are no ${(sch.labelPlural || resource).toLowerCase()} yet, so these fields are a best guess. Compare with the Swagger schema; if the save fails, adjust in the JSON tab (and in schema.js).`
+        : "";
+      const form = m.querySelector(".tab-form");
+      const field = k => inputFor(k, fieldType(resource, k, sample[k]), record ? record[k] : base[k], isNew,
+        { label: schemaValue(resource, "labels", k), options: schemaValue(resource, "choices", k) });
+      if (schGroups) {
+        // Grouped sections; anything not in a group goes under "Other"
+        const placed = new Set(sch.groups.flatMap(g => g.keys.map(actualKey)));
+        const groups = schGroups.map(g => ({ ...g, keys: g.keys.filter(k => keys.includes(k)) }))
+          .concat([{ title: "Other", keys: keys.filter(k => !placed.has(k)) }]).filter(g => g.keys.length);
+        const filled = g => record && g.keys.some(k => k !== "id" && record[k] !== null && record[k] !== "" && record[k] !== false && record[k] !== 0 && record[k] !== "string");
+        form.innerHTML = groups.map((g, i) => `<details class="col-12 form-section" ${i === 0 || filled(g) ? "open" : ""}>
+          <summary>${esc(g.title)} <span class="text-muted small fw-normal">(${g.keys.length})</span></summary>
+          <div class="row g-3 pt-2">${g.keys.map(field).join("")}</div></details>`).join("");
+      } else form.innerHTML = keys.map(field).join("");
+      const ta = m.querySelector(".tab-json textarea");
+      const errBox = m.querySelector(".save-error");
+      errBox.classList.add("d-none");
+      let tab = "form";
+      const withNav = o => { const out = { ...o }; navKeys.forEach(k => { if (Array.isArray(sampleAll[k])) out[k] = []; else delete out[k]; }); return out; };
+      const current = () => tab === "form" ? withNav(readForm(form, record || base)) : JSON.parse(ta.value);
+
+      m.querySelectorAll("[data-tab]").forEach(btn => btn.onclick = () => {
+        try {
+          if (btn.dataset.tab === "json" && tab === "form") ta.value = JSON.stringify(withNav(readForm(form, record || base)), null, 2);
+          if (btn.dataset.tab === "form" && tab === "json") {
+            const obj = JSON.parse(ta.value);
+            form.querySelectorAll("[data-key]").forEach(el => {
+              const v = obj[el.dataset.key];
+              if (el.dataset.type === "bool") el.checked = !!v;
+              else if (el.dataset.type === "date") el.value = toLocalInput(v);
+              else if (el.tagName === "SELECT" && v != null && v !== "" && ![...el.options].some(o => o.value === String(v))) {
+                el.insertAdjacentHTML("beforeend", `<option value="${esc(v)}">${esc(v)} (not in the list)</option>`); el.value = String(v);
+              }
+              else el.value = v ?? "";
+            });
+          }
+        } catch (e) { errBox.textContent = "JSON is not valid: " + e.message; errBox.classList.remove("d-none"); return; }
+        errBox.classList.add("d-none");
+        tab = btn.dataset.tab;
+        m.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("active", b === btn));
+        form.classList.toggle("d-none", tab !== "form");
+        m.querySelector(".tab-json").classList.toggle("d-none", tab !== "json");
+      });
+      m.querySelector('[data-tab="form"]').click();
+      // Per-resource form behaviour (e.g. Apps dims the UI fields that don't apply to the chosen codebase)
+      try { sch.onForm?.(form, record || base); } catch (e) { console.warn("onForm", e); }
+
+      const saveBtn = m.querySelector(".save-btn");
+      saveBtn.onclick = async () => {
+        let body;
+        try { body = current(); } catch (e) { errBox.textContent = "JSON is not valid: " + e.message; errBox.classList.remove("d-none"); return; }
+        if (!isNew) { body.id = record.id; }
+        if (isNew) { const now = new Date().toISOString(); ["createdDate", "modifiedDate"].forEach(k => { if (k in body && !body[k]) body[k] = now; }); }
+        else if ("modifiedDate" in body) body.modifiedDate = new Date().toISOString();
+        saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+        try {
+          let saved, filledKeys = [];
+          if (isNew) ({ data: saved, filled: filledKeys } = await api.createFilling(resource, body));
+          else saved = await api.update(resource, record.id, body);
+          bs.hide(); saved_ = saved ?? body;
+          toast(`${sch.label || "Record"} ${isNew ? "added" : "saved"}.` +
+            (filledKeys.length ? ` The API required ${filledKeys.length} blank field(s), filled with N/A/0: ${filledKeys.join(", ")}.` : ""),
+            filledKeys.length ? "warning" : "success");
+        } catch (e) {
+          errBox.textContent = e.message; errBox.classList.remove("d-none");
+        } finally { saveBtn.disabled = false; saveBtn.textContent = "Save"; }
+      };
+      let saved_ = null;
+      const bs = bootstrap.Modal.getOrCreateInstance(m);
+      m.addEventListener("hidden.bs.modal", () => resolve(saved_), { once: true });
+      bs.show();
+    });
+  }
+
+  async function confirmDelete(resource, row, beforeDelete) {
+    const sch = SCHEMA[resource] || {};
+    const name = recordName(row);
+    if (!confirm(`Delete ${sch.label || "record"} #${row.id}${name ? ` (${name})` : ""}? This can't be undone.`)) return false;
+    let undo = null;
+    try {
+      undo = await beforeDelete?.(row);   // may return a function that reverses its changes
+      await api.remove(resource, row.id);
+      toast(`${sch.label || "Record"} #${row.id} deleted.`);
+      return true;
+    } catch (e) {
+      if (typeof undo === "function") { try { await undo(); } catch (u) { e.message += ` (and restoring the removed links failed: ${u.message})`; } }
+      toast(e.message, "danger"); return false;
+    }
+  }
+
+  // ---------- full CRUD page ----------
+  // Used by Apps / Hosts / Endpoints / Exceptions. `source()` returns the list suffix to load.
+  // columns: fixed column list (may include computed columns that have a schema `format`).
+  // beforeLoad: async hook run alongside every load/refresh (e.g. to reload lookup data).
+  // onCreated(record): called after "+ Add" saves a new record.
+  // beforeDelete(record): async hook run after the user confirms a delete, before the record is removed.
+  //   It may return an undo function, which is called if the delete then fails.
+  // canDelete(record): return a message to refuse the delete (e.g. other records still point at it), or nothing to allow it.
+  // addDefaults(): starting values for "+ Add" (e.g. the server picked in a filter).
+  // footer(shownRows): totals row under the grid, as { columnKey: html, _note: html under it }.
+  // filter(rows): narrows the rows shown, alongside the search box (e.g. a dropdown in toolbarExtra); call redraw() when it changes.
+  function crudPage(resource, { mount, toolbarExtra = "", source = () => "", rowActions, onLoaded, sort, columns, beforeLoad, onCreated, beforeDelete, canDelete, addDefaults, footer, filter } = {}) {
+    const sch = SCHEMA[resource];
+    mount.insertAdjacentHTML("beforeend", `
+      <div class="card"><div class="card-body">
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+          <input class="form-control form-control-sm search" style="max-width:260px" placeholder="Search…">
+          ${toolbarExtra}
+          <span class="count text-muted small ms-1"></span>
+          <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary refresh" type="button">Refresh</button>
+            <button class="btn btn-sm btn-primary add" type="button">+ Add ${esc(sch.label)}</button>
+          </div>
+        </div>
+        <div class="table-host"></div>
+      </div></div>`);
+    const host = mount.querySelector(".table-host");
+    const search = mount.querySelector(".search");
+    const count = mount.querySelector(".count");
+    let rows = [];
+
+    const draw = () => {
+      const shown = filterRows(filter ? filter(rows) : rows, search.value);
+      count.textContent = rows.length ? `${shown.length} of ${rows.length}` : "";
+      renderTable(host, resource, shown, {
+        columns,
+        emptyText: rows.length ? "Nothing matches your search." : `No ${sch.labelPlural.toLowerCase()} yet. Use "+ Add ${sch.label}" to create one.`,
+        onEdit: async r => { if (await openRecordForm(resource, r, rows)) load(); },
+        onDelete: async r => {
+          const refusal = canDelete?.(r);
+          if (refusal) { toast(refusal, "warning"); return; }
+          if (await confirmDelete(resource, r, beforeDelete)) load();
+        },
+        rowActions,
+        footer
+      });
+    };
+    async function load() {
+      host.innerHTML = spinner();
+      try {
+        const [list] = await Promise.all([api.list(resource, source()), ensureRefs(resource), beforeLoad?.()]);
+        rows = sort ? sort(list) : list; draw(); onLoaded?.(rows);
+      }
+      catch (e) { host.innerHTML = ""; host.appendChild(errorBox(e, load)); count.textContent = ""; }
+    }
+    search.addEventListener("input", draw);
+    mount.querySelector(".refresh").onclick = load;
+    mount.querySelector(".add").onclick = async () => {
+      const saved = await openRecordForm(resource, null, rows, addDefaults?.() || {});
+      if (!saved) return;
+      await load();
+      onCreated?.(saved);
+    };
+    load();
+    return { reload: load, redraw: draw, rows: () => rows };
+  }
+
+  // An exception is in force when it's active and not past its expiration date
+  const isLiveException = x => !!x && x.active !== false && (!x.expirationDate || parseDate(x.expirationDate) > new Date());
+  // The live whole-host exception for a host, if any
+  const hostException = (hostExceptions, hostId) => (hostExceptions || []).find(x => x.apiHostId === hostId && isLiveException(x)) || null;
+
+  // ---------- apps ----------
+  // Roll up each app's hosts and endpoints. An app's endpoints are every endpoint whose apiHostId is one of the
+  // app's linked hosts; a host linked twice is only counted once. Links to missing apps/hosts are ignored.
+  // Returns [{ app, hosts, endpoints, total, active, lastAudit }] in the same order as `apps`.
+  function appRollup(apps, links, hosts, endpoints) {
+    const hostById = new Map((hosts || []).map(h => [h.id, h]));
+    const epsByHost = new Map();
+    (endpoints || []).forEach(e => { if (e.apiHostId != null) (epsByHost.get(e.apiHostId) || epsByHost.set(e.apiHostId, []).get(e.apiHostId)).push(e); });
+    return (apps || []).map(app => {
+      const hostIds = [...new Set((links || []).filter(l => l.applicationId === app.id).map(l => l.apiHostId))].filter(id => hostById.has(id));
+      const hs = hostIds.map(id => hostById.get(id));
+      const eps = hostIds.flatMap(id => epsByHost.get(id) || []);
+      const lastAudit = eps.concat(hs).reduce((m, x) => Math.max(m, dateMs(x.lastAuditDate)), 0);
+      return { app, hosts: hs, endpoints: eps, total: eps.length, active: eps.filter(e => e.isActive !== false).length, lastAudit: lastAudit || null };
+    });
+  }
+  // Remove ApplicationApi links matching `test` (e.g. before deleting an application or host, since the
+  // foreign keys don't cascade). Returns an undo function that re-creates them. A 404 means the routes aren't deployed.
+  // Generic version: remove rows of link table `resource` matching `test`; `keep` = the fields needed to re-create a row.
+  async function removeLinks(resource, test, keep) {
+    let links = [];
+    try { links = (await api.list(resource)).filter(test); }
+    catch (e) { if (e.status !== 404) throw e; }
+    const recreate = l => api.create(resource, Object.fromEntries(keep.map(k => [k, l[k]])));
+    const removed = [];
+    try { for (const l of links) { await api.remove(resource, l.id); removed.push(l); } }
+    catch (e) { await Promise.all(removed.map(recreate)); throw e; }
+    const undo = () => Promise.all(removed.map(recreate));
+    undo.count = removed.length;
+    return undo;
+  }
+  const removeAppLinks = test => removeLinks("apphosts", test, ["applicationId", "apiHostId"]);
+  // Hosts not linked to any app
+  const unlinkedHosts = (hosts, links, apps) => {
+    const appIds = new Set((apps || []).map(a => a.id));
+    const linked = new Set((links || []).filter(l => appIds.has(l.applicationId)).map(l => l.apiHostId));
+    return (hosts || []).filter(h => !linked.has(h.id));
+  };
+
+
+  // ---------- Enterprise(9) logging standard ----------
+  // An endpoint is Enterprise(9) if its PATH has "log" in it (never the host name: "capitoltechnology" contains "log"),
+  // ignoring words that only contain "log" (login, logout, catalog... config.js enterpriseLogs.exclude), or if its path
+  // names one of the standard sets in config.js (so /api/Usernotices and /api/userlocation/ count too).
+  // Endpoints are grouped into sets: /api/ApiLog, /api/ApiLog/{id} and POST /api/ApiLog are the "ApiLog" set.
+  const e9 = (() => {
+    const LOGS = CFG.enterpriseLogs || { types: [] };
+    const EXCLUDE = (LOGS.exclude || ["login", "logon", "logout", "logoff", "catalog", "dialog", "blog", "analog", "technolog", "backlog", "apolog"]).map(x => x.toLowerCase());
+    const GENERIC = /^(log|logs|logging|logger|enterpriselog|enterpriselogs)$/i;   // /api/Logs/Learnlog -> "Learnlog"
+    const blankV = v => v == null || String(v).trim() === "" || String(v).trim().toLowerCase() === "string";
+    const pathOf = e => { const u = blankV(e.url) ? "" : String(e.url).trim(); try { return /^https?:\/\//i.test(u) ? new URL(u).pathname : u; } catch { return u; } };
+    const segsOf = e => pathOf(e).split("/").filter(Boolean);
+    const isParam = seg => /^\{.*\}$/.test(seg);
+    const isLogWord = seg => /log/i.test(seg) && !isParam(seg) && !EXCLUDE.some(x => seg.toLowerCase().includes(x));
+    const routeSeg = t => String(t.path || "").split("/").filter(Boolean).pop() || t.name;
+    const namesOf = t => [...new Set([t.name, ...(t.aliases || []), routeSeg(t)].map(n => n.toLowerCase()))];
+    const cfgFor = name => (LOGS.types || []).find(t => namesOf(t).includes(String(name).toLowerCase()));
+    function setOf(e) {
+      const segs = segsOf(e);
+      for (const seg of segs) { if (isParam(seg)) continue; const t = cfgFor(seg); if (t) return t.name; }
+      const i = segs.findIndex(isLogWord);
+      if (i < 0) return null;
+      if (GENERIC.test(segs[i])) return segs.slice(i + 1).find(x => !isParam(x)) || segs[i];
+      return segs[i];
+    }
+    // [{ name, label, path, endpoints }] for the given endpoints, sorted by name
+    function sets(endpoints) {
+      const m = new Map();
+      for (const e of endpoints || []) {
+        const name = setOf(e); if (!name) continue;
+        const cfg = cfgFor(name), k = (cfg?.name || name).toLowerCase();
+        if (!m.has(k)) m.set(k, { name: cfg?.name || name, label: cfg?.label, path: cfg?.path, endpoints: [] });
+        m.get(k).endpoints.push(e);
+      }
+      return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return { setOf, sets, pathOf, segsOf, isParam, cfgFor, namesOf };
+  })();
+  window.Cocky = { normKey, matchKey, e9, appRollup, unlinkedHosts, removeAppLinks, removeLinks, recordName, refLabel, CFG, SCHEMA, PAGES, api, layout, toast, errorBox, spinner, renderTable, filterRows, openRecordForm, confirmDelete, crudPage, esc, titleCase, fmtValue, parseDate, dateMs, ensureRefs, refText, isLiveException, hostException, sortableGrids };
+})();

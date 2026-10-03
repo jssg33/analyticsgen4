@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/cockyciphers.js"></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report 02 · Database tables by schema area · CockyAuditor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="site.css">
+<style>
+  .area-bar { height: 10px; background: #ecebe6; border-radius: 5px; min-width: 80px; }
+  .area-bar > div { height: 10px; border-radius: 5px; background: #3d6fb4; }
+  .area-bar.un > div { background: #adb5bd; }
+  @media print { .area-bar, .area-bar > div { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .report-api { break-inside: avoid-page; } }
+</style>
+</head>
+<body>
+<section data-page>
+  <div class="no-print mb-2 small"><a href="reports.html">‹ Reports</a> · <a href="databasetables.html" id="dtLink">Database Tables</a></div>
+  <div class="report-head d-flex flex-wrap justify-content-between align-items-end gap-2">
+    <div><div class="small text-muted text-uppercase">Report 02</div><h2 class="mb-0">Database tables by schema area</h2>
+      <div class="small text-muted" id="meta"></div></div>
+    <div class="no-print d-flex flex-wrap gap-2 align-items-center">
+      <select class="form-select form-select-sm" id="srcSel" style="max-width:340px"></select>
+      <div class="form-check form-check-inline small mb-0"><input class="form-check-input" type="checkbox" id="incInactive"><label class="form-check-label" for="incInactive">Include inactive</label></div>
+      <div class="form-check form-check-inline small mb-0"><input class="form-check-input" type="checkbox" id="showList" checked><label class="form-check-label" for="showList">List the tables</label></div>
+      <button class="btn btn-sm btn-outline-secondary" id="csvBtn" type="button">Download CSV</button>
+      <button class="btn btn-sm btn-primary" id="printBtn" type="button">Print</button>
+    </div>
+  </div>
+  <div id="out">Loading…</div>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+<script src="dbtables.js"></script>
+<script>
+Cocky.layout("reports");
+document.title = "Report 02 · Database tables by schema area · CockyAuditor";
+const { esc } = Cocky, $ = s => document.querySelector(s), D = window.DbTables;
+const ALL = "*";
+let srcs = [], loaded = [], loadedAt = null;   // loaded: [{ src, rows, error }]
+
+const pctTxt = p => (Math.round(p * 10) / 10).toFixed(Math.round(p * 10) % 10 ? 1 : 0) + "%";
+const bar = (p, un) => `<div class="d-flex align-items-center gap-2"><div class="area-bar flex-fill${un ? " un" : ""}"><div style="width:${p}%"></div></div><b style="min-width:3.4em;text-align:right">${pctTxt(p)}</b></div>`;
+const inScope = rows => $("#incInactive").checked ? rows : rows.filter(r => r.isActive !== false);
+
+// [{ area, n, pct, tables }] in the configured area order, then other areas A–Z, Unassigned last
+function breakdown(rows) {
+  const m = new Map();
+  rows.forEach(r => { const a = D.areaOf(r) || D.UNASSIGNED; (m.get(a) || m.set(a, []).get(a)).push(r); });
+  const order = D.areas(rows);
+  const keys = [...m.keys()].sort((a, b) => (a === D.UNASSIGNED) - (b === D.UNASSIGNED) ||
+    ((order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999)) || a.localeCompare(b));
+  return keys.map(a => ({ area: a, n: m.get(a).length, pct: rows.length ? m.get(a).length / rows.length * 100 : 0,
+    tables: m.get(a).slice().sort((x, y) => D.fullName(x).localeCompare(D.fullName(y))) }));
+}
+
+function areaTable(rows) {
+  const b = breakdown(rows);
+  return `<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0">
+    <thead class="table-light"><tr><th>Schema area</th><th class="text-end">Tables</th><th class="text-end">% of tables</th><th style="width:40%">Share</th></tr></thead>
+    <tbody>${b.map(x => `<tr${x.area === D.UNASSIGNED ? ' class="text-muted"' : ""}><td>${x.area === D.UNASSIGNED ? "<i>Unassigned</i>" : `<b>${esc(x.area)}</b>`}</td>
+      <td class="text-end">${x.n}</td><td class="text-end" data-sort="${x.pct}">${pctTxt(x.pct)}</td><td data-sort="${x.pct}">${bar(x.pct, x.area === D.UNASSIGNED)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr class="table-light fw-semibold"><td>Total</td><td class="text-end">${rows.length}</td><td class="text-end">${rows.length ? "100%" : "—"}</td><td></td></tr></tfoot>
+  </table></div>`;
+}
+
+function tableList(rows) {
+  return breakdown(rows).map(x => `<div class="mt-3"><h6 class="mb-1">${x.area === D.UNASSIGNED ? "<i>Unassigned</i>" : esc(x.area)}
+      <span class="text-muted fw-normal small">· ${x.n} table${x.n === 1 ? "" : "s"} · ${pctTxt(x.pct)}</span></h6>
+    <div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 small">
+      <thead class="table-light"><tr><th>Table</th><th>Schema</th><th>Model</th><th class="text-end">Columns</th><th>Active</th></tr></thead>
+      <tbody>${x.tables.map(r => `<tr><td><code>${esc(r.tableName || "")}</code></td><td>${esc(r.schemaName || "")}</td><td>${esc(r.modelName || "")}</td>
+        <td class="text-end">${esc(String(r.columnCount ?? ""))}</td><td>${r.isActive === false ? "No" : "Yes"}</td></tr>`).join("")}</tbody>
+    </table></div></div>`).join("");
+}
+
+function tiles(rows, extra = "") {
+  const b = breakdown(rows), un = b.find(x => x.area === D.UNASSIGNED)?.n || 0, areas = b.filter(x => x.area !== D.UNASSIGNED);
+  const top = areas.slice().sort((a, c) => c.n - a.n)[0];
+  const tile = (lbl, v, sub = "", style = "") => `<div class="col"><div class="card stat report-total h-100"><div class="card-body"><div class="lbl">${lbl}</div><div class="num" style="${style}">${v}</div>${sub ? `<div class="small text-muted">${sub}</div>` : ""}</div></div></div>`;
+  return `<div class="row row-cols-2 row-cols-md-4 g-3 mb-3">
+    ${tile("Total tables", rows.length, extra)}
+    ${tile("Schema areas", areas.length, top ? `Largest: ${esc(top.area)} (${top.n})` : "")}
+    ${tile("Assigned", rows.length ? pctTxt((rows.length - un) / rows.length * 100) : "—", `${rows.length - un} of ${rows.length} tables`)}
+    ${tile("Unassigned", un, un ? `<a href="${esc(dtHref())}">Assign on Database Tables</a>` : "every table has an area", un ? "color:#b02a37" : "color:#198754")}
+  </div>`;
+}
+
+const dtHref = () => "databasetables.html" + ($("#srcSel").value && $("#srcSel").value !== ALL ? "?source=" + encodeURIComponent($("#srcSel").value) : "");
+const okLoads = () => loaded.filter(l => !l.error);
+
+function draw() {
+  const me = window.CockyAuth?.current() || {}, sel = $("#srcSel").value, list = $("#showList").checked;
+  $("#dtLink").href = dtHref();
+  $("#meta").textContent = `Generated ${loadedAt ? loadedAt.toLocaleString() : ""} by ${me.fullname || me.username || "—"} · CockyAuditor build ${Cocky.CFG.version} · ` +
+    (sel === ALL ? "all APIs" : $("#srcSel").selectedOptions[0]?.textContent || "");
+  const ok = okLoads(), failed = loaded.filter(l => l.error);
+  let html = "";
+  if (!ok.length) {
+    html = `<div class="alert alert-danger">${failed.map(l => `<div><b>${esc(l.src.name || l.src.label)}:</b> ${esc(l.error)}</div>`).join("")}</div>`;
+    $("#out").innerHTML = html; return;
+  }
+  const all = ok.flatMap(l => inScope(l.rows));
+  const inactive = ok.reduce((s, l) => s + l.rows.filter(r => r.isActive === false).length, 0);
+  html += tiles(all, sel === ALL ? `across ${ok.length} API${ok.length === 1 ? "" : "s"}` : (inactive && !$("#incInactive").checked ? `${inactive} inactive left out` : ""));
+  html += `<div class="card mb-3"><div class="card-body"><h5 class="mb-2">Tables by schema area${sel === ALL ? " · all APIs" : ""}</h5>${areaTable(all)}</div></div>`;
+  if (sel === ALL) {
+    // Matrix: one row per API, one column per area
+    const areas = breakdown(all).map(x => x.area);
+    html += `<div class="card mb-3"><div class="card-body"><h5 class="mb-2">By API</h5><div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 small">
+      <thead class="table-light"><tr><th>API</th><th class="text-end">Tables</th>${areas.map(a => `<th class="text-end">${a === D.UNASSIGNED ? "<i>Unassigned</i>" : esc(a)}</th>`).join("")}</tr></thead>
+      <tbody>${ok.map(l => { const rs = inScope(l.rows), b = breakdown(rs);
+        return `<tr><td><b>${esc(l.src.name || l.src.label)}</b></td><td class="text-end">${rs.length}</td>${areas.map(a => { const x = b.find(y => y.area === a);
+          return `<td class="text-end" data-sort="${x ? x.n : 0}">${x ? `${x.n} <span class="text-muted">(${pctTxt(x.pct)})</span>` : '<span class="text-muted">—</span>'}</td>`; }).join("")}</tr>`; }).join("")}</tbody>
+      <tfoot><tr class="table-light fw-semibold"><td>Total</td><td class="text-end">${all.length}</td>${areas.map(a => { const x = breakdown(all).find(y => y.area === a); return `<td class="text-end">${x.n} <span class="text-muted">(${pctTxt(x.pct)})</span></td>`; }).join("")}</tr></tfoot>
+    </table></div></div></div>`;
+    ok.forEach(l => { const rs = inScope(l.rows);
+      html += `<div class="card mb-3 report-api"><div class="card-body"><div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+        <div><h5 class="mb-0">${esc(l.src.name || l.src.label)}</h5><div class="small text-muted font-monospace">${esc(D.urlOf(l.src.value))}</div></div>
+        <div class="small">${rs.length} table${rs.length === 1 ? "" : "s"} · ${(n => `${n} area${n === 1 ? "" : "s"}`)(breakdown(rs).filter(x => x.area !== D.UNASSIGNED).length)}</div></div>
+        ${areaTable(rs)}${list ? tableList(rs) : ""}</div></div>`; });
+  } else if (list) {
+    html += `<div class="card mb-3"><div class="card-body"><h5 class="mb-0">What each table is used for</h5>${tableList(all)}</div></div>`;
+  }
+  if (failed.length) html += `<div class="alert alert-warning small">Couldn't read ${failed.length} API${failed.length === 1 ? "" : "s"} (left out of the totals):
+    ${failed.map(l => `<div><b>${esc(l.src.name || l.src.label)}</b>: ${esc(l.error)}</div>`).join("")}</div>`;
+  html += `<div class="small text-muted mt-2">From each API's <code>${esc(D.PATH)}</code> (the DatabaseTable inventory). % = tables in the area ÷ total tables${$("#incInactive").checked ? "" : " (active tables only)"}.
+    Schema Areas are set on <a href="${esc(dtHref())}">Database Tables</a>; the suggested list is <code>config.js</code> → <code>schemaAreas</code>.</div>`;
+  $("#out").innerHTML = html;
+}
+
+async function load() {
+  const sel = $("#srcSel").value;
+  const pick = sel === ALL ? srcs.filter(s => s.value !== ALL) : srcs.filter(s => s.value === sel);
+  $("#out").innerHTML = Cocky.spinner(sel === ALL ? `Reading tables from ${pick.length} APIs…` : "Reading tables…");
+  loaded = await Promise.all(pick.map(src => D.list(src.value).then(rows => ({ src, rows }), e => ({ src, rows: [], error: e.status === 404 ? `no ${D.PATH} route (404)` : e.message }))));
+  // In All APIs mode, an API whose route isn't deployed is only noise: keep the error note short
+  loadedAt = new Date();
+  draw();
+}
+
+$("#csvBtn").onclick = () => {
+  const out = [["api", "api_url", "schema_area", "table", "schema", "model", "columns", "active"]];
+  const sum = [["api", "schema_area", "tables", "pct_of_tables"]];
+  okLoads().forEach(l => { const rs = inScope(l.rows), nm = l.src.name || l.src.label;
+    breakdown(rs).forEach(x => { sum.push([nm, x.area, x.n, x.pct.toFixed(1)]);
+      x.tables.forEach(r => out.push([nm, D.urlOf(l.src.value), x.area, r.tableName || "", r.schemaName || "", r.modelName || "", r.columnCount ?? "", r.isActive === false ? "No" : "Yes"])); });
+    sum.push([nm, "TOTAL", rs.length, rs.length ? "100.0" : ""]); });
+  const csv = [...sum, [], ...out].map(r => r.map(v => /[",\n]/.test(String(v ?? "")) ? `"${String(v).replace(/"/g, '""')}"` : (v ?? "")).join(",")).join("\n");
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: `report02-db-tables-by-area-${new Date().toISOString().slice(0, 10)}.csv` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$("#printBtn").onclick = () => window.print();
+$("#incInactive").onchange = draw;
+$("#showList").onchange = draw;
+
+(async () => {
+  let hosts = [];
+  try { hosts = await Cocky.api.list("apihosts"); } catch { hosts = []; }
+  srcs = [...D.sources(hosts), { value: ALL, label: "All APIs" }];
+  $("#srcSel").innerHTML = srcs.map(s => `<option value="${esc(s.value)}">${esc(s.label)}</option>`).join("");
+  const q = new URLSearchParams(location.search).get("source");
+  if (q && srcs.some(s => s.value === q)) $("#srcSel").value = q;
+  $("#srcSel").onchange = load;
+  load();
+})();
+</script>
+</body>
+</html>

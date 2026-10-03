@@ -23,5 +23,7 @@ namespace Enterprise.Models
         public DateTime? LastAuditDate { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        public string? SchemaArea {get; set;} //GENERAL AREA THAT SCHEMA IS USED -> USER FUNCTIONS, AUDIT FUNCTIONS, ETC
     }
 }

@@ -62,12 +62,7 @@ public class SystemConsoleController : ControllerBase
                 return Ok("File list displayed.");
 
             case 6:
-                // using var context = new EnterpriseContext();
-                // var zeroCartService = new ZeroCartService(context);
-                // var result = zeroCartService.ZeroCartUpdate(value.ToString());
-                // return Ok(result);
-
-                return Ok("Option 6 is currently disabled.");
+                return Ok(SqlAzureFieldAudit.RunAudit());
 
             case 7:
                 return Ok(SqlAzureTableAudit.RunAudit());

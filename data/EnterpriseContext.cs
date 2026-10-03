@@ -41,6 +41,8 @@ public partial class EnterpriseContext : DbContext
     public virtual DbSet<Customer> Customers { get; set; }
     
     public virtual DbSet<EmployeeHR> EmployeeHR { get; set; }
+
+    public virtual DbSet<DatabaseField> DatabaseFields { get; set; }
     
     public virtual DbSet<DatabaseTable> DatabaseTables { get; set; }
     public virtual DbSet<UserDownloadLog> UserDownloadLogs { get; set; }
@@ -193,6 +195,33 @@ modelBuilder.Entity<DatabaseTable>(entity =>
 
     entity.Property(e => e.LastAuditDate);
 });
+
+modelBuilder.Entity<DatabaseField>(entity =>
+{
+    entity.ToTable("DatabaseFields");
+
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.TableName)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.SchemaName)
+        .HasMaxLength(100);
+
+    entity.Property(e => e.FieldName)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.DataType)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.ClrType)
+        .HasMaxLength(255);
+
+    entity.Property(e => e.CreatedDate);
+
+    entity.Property(e => e.LastAuditDate);
+});
+
 
 modelBuilder.Entity<Enterprise9>(entity =>
 {

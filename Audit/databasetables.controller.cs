@@ -26,6 +26,36 @@ public static class DatabaseTablesController
         .WithName("GetDatabaseTables")
         .WithOpenApi();
 
+
+// PUT
+group.MapPut("/{id:int}", async (int id, DatabaseTable input) =>
+{
+using var context = new EnterpriseContext();
+ 
+var existing = await context.DatabaseTables
+.FirstOrDefaultAsync(x => x.Id == id);
+ 
+if (existing == null)
+return Results.NotFound();
+ 
+existing.TableName = input.TableName;
+existing.SchemaName = input.SchemaName;
+existing.ModelName = input.ModelName;
+existing.ColumnCount = input.ColumnCount;
+existing.LastAuditDate = input.LastAuditDate;
+existing.IsActive = input.IsActive;
+existing.SchemaArea = input.SchemaArea;
+ 
+await context.SaveChangesAsync();
+ 
+return Results.Ok(existing);
+})
+.WithName("UpdateDatabaseTable")
+.WithOpenApi();
+
+
+
+
         // DISCOVER EF TABLES
         group.MapPost("/discover", async () =>
         {

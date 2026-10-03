@@ -146,6 +146,7 @@ app.MapTwofactorEndpoints();
 app.MapHREndpoints(); //WITHOUT INTEGRATED SECURITY
 app.MapWorkerTroubleTicketEndpoints();
 app.MapDatabaseTablesEndpoints();
+app.MapDatabaseFieldsEndpoints();
 
 #endregion
 
