@@ -84,6 +84,11 @@ if (input.Role != null) existing.Role = input.Role;
 if (input.Role2 != null) existing.Role2 = input.Role2;
 if (input.Role3 != null) existing.Role3 = input.Role3;
 
+if (input.InvestorMode != null) existing.InvestorMode = input.InvestorMode;
+if (input.InvestorGroupId != null) existing.InvestorGroupId = input.InvestorGroupId;
+if (input.AnalystId != null) existing.AnalystId = input.AnalystId;
+    
+
 if (input.Fullname != null) existing.Fullname = input.Fullname;
 if (input.ApplicationIds != null)
     existing.ApplicationIds = input.ApplicationIds;
