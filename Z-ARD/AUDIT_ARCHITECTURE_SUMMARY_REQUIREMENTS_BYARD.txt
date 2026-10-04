@@ -1,0 +1,23 @@
+Natasha:
+  1 - EntraID w Login Token
+  2 - TwoFactor
+  3 - Enterprise9
+  4 - API AuditTool
+  5 - API Billing
+  6 - Directory Enabled Apps.
+  7 - Banded Desktops
+  8 - Oracle or MSSQL Deployment with Replication
+
+Igor - Core Architectural Requirements
+  9 - Traffic Management Tool
+ 10 - Traffic Coloring
+ 11 - PLL 
+ 12 - FLL
+ 13 - DBMS Table Permissions
+ 14 - DBMS Field Level Permissions
+ 15 - Token Based API Security
+ 16 - MVC Discovery(Interfaces, EntityFramework, Services)
+ 17 - Polling Endpoints
+ 18 - Inventory Management & Service Images
+ 19 - New Keyless Cipher System
+ 20 - Plan for Client Temporary Files Management
