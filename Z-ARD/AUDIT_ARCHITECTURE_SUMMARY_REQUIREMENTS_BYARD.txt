@@ -23,3 +23,5 @@ Igor - Core Architectural Requirements
  19 - New Keyless Cipher System
  20 - Plan for Client Temporary Files Management
  21 - Traffic Management Tool
+ 22 - Northbound Posts over DTO
+ 23 - Southbound Posts over DTO with Demuxed Services.
